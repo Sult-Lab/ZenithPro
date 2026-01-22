@@ -4,6 +4,7 @@ import com.techsultan.zenithpro.BuildConfig
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.FlowType
+import io.github.jan.supabase.auth.SessionManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.functions.Functions
@@ -27,6 +28,7 @@ val supabaseModule = module {
                 flowType = FlowType.PKCE
                 scheme = "app"
                 host = "supabase.com"
+               // sessionManager = SessionManager.default(context)
             }
 
             install(Storage)

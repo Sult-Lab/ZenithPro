@@ -117,4 +117,7 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.functions)
     implementation(libs.supabase.storage)
+
+    //splash screen
+    implementation(libs.core.splashscreen)
 }
