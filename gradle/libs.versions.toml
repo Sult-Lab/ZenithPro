@@ -19,6 +19,7 @@ ksp = "2.2.20-2.0.3"
 koinBom = "4.1.0"
 supabase = "3.3.0"
 core-splash-screen = "1.0.1"
+coil = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -62,6 +63,7 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-functions = { group = "io.github.jan-tennert.supabase", name = "functions-kt" }
 supabase-storage = { group = "io.github.jan-tennert.supabase", name = "storage-kt" }
 core-splashscreen = {group = "androidx.core", name = "core-splashscreen", version.ref = "core-splash-screen"}
+io-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

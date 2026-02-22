@@ -5,13 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import com.techsultan.zenithpro.features.auth.domain.use_case.IsUserLoggedInUseCase
+import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class DataPersistentViewModel(
-    private val authRepository: AuthenticationRepository
+    private val authRepository: AuthenticationRepository,
+    private val auth: Auth
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(true)
@@ -21,28 +23,18 @@ class DataPersistentViewModel(
     val isLoggedIn: StateFlow<Boolean?> = _isLoggedIn.asStateFlow()
 
     init {
-        checkLoginStatus()
+        observeSession()
     }
 
-    private fun checkLoginStatus() {
+    private fun observeSession() {
         viewModelScope.launch {
-            Log.d("DataPersistentViewModel", "Starting session check...")
+            auth.awaitInitialization()
 
             authRepository.sessionState.collect { isAuthenticated ->
-                Log.d("DataPersistentViewModel", "Session state: $isAuthenticated")
+                Log.d("DataPersistentViewModel", "Session state changed: $isAuthenticated")
                 _isLoggedIn.value = isAuthenticated
                 _isLoading.value = false
             }
         }
-    }
-
-    fun onLoginSuccess() {
-        Log.d("DataPersistentViewModel", "Login success called")
-        _isLoggedIn.value = true
-    }
-
-    fun onLogout() {
-        Log.d("DataPersistentViewModel", "Logout called")
-        _isLoggedIn.value = false
     }
 }

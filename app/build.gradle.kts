@@ -120,4 +120,7 @@ dependencies {
 
     //splash screen
     implementation(libs.core.splashscreen)
+
+    //coil
+    implementation(libs.io.coil)
 }

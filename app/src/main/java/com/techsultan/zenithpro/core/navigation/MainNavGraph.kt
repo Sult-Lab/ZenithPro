@@ -46,9 +46,8 @@ fun MainNavGraph(){
 
                     entry<Route.Home.Dashboard> {
                         DashboardScreen(
-                            onNewSaleClick = {
-                                navigator.navigate(Route.Home.NewSale)
-                            }
+                            onNewSaleClick = { navigator.navigate(Route.Home.NewSale) },
+                            onAddProductClick = { navigator.navigate(Route.Home.AddProduct) }
                         )
                     }
                     entry<Route.Home.Inventory> {
@@ -66,10 +65,14 @@ fun MainNavGraph(){
                         SettingsScreen()
                     }
                     entry<Route.Home.NewSale> {
-                        NewSaleScreen()
+                        NewSaleScreen(
+                            onBack = { navigator.goBack() }
+                        )
                     }
                     entry<Route.Home.AddProduct> {
-                        AddProductScreen()
+                        AddProductScreen(
+                            navigateBack = { navigator.goBack() }
+                        )
                     }
                 }
             )
