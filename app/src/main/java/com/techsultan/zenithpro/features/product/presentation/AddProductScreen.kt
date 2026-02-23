@@ -8,7 +8,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -98,9 +100,7 @@ import com.techsultan.zenithpro.core.components.DatePickerDialog
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
-import com.techsultan.zenithpro.core.data.Money
 import com.techsultan.zenithpro.features.product.data.remote.AddProductRequest
-import com.techsultan.zenithpro.features.product.data.remote.ProductVariantCreate
 import com.techsultan.zenithpro.features.product.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.product.data.remote.StockCreateRequest
 import com.techsultan.zenithpro.features.product.data.remote.VariantAttributeInput
@@ -128,7 +128,8 @@ fun AddProductScreen(
     var expandWarningDay by remember { mutableStateOf(false) }
     var trackExpiryDate by remember { mutableStateOf(false) }
     var datePickerDialog by remember { mutableStateOf(false) }
-    var productImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var productImageUris by rememberSaveable { mutableStateOf(listOf<Uri>()) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Variations state
     var showVariationsSheet by remember { mutableStateOf(false) }
@@ -159,7 +160,7 @@ fun AddProductScreen(
                     lowStockAlert = ""
                     expiryDate = ""
                     trackExpiryDate = false
-                    productImageUri = null
+                    productImageUris = emptyList()
                     variations = listOf(
                         VariationType("Size", Icons.Default.Straighten, emptyList()),
                         VariationType("Color", Icons.Default.Palette, emptyList())
@@ -173,11 +174,10 @@ fun AddProductScreen(
     }
 
      val imagePicker = rememberLauncherForActivityResult(
-         contract = ActivityResultContracts.PickVisualMedia()
-     ) { uri ->
-         if (uri != null){
-             productImageUri = uri
-         }
+         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5)
+     ) { uris ->
+         productImageUris = uris
+         selectedImageUri = uris.firstOrNull()
     }
 
     val storagePermissionLauncher = rememberStoragePermissionLauncher(
@@ -212,36 +212,99 @@ fun AddProductScreen(
                         .fillMaxWidth()
                         .height(180.dp)
                 ) {
-                    if (productImageUri != null) {
+                    if (productImageUris.isNotEmpty()) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            Image(
-                                painter = rememberAsyncImagePainter(model = productImageUri),
-                                contentDescription = "product image",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        imagePicker.launch(
-                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                        )
-                                    }
-                            )
-                            // Remove image button
-                            IconButton(
-                                onClick = { productImageUri = null },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(8.dp)
-                                    .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                                    .size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Remove image",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+
+                            selectedImageUri?.let { uri ->
+                                Image(
+                                    painter = rememberAsyncImagePainter(model = uri),
+                                    contentDescription = "product image",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .clickable {
+                                            imagePicker.launch(
+                                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                            )
+                                        }
                                 )
+                                // Remove image button
+                                IconButton(
+                                    onClick = {
+                                        productImageUris =
+                                            productImageUris.filter { it != uri }
+
+                                        selectedImageUri =
+                                            productImageUris.firstOrNull()
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                                        .size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                productImageUris.forEach { uri ->
+                                    Box {
+                                        Image(
+                                            painter = rememberAsyncImagePainter(uri),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(70.dp, 80.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .border(
+                                                    width = if (uri == selectedImageUri) 2.dp else 0.dp,
+                                                    color = Color.White,
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable {
+                                                    selectedImageUri = uri
+                                                }
+                                        )
+                                        IconButton(
+                                            onClick = {
+                                                productImageUris =
+                                                    productImageUris.filter { it != uri }
+
+                                                if (selectedImageUri == uri) {
+                                                    selectedImageUri =
+                                                        productImageUris.firstOrNull()
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .background(
+                                                    Color.Black.copy(alpha = 0.5f),
+                                                    CircleShape
+                                                )
+                                                .size(20.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     } else {
@@ -509,7 +572,6 @@ fun AddProductScreen(
             // Save Product Button
             Button(
                 onClick = {
-                    val imageList = listOfNotNull(productImageUri)
                     val baseSPrice = salesPrice.toLongOrNull() ?: 0L
                     val baseCPrice = costPrice.toLongOrNull() ?: 0L
                     
@@ -557,7 +619,7 @@ fun AddProductScreen(
                             variants = if (productVariants.isEmpty()) null else productVariants,
                             businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d"
                         ),
-                        imageUris = imageList
+                        imageUris = productImageUris
                     )
                 },
                 modifier = Modifier
