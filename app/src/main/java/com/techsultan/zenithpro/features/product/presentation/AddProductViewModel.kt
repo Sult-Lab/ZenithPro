@@ -12,6 +12,7 @@ import com.techsultan.zenithpro.features.product.domain.use_case.AddProductUseCa
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class AddProductViewModel(
     private val addProductUseCase: AddProductUseCase,
@@ -30,7 +31,14 @@ class AddProductViewModel(
         viewModelScope.launch {
             _state.value = state.value.copy(isLoading = true)
 
-            when(val result = addProductUseCase(addProductRequest, imageUris)) {
+            val requestWithIds = addProductRequest.copy(
+                clientId = UUID.randomUUID().toString(),
+                variants = addProductRequest.variants?.map { variant ->
+                    variant.copy(clientId = UUID.randomUUID().toString())
+                }
+            )
+
+            when(val result = addProductUseCase(addProductRequest = requestWithIds, imageUris)) {
                 is Resource.Success -> {
                     _state.value = state.value.copy(isLoading = false)
                     _eventFlow.emit(UiEvent.Success)

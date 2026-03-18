@@ -2,6 +2,7 @@ package com.techsultan.zenithpro
 
 import android.app.Application
 import com.techsultan.zenithpro.core.di.commonModule
+import com.techsultan.zenithpro.core.di.databaseModule
 import com.techsultan.zenithpro.core.di.supabaseModule
 import com.techsultan.zenithpro.features.auth.di.authModule
 import com.techsultan.zenithpro.features.product.di.productModule
@@ -30,7 +31,13 @@ class ZenithApplication : Application(), KoinComponent {
         startKoin {
             androidLogger()
             androidContext(this@ZenithApplication)
-            modules(supabaseModule, authModule, commonModule, productModule)
+            modules(
+                supabaseModule, 
+                authModule, 
+                commonModule, 
+                productModule,
+                databaseModule
+            )
         }
 
         applicationScope.launch {

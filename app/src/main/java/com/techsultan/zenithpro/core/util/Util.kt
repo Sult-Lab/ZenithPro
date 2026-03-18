@@ -76,4 +76,11 @@ object Util {
         }
     }
 
+    enum class SyncStatus {
+        SYNCED,      // In sync with server
+        PENDING,     // Awaiting first sync
+        DIRTY,       // Modified locally after last sync
+        DELETED      // Soft-deleted, pending server delete
+    }
+
 }

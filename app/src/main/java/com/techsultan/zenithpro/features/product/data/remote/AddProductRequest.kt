@@ -1,22 +1,33 @@
 package com.techsultan.zenithpro.features.product.data.remote
 
-import com.techsultan.zenithpro.core.data.Money
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class AddProductRequest(
-    val name: String,
-    val description: String?,
-    val category: String?,
-    val baseSalesPrice: Long,
-    val baseCostPrice: Long,
-    val expiryWarningDays: Int? = null,
-    val isActive: Boolean = true,
-    val variants: List<ProductVariantCreateRequest>? = emptyList(),
-    val businessId: String,
-    val imageUrls: List<String> = emptyList(),
+    @SerialName("clientId") val clientId: String,
+    @SerialName("name") val name: String,
+    @SerialName("description") val description: String?,
+    @SerialName("category") val category: String?,
+    @SerialName("baseSalesPrice") val baseSalesPrice: Long,
+    @SerialName("baseCostPrice") val baseCostPrice: Long,
+    @SerialName("expiryWarningDays") val expiryWarningDays: Int? = null,
+    @SerialName("isActive") val isActive: Boolean = true,
+    @SerialName("variants") val variants: List<ProductVariantCreateRequest>? = emptyList(),
+    @SerialName("businessId") val businessId: String,
+    @SerialName("imageUrls") val imageUrls: List<String> = emptyList(),
 )
 
+@Serializable
+data class ProductVariantCreateRequest(
+    @SerialName("clientId") val clientId: String,
+    @SerialName("sku") val sku: String,
+    @SerialName("salesPrice") val salesPrice: Long,
+    @SerialName("costPrice") val costPrice: Long,
+    @SerialName("barcode") val barcode: String?,
+    @SerialName("attributes") val attributes: List<VariantAttributeInput>,
+    @SerialName("stock") val stock: List<StockCreateRequest>
+)
 
 @Serializable
 data class ProductVariantCreate(
@@ -30,36 +41,25 @@ data class ProductVariantCreate(
 
 @Serializable
 data class VariantAttributeInput(
-    val optionName: String,  // "Color"
-    val optionValue: String  // "Red"
-)
-
-@Serializable
-data class ProductVariantCreateRequest(
-    val sku: String,
-    val salesPrice: Long,
-    val costPrice: Long,
-    val barcode: String?,
-    val attributes: List<VariantAttributeInput>,
-    val stock: List<StockCreateRequest>
+    @SerialName("optionName") val optionName: String,
+    @SerialName("optionValue") val optionValue: String
 )
 
 @Serializable
 data class StockCreateRequest(
-    val variantId: String? = null,
-    val quantity: Int,
-    val expiryDate: String?,
-    val lowStockAlert: Int? = null
+    @SerialName("quantity") val quantity: Int,
+    @SerialName("expiryDate") val expiryDate: String?,
+    @SerialName("lowStockAlert") val lowStockAlert: Int? = null
 )
 
 @Serializable
 data class CreateVariantsRequest(
-    val productId: String,
-    val variants: List<ProductVariantCreate>
+    @SerialName("productId") val productId: String,
+    @SerialName("variants") val variants: List<ProductVariantCreate>
 )
 
 @Serializable
 data class ImageUploadRequest(
-    val imageBase64: String,
-    val businessId: String
+    @SerialName("imageBase64") val imageBase64: String,
+    @SerialName("businessId") val businessId: String
 )

@@ -581,11 +581,12 @@ fun AddProductScreen(
                         variationType.items.forEach { item ->
                             val priceAdj = item.priceAdjustment.toLongOrNull() ?: 0L
                             val itemStock = item.stock.toIntOrNull() ?: 0
-                            val variantId = UUID.randomUUID().toString()
                             
                             productVariants.add(
                                 ProductVariantCreateRequest(
-                                    sku = "${productName.take(3).uppercase()}-${variationType.title.uppercase()}-${item.name.uppercase()}",
+                                    sku = "${
+                                        productName.take(3).uppercase()
+                                    }-${variationType.title.uppercase()}-${item.name.uppercase()}",
                                     salesPrice = baseSPrice + priceAdj,
                                     costPrice = baseCPrice,
                                     barcode = null,
@@ -597,12 +598,12 @@ fun AddProductScreen(
                                     ),
                                     stock = listOf(
                                         StockCreateRequest(
-                                            variantId = variantId,
                                             quantity = itemStock,
                                             expiryDate = if (trackExpiryDate) expiryDate else null,
                                             lowStockAlert = lowStockAlert.toIntOrNull()
                                         )
-                                    )
+                                    ),
+                                    clientId = ""
                                 )
                             )
                         }
@@ -617,7 +618,8 @@ fun AddProductScreen(
                             baseCostPrice = baseCPrice,
                             expiryWarningDays = warningDay.toIntOrNull(),
                             variants = if (productVariants.isEmpty()) null else productVariants,
-                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d"
+                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                            clientId = "",
                         ),
                         imageUris = productImageUris
                     )

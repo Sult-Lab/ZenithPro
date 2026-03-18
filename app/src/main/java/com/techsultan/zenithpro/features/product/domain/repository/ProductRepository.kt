@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.features.product.data.remote.ProductVariantCreat
 
 interface ProductRepository {
    // suspend fun createProductImageBucket(businessName: String)
-    suspend fun addProduct(product: AddProductRequest, imageUris: List<Uri>): Resource<Unit>
-    suspend fun createVariants(productId: String, productVariants: List<ProductVariantCreate>): Resource<Unit>
+    suspend fun addProduct(productRequest: AddProductRequest, imageUris: List<Uri>): Resource<Unit>
+    suspend fun deleteProduct(productId: String): Resource<Unit>
+    suspend fun pullFromServer(businessId: String): Resource<Unit>
 }

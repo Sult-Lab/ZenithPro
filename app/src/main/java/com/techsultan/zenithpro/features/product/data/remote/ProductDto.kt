@@ -20,6 +20,9 @@ data class ProductDto(
     @SerialName("is_active")
     val isActive: Boolean,
     @SerialName("image_urls") val imageUrls: List<String> = emptyList(),
+    @SerialName("updated_at") val updatedAt: String,
+    @SerialName("deleted_at") val deletedAt: String? = null,
+    @SerialName("expiry_warning_days") val expiryWarningDays: Int? = null
 )
 
 @Serializable
