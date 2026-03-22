@@ -83,4 +83,6 @@ object Util {
         DELETED      // Soft-deleted, pending server delete
     }
 
+    fun Long.formatPrice(): String = String.format("%,.0f", this.toDouble())
+
 }

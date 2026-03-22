@@ -17,23 +17,9 @@ class SyncManager(
 
         productDao.getUnsyncedProducts().forEach { product ->
             when (product.syncStatus) {
-                Util.SyncStatus.PENDING -> repository.pushNewProduct(product.id, emptyList(),
-                    // Reconstruct minimal request from local data; images already uploaded
-                    AddProductRequest(
-                        clientId = product.id,
-                        name = product.name,
-                        description = product.description,
-                        category = product.category,
-                        baseSalesPrice = product.baseSalesPrice,
-                        baseCostPrice = product.baseCostPrice,
-                        expiryWarningDays = product.expiryWarningDays,
-                        isActive = product.isActive,
-                        businessId = product.businessId,
-                        imageUrls = product.imageUrls
-                    )
-                )
+                Util.SyncStatus.PENDING -> repository.pushNewProduct(product.id)
+                Util.SyncStatus.DIRTY   -> repository.pushUpdate(product)
                 Util.SyncStatus.DELETED -> repository.pushDelete(product.id)
-                Util.SyncStatus.DIRTY   -> { /* push update — implement analogously */ }
                 Util.SyncStatus.SYNCED  -> Unit
             }
         }

@@ -31,4 +31,8 @@ interface ProductVariantDao {
 
     @Query("DELETE FROM product_variants WHERE id = :id")
     suspend fun hardDelete(id: String)
+
+    @Query("SELECT id FROM product_variants WHERE businessId = :businessId")
+    suspend fun getAllVariantIdsForBusiness(businessId: String): List<String>
+
 }

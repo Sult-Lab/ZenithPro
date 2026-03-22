@@ -10,16 +10,23 @@ import com.techsultan.zenithpro.BuildConfig
 import com.techsultan.zenithpro.features.product.data.remote.ImageUploadRequest
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.functions.functions
+import io.github.jan.supabase.storage.UploadData
 import io.github.jan.supabase.storage.storage
 import io.ktor.client.statement.bodyAsText
+import io.ktor.client.utils.EmptyContent.contentType
 import io.ktor.http.ContentType
 import io.ktor.http.isSuccess
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.util.UUID
 
 class ImageUploadManager(
     private val supabaseClient: SupabaseClient,
@@ -27,6 +34,13 @@ class ImageUploadManager(
 ) {
     private val storage = supabaseClient.storage
     private val functions = supabaseClient.functions
+
+    companion object {
+        private const val BUCKET = "product_images"
+        private const val MAX_WIDTH = 1024
+        private const val MAX_HEIGHT = 1024
+        private const val JPEG_QUALITY = 85
+    }
 
     suspend fun createBucket(bucketName: String) {
         try {
@@ -60,110 +74,86 @@ class ImageUploadManager(
 
     suspend fun uploadProductImages(
         imageUris: List<Uri>,
-        businessId: String
-    ): List<String> = coroutineScope {
-
-        imageUris.map { uri ->
-            async(Dispatchers.IO) {
-
-                val compressedBytes = compressAndResizeImage(uri)
-                    ?: throw Exception("Image compression failed")
-
-                uploadSingleImage(compressedBytes, businessId)
+        businessId: String,
+        name: String
+    ): List<String> = withContext(Dispatchers.IO) {
+        imageUris
+            .map { uri ->
+                async {
+                    try {
+                        uploadSingleImage(
+                            uri = uri,
+                            businessId = businessId,
+                            name = name
+                        )
+                    } catch (e: Exception) {
+                        Log.e("ImageUploadManager", "Failed to upload $uri: ${e.message}", e)
+                        null
+                    }
+                }
             }
-        }.awaitAll()
+            .awaitAll()
+            .filterNotNull()
     }
 
     private suspend fun uploadSingleImage(
-        imageBytes: ByteArray,
-        businessId: String
-    ): String {
-        val base64 = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
-
-        Log.d("ImageUpload", "Uploading image, size: ${imageBytes.size}, base64 length: ${base64.length}")
-
-        val request = ImageUploadRequest(
-            imageBase64 = base64,
-            businessId = businessId
-        )
-
-        val response = functions.invoke(
-            function = "upload_product_image",
-            body = request
-        )
-
-        val bodyText = response.bodyAsText()
-        Log.d("ImageUpload", "Response status: ${response.status}, body: $bodyText")
-
-        if (!response.status.isSuccess()) {
-            throw Exception("Image upload failed: $bodyText")
-        }
-
-        return JSONObject(bodyText).getString("imagePath")
-    }
-
-    private fun compressAndResizeImage(
         uri: Uri,
-        maxWidth: Int = 1024,
-        maxHeight: Int = 1024,
-        quality: Int = 70
-    ): ByteArray? {
-        return try {
-
-            // First decode with bounds only (no memory allocation)
-            val options = BitmapFactory.Options().apply {
-                inJustDecodeBounds = true
+        businessId: String,
+        name: String
+    ): String {
+        val bytes = compressImage(uri)
+        val fileName = "${name}_${UUID.randomUUID()}.jpg"
+        val storagePath = "products/$businessId/$fileName"
+        Log.d("ImageUploadManager", "Uploading to path: $storagePath (${bytes.size} bytes)")
+        storage.from(BUCKET).upload(
+            path = storagePath,
+            data = UploadData(
+                stream = ByteReadChannel(bytes),
+                size = bytes.size.toLong()
+            ),
+            options = {
+                contentType = ContentType.Image.JPEG
+                upsert = true
             }
+        )
+        Log.d("ImageUploadManager", "Upload successful")
+        // Return public URL, not the storage path
+        return storage.from(BUCKET).publicUrl(storagePath)
+    }
 
-            context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it, null, options)
-            }
+    private fun compressImage(uri: Uri): ByteArray {
+        // Resolve to InputStream — handles both content:// and file:// paths
+        val inputStream = when {
+            uri.scheme == "content" -> context.contentResolver.openInputStream(uri)
+            uri.scheme == "file"    -> File(uri.path!!).inputStream()
+            else                    -> File(uri.toString()).takeIf { it.exists() }?.inputStream()
+        } ?: throw IOException("Cannot open image: $uri")
 
-            //  Calculate inSampleSize
-            options.inSampleSize = calculateInSampleSize(
-                options,
-                maxWidth,
-                maxHeight
-            )
+        val originalBitmap = inputStream.use { stream ->
+            BitmapFactory.decodeStream(stream)
+                ?: throw IOException("Failed to decode bitmap from $uri")
+        }
 
-            //  Decode actual bitmap with sampling
-            options.inJustDecodeBounds = false
+        val scaled = scaleBitmap(originalBitmap)
+        if (scaled !== originalBitmap) originalBitmap.recycle()
 
-            val bitmap = context.contentResolver.openInputStream(uri)?.use {
-                BitmapFactory.decodeStream(it, null, options)
-            } ?: return null
-
-            //  Compress
-            val outputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
-            bitmap.recycle()
-
-            outputStream.toByteArray()
-
-        } catch (e: Exception) {
-            null
+        return ByteArrayOutputStream().use { out ->
+            val compressed = scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+            scaled.recycle()
+            if (!compressed) throw IOException("Bitmap compression returned false for $uri")
+            out.toByteArray()
         }
     }
 
-    private fun calculateInSampleSize(
-        options: BitmapFactory.Options,
-        reqWidth: Int,
-        reqHeight: Int
-    ): Int {
-        val (height, width) = options.outHeight to options.outWidth
-        var inSampleSize = 1
+    private fun scaleBitmap(bitmap: Bitmap): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        if (width <= MAX_WIDTH && height <= MAX_HEIGHT) return bitmap
 
-        if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-
-            while (halfHeight / inSampleSize >= reqHeight &&
-                halfWidth / inSampleSize >= reqWidth) {
-                inSampleSize *= 2
-            }
-        }
-
-        return inSampleSize
+        val ratio = minOf(MAX_WIDTH.toFloat() / width, MAX_HEIGHT.toFloat() / height)
+        val newWidth = (width * ratio).toInt()
+        val newHeight = (height * ratio).toInt()
+        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
     }
 
 

@@ -25,33 +25,5 @@ data class ProductDto(
     @SerialName("expiry_warning_days") val expiryWarningDays: Int? = null
 )
 
-@Serializable
-data class OptionDb(
-    val id: String,
-    @SerialName("product_id")
-    val productId: String,
-    val name: String
-)
-
-@Serializable
-data class OptionValueDb(
-    val id: String,
-    @SerialName("option_id")
-    val optionId: String,
-    val value: String
-)
-
-@Serializable
-data class VariantDb(
-    val id: String,
-    @SerialName("product_id")
-    val productId: String,
-    val sku: String,
-    @SerialName("sales_price")
-    val salesPrice: Long,
-    @SerialName("cost_price")
-    val costPrice: Long,
-    val barcode: String?
-)
 
 

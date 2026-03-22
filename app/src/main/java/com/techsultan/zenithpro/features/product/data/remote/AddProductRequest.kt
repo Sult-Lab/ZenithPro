@@ -16,6 +16,7 @@ data class AddProductRequest(
     @SerialName("variants") val variants: List<ProductVariantCreateRequest>? = emptyList(),
     @SerialName("businessId") val businessId: String,
     @SerialName("imageUrls") val imageUrls: List<String> = emptyList(),
+    @SerialName("defaultStock") val defaultStock: List<StockCreateRequest> = emptyList()
 )
 
 @Serializable

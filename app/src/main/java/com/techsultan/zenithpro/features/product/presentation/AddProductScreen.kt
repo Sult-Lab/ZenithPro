@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -91,6 +92,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -124,7 +126,7 @@ fun AddProductScreen(
     var stockQuantity by remember { mutableStateOf("") }
     var lowStockAlert by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
-    var warningDay by remember { mutableStateOf("30") }
+    var warningDay by remember { mutableStateOf("") }
     var expandWarningDay by remember { mutableStateOf(false) }
     var trackExpiryDate by remember { mutableStateOf(false) }
     var datePickerDialog by remember { mutableStateOf(false) }
@@ -253,55 +255,57 @@ fun AddProductScreen(
                                 }
                             }
 
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                productImageUris.forEach { uri ->
-                                    Box {
-                                        Image(
-                                            painter = rememberAsyncImagePainter(uri),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier
-                                                .size(70.dp, 80.dp)
-                                                .clip(RoundedCornerShape(12.dp))
-                                                .border(
-                                                    width = if (uri == selectedImageUri) 2.dp else 0.dp,
-                                                    color = Color.White,
-                                                    shape = RoundedCornerShape(12.dp)
-                                                )
-                                                .clickable {
-                                                    selectedImageUri = uri
-                                                }
-                                        )
-                                        IconButton(
-                                            onClick = {
-                                                productImageUris =
-                                                    productImageUris.filter { it != uri }
-
-                                                if (selectedImageUri == uri) {
-                                                    selectedImageUri =
-                                                        productImageUris.firstOrNull()
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .background(
-                                                    Color.Black.copy(alpha = 0.5f),
-                                                    CircleShape
-                                                )
-                                                .size(20.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Close,
+                            if (productImageUris.size > 1){
+                                Row(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    productImageUris.forEach { uri ->
+                                        Box {
+                                            Image(
+                                                painter = rememberAsyncImagePainter(uri),
                                                 contentDescription = null,
-                                                tint = Color.White,
-                                                modifier = Modifier.size(12.dp)
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier
+                                                    .size(70.dp, 80.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .border(
+                                                        width = if (uri == selectedImageUri) 2.dp else 0.dp,
+                                                        color = Color.White,
+                                                        shape = RoundedCornerShape(12.dp)
+                                                    )
+                                                    .clickable {
+                                                        selectedImageUri = uri
+                                                    }
                                             )
+                                            IconButton(
+                                                onClick = {
+                                                    productImageUris =
+                                                        productImageUris.filter { it != uri }
+
+                                                    if (selectedImageUri == uri) {
+                                                        selectedImageUri =
+                                                            productImageUris.firstOrNull()
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .background(
+                                                        Color.Black.copy(alpha = 0.5f),
+                                                        CircleShape
+                                                    )
+                                                    .size(20.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = null,
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -359,7 +363,7 @@ fun AddProductScreen(
                         value = productName,
                         onValueChange = { productName = it },
                         label = "Product Name",
-                        placeholder = "e.g., Hollandia Yoghurt 1L"
+                        placeholder = "e.g., Hollandia Yoghurt 1L",
                     )
                     
                     // Category Selector (Simulated with ReadOnly TextField + Icon)
@@ -477,7 +481,7 @@ fun AddProductScreen(
                         onExpandedChange = { expandWarningDay = it }
                     ) {
                         CustomTextField(
-                            value = "Warn $warningDay days before",
+                            value = warningDay,
                             onValueChange = { warningDay = it },
                             label = "Expiry warning",
                             placeholder = "Warn 30 days before",
@@ -620,6 +624,15 @@ fun AddProductScreen(
                             variants = if (productVariants.isEmpty()) null else productVariants,
                             businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                             clientId = "",
+                            defaultStock = if (productVariants.isEmpty()) {
+                                listOf(
+                                    StockCreateRequest(
+                                        quantity = stockQuantity.toIntOrNull() ?: 0,
+                                        expiryDate = if (trackExpiryDate) expiryDate else null,
+                                        lowStockAlert = lowStockAlert.toIntOrNull()
+                                    )
+                                )
+                            } else emptyList()
                         ),
                         imageUris = productImageUris
                     )
@@ -1009,6 +1022,7 @@ fun CustomTextField(
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
     readOnly: Boolean = false,
 ) {
     Column(
@@ -1027,7 +1041,11 @@ fun CustomTextField(
             placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 14.sp) },
             modifier = Modifier.fillMaxWidth(),
             prefix = if (prefix != null) { { Text(prefix, style = MaterialTheme.typography.bodyMedium) } } else null,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = keyboardType,
+                capitalization = KeyboardCapitalization.Words
+            ),
+            keyboardActions = keyboardActions,
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedContainerColor = Color(0xFFF9FAFB),
                 focusedContainerColor = Color(0xFFF9FAFB),

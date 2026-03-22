@@ -12,7 +12,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
-import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.sales.presentation.NewSaleScreen
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
@@ -52,7 +52,9 @@ fun MainNavGraph(){
                     }
                     entry<Route.Home.Inventory> {
                         InventoryScreen(
-                            onAddProductClick = { navigator.navigate(Route.Home.AddProduct) }
+                            onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
+                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                            onProductClick = {}
                         )
                     }
                     entry<Route.Home.Sales> {

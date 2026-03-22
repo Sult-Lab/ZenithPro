@@ -42,4 +42,19 @@ interface ProductDao {
 
     @Query("DELETE FROM products")
     suspend fun deleteAll()
+
+    @Transaction
+    @Query("""
+        SELECT * FROM products 
+        WHERE businessId = :businessId 
+          AND deletedAt IS NULL 
+          AND syncStatus != 'DELETED'
+        ORDER BY 
+          CASE WHEN syncStatus = 'PENDING' THEN 0 ELSE 1 END, 
+          updatedAt DESC
+    """)
+    fun getProductsForBusiness(businessId: String): Flow<List<ProductWithVariants>>
+
+    @Query("SELECT id FROM products WHERE businessId = :businessId")
+    suspend fun getAllProductIds(businessId: String): List<String>
 }

@@ -2,7 +2,9 @@ package com.techsultan.zenithpro.features.product.data.repository
 
 import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
@@ -12,15 +14,18 @@ import com.techsultan.zenithpro.features.product.data.local.ProductStockDao
 import com.techsultan.zenithpro.features.product.data.local.ProductStockEntity
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantDao
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantEntity
+import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.product.data.local.VariantAttributeEntity
+import com.techsultan.zenithpro.features.product.data.mapper.toEntity
 import com.techsultan.zenithpro.features.product.data.mapper.toProductDto
 import com.techsultan.zenithpro.features.product.data.mapper.toProductEntity
 import com.techsultan.zenithpro.features.product.data.remote.AddProductRequest
-import com.techsultan.zenithpro.features.product.data.remote.CreateVariantsRequest
 import com.techsultan.zenithpro.features.product.data.remote.ProductDto
-import com.techsultan.zenithpro.features.product.data.remote.ProductVariantCreate
+import com.techsultan.zenithpro.features.product.data.remote.ProductStockDto
 import com.techsultan.zenithpro.features.product.data.remote.ProductVariantCreateRequest
+import com.techsultan.zenithpro.features.product.data.remote.ProductVariantDto
 import com.techsultan.zenithpro.features.product.data.remote.StockCreateRequest
+import com.techsultan.zenithpro.features.product.data.remote.VariantAttributeDto
 import com.techsultan.zenithpro.features.product.data.remote.VariantAttributeInput
 import com.techsultan.zenithpro.features.product.domain.repository.ProductRepository
 import io.github.jan.supabase.functions.Functions
@@ -30,10 +35,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
+import java.util.Objects.isNull
 import java.util.UUID
 
 class ProductRepositoryImpl(
@@ -44,7 +51,16 @@ class ProductRepositoryImpl(
     private val productDao: ProductDao,
     private val variantDao: ProductVariantDao,
     private val stockDao: ProductStockDao,
+    private val imageCacheManager: ImageCacheManager
 ) : ProductRepository {
+
+    override fun getProducts(businessId: String): Flow<Resource<List<ProductWithVariants>>> =
+        productDao.getProductsForBusiness(businessId)
+            .map<List<ProductWithVariants>, Resource<List<ProductWithVariants>>> {
+                Resource.Success(it)
+            }
+            .catch { emit(Resource.Error(it.message ?: "Failed to load products")) }
+            .onStart { emit(Resource.Loading()) }
 
     override suspend fun addProduct(
         productRequest: AddProductRequest,
@@ -53,8 +69,21 @@ class ProductRepositoryImpl(
         Log.d("ProductRepo", "addProduct: Starting for product: ${productRequest.name}")
         return try {
 
-            val productId = UUID.randomUUID().toString()
+            val productId = productRequest.clientId
             val now = Instant.now().toString()
+
+            val imageUrls: List<String> = if (imageUris.isNotEmpty()) {
+                Log.d("ProductRepo", "addProduct: Uploading ${imageUris.size} images")
+                imageUploadManager.uploadProductImages(
+                    imageUris = imageUris,
+                    businessId = productRequest.businessId,
+                    name = productRequest.name
+                )
+            } else {
+                Log.d("ProductRepo", "addProduct: No images to upload")
+                emptyList()
+            }
+            Log.d("ProductRepo", "addProduct: Uploaded image URLs: $imageUrls")
 
             Log.d("ProductRepo", "addProduct: Inserting product $productId locally")
             productDao.insertProduct(
@@ -66,9 +95,9 @@ class ProductRepositoryImpl(
                     category = productRequest.category,
                     baseSalesPrice = productRequest.baseSalesPrice,
                     baseCostPrice = productRequest.baseCostPrice,
-                    imageUrl = null,
+                    imageUrl = imageUrls.firstOrNull(),
                     isActive = productRequest.isActive,
-                    imageUrls = imageUris.map { it.toString() },
+                    imageUrls = imageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
                     updatedAt = now,
                     deletedAt = null,
@@ -77,7 +106,7 @@ class ProductRepositoryImpl(
                 )
             )
             productRequest.variants?.forEach { variantReq ->
-                val variantId = UUID.randomUUID().toString()
+                val variantId = variantReq.clientId
                 Log.d("ProductRepo", "addProduct: Inserting variant $variantId")
                 variantDao.insertVariant(
                     ProductVariantEntity(
@@ -118,20 +147,11 @@ class ProductRepositoryImpl(
                 )
             }
 
-            val imagePaths: List<String> = if (imageUris.isNotEmpty()) {
-                Log.d("ProductRepo", "addProduct: Uploading ${imageUris.size} images")
-                imageUploadManager.uploadProductImages(imageUris, productRequest.businessId)
-            } else {
-                Log.d("ProductRepo", "addProduct: No images to upload")
-                emptyList()
-            }
-            Log.d("ProductRepo", "addProduct: Image paths: $imagePaths")
-
             val isConnected = networkMonitor.isConnected()
             Log.d("ProductRepo", "addProduct: Network connection: $isConnected")
             if (isConnected) {
                 Log.d("ProductRepo", "addProduct: Network connected, calling pushNewProduct")
-                pushNewProduct(productId, imageUris, productRequest)
+                pushNewProduct(productId)
             } else {
                 Log.i("ProductRepo", "addProduct: Offline. Product $productId saved locally as PENDING")
             }
@@ -146,8 +166,6 @@ class ProductRepositoryImpl(
 
     suspend fun pushNewProduct(
         productId: String,
-        imageUris: List<Uri>,
-        originalRequest: AddProductRequest,
     ) {
         Log.d("ProductRepo", "pushNewProduct: Starting sync for $productId")
         try {
@@ -156,14 +174,6 @@ class ProductRepositoryImpl(
                 Log.e("ProductRepo", "pushNewProduct: Product $productId not found in local DB")
                 return
             }
-
-            val imagePaths = if (imageUris.isNotEmpty()) {
-                Log.d("ProductRepo", "pushNewProduct: Uploading/verifying images for sync")
-                imageUploadManager.uploadProductImages(imageUris, productWithVariants.product.businessId)
-            } else {
-                productWithVariants.product.imageUrls.filterNot { it.startsWith("content://") }
-            }
-            Log.d("ProductRepo", "pushNewProduct: Image paths for remote: $imagePaths")
 
             // Build request using the locally-stored IDs as clientId
             val syncRequest = AddProductRequest(
@@ -176,7 +186,7 @@ class ProductRepositoryImpl(
                 expiryWarningDays = productWithVariants.product.expiryWarningDays,
                 isActive = productWithVariants.product.isActive,
                 businessId = productWithVariants.product.businessId,
-                imageUrls = imagePaths,
+                imageUrls = productWithVariants.product.imageUrls,
                 variants = productWithVariants.variants.map { variantWithStock ->
                     ProductVariantCreateRequest(
                         clientId = variantWithStock.variant.id,
@@ -194,7 +204,7 @@ class ProductRepositoryImpl(
                 }
             )
 
-            Log.d("ProductRepo", "pushNewProduct: Invoking edge function 'create_product_with_variants'")
+            Log.d("ProductRepo", "pushNewProduct: Invoking edge function 'add_product'")
             val response = functions.invoke(
                 function = "add_product",
                 body = syncRequest
@@ -207,19 +217,14 @@ class ProductRepositoryImpl(
             Log.d("ProductRepo", "pushNewProduct: Success. Server updatedAt: $updatedAt")
             
             productDao.markSynced(productId, updatedAt)
-            productWithVariants.variants.forEach {
-                variantDao.markSynced(it.variant.id, updatedAt)
-            }
 
-            // Persist real image URLs
-            if (imagePaths.isNotEmpty()) {
-                productDao.insertProduct(
-                    productWithVariants.product.copy(
-                        imageUrls = imagePaths,
-                        syncStatus = Util.SyncStatus.SYNCED
-                    )
-                )
-                Log.d("ProductRepo", "pushNewProduct: Updated product with remote image URLs")
+            productWithVariants.variants.forEach { variantWithStock ->
+                variantDao.markSynced(variantWithStock.variant.id, updatedAt)
+
+                variantWithStock.stock.forEach { stock ->
+                    stockDao.markSynced(stock.id, responseBody.updatedAt)
+                }
+
             }
         } catch (e: Exception) {
             Log.e("ProductRepo", "pushNewProduct failed for $productId: ${e.message}", e)
@@ -263,21 +268,101 @@ class ProductRepositoryImpl(
         withContext(Dispatchers.IO) {
             Log.d("ProductRepo", "pullFromServer: Starting for business $businessId")
             try {
-                val remoteProducts = postgrest.from("products")
-                    .select { filter { eq("business_id", businessId) } }
+                // 1. Snapshot local unsynced IDs — we never overwrite these
+                val unsyncedProductIds = productDao.getUnsyncedProducts()
+                    .map { it.id }.toSet()
+                val unsyncedVariantIds = variantDao.getUnsyncedVariants()
+                    .map { it.id }.toSet()
+
+                // 2. Fetch remote products
+                val remoteProducts = postgrest
+                    .from("products")
+                    .select {
+                        filter {
+                            eq("business_id", businessId)
+                            isNull("deleted_at")
+                        }
+                    }
                     .decodeList<ProductDto>()
+                Log.d("ProductRepo", "pullFromServer: ${remoteProducts.size} products from server")
 
-                Log.d("ProductRepo", "pullFromServer: Fetched ${remoteProducts.size} products")
+                // 3. Fetch remote variants
+                val remoteVariants = postgrest
+                    .from("product_variants")
+                    .select {
+                        filter {
+                            eq("business_id", businessId)
+                            isNull("deleted_at")
+                        }
+                    }
+                    .decodeList<ProductVariantDto>()
 
-                val localUnsynced = productDao.getUnsyncedProducts().associateBy { it.id }
-                Log.d("ProductRepo", "pullFromServer: ${localUnsynced.size} unsynced products locally")
+                val variantIds = remoteVariants.map { it.id }
 
-                val merged = remoteProducts.map { dto ->
-                    localUnsynced[dto.id] ?: dto.toProductEntity()
+                // 4. Fetch stock and attributes only if there are variants
+                val remoteStock = if (variantIds.isNotEmpty()) {
+                    postgrest
+                        .from("product_stock")
+                        .select { filter { isIn("variant_id", variantIds) } }
+                        .decodeList<ProductStockDto>()
+                } else emptyList()
+
+                val remoteAttributes = if (variantIds.isNotEmpty()) {
+                    postgrest
+                        .from("variant_attributes_view")
+                        .select { filter { isIn("variant_id", variantIds) } }
+                        .decodeList<VariantAttributeDto>()
+                } else emptyList()
+
+                // 5. Upsert products — skip any that have local unsynced changes
+                val productsToUpsert = remoteProducts
+                    .filter { it.id !in unsyncedProductIds }
+                    .map { it.toProductEntity() }
+                if (productsToUpsert.isNotEmpty()) {
+                    productDao.insertProducts(productsToUpsert) // REPLACE strategy handles upsert
                 }
-                productDao.deleteAll()
-                productDao.insertProducts(merged)
-                Log.d("ProductRepo", "pullFromServer: Success")
+
+                // 6. Handle server-side deletes — remove local records that no
+                //    longer exist on the server (and aren't pending local deletes)
+                val remoteProductIds = remoteProducts.map { it.id }.toSet()
+                val localProductIds  = productDao.getAllProductIds(businessId).toSet()
+                val toDeleteLocally  = localProductIds
+                    .filter { it !in remoteProductIds && it !in unsyncedProductIds }
+                toDeleteLocally.forEach { productDao.hardDelete(it) }
+
+                // 7. Upsert variants — skip unsynced
+                val variantsToUpsert = remoteVariants
+                    .filter { it.id !in unsyncedVariantIds }
+                    .map { it.toEntity() }
+                if (variantsToUpsert.isNotEmpty()) {
+                    variantDao.insertVariants(variantsToUpsert)
+                }
+
+                // 8. Handle server-side variant deletes
+                val remoteVariantIds = remoteVariants.map { it.id }.toSet()
+                val localVariantIds  = variantDao.getAllVariantIdsForBusiness(businessId).toSet()
+                val variantsToDelete = localVariantIds
+                    .filter { it !in remoteVariantIds && it !in unsyncedVariantIds }
+                variantsToDelete.forEach { variantDao.hardDelete(it) }
+
+                // 9. Upsert stock and attributes unconditionally —
+                //    these have no local-only state, server is always authoritative
+                if (remoteStock.isNotEmpty()) {
+                    stockDao.insertStock(remoteStock.map { it.toEntity() })
+                }
+                if (remoteAttributes.isNotEmpty()) {
+                    variantDao.insertAttributes(remoteAttributes.map { it.toEntity() })
+                }
+
+                Log.d(
+                    "ProductRepo",
+                    "pullFromServer: Done — " +
+                            "upserted=${productsToUpsert.size}, " +
+                            "deleted=${toDeleteLocally.size}, " +
+                            "variants=${variantsToUpsert.size}, " +
+                            "stock=${remoteStock.size}"
+                )
+
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ProductRepo", "pullFromServer error: ${e.message}", e)
@@ -285,18 +370,101 @@ class ProductRepositoryImpl(
             }
         }
 
-    private suspend fun pushUpdate(entity: ProductEntity) {
-        Log.d("ProductRepo", "pushUpdate: Sending update for ${entity.id}")
-        try {
-            postgrest.from("products").update(entity.toProductDto()) {
-                filter { eq("id", entity.id) }
+    override suspend fun pushPendingProduct(productId: String): Resource<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                val productWithVariants = productDao.getProductWithVariants(productId)
+                    ?: return@withContext Resource.Error("Product not found: $productId")
+
+                val entity = productWithVariants.product
+
+                // Re-upload only content:// URIs (local images not yet uploaded)
+                val imagePaths = entity.imageUrls
+                    .filter { it.startsWith("content://") }
+                    .let { localUris ->
+                        if (localUris.isNotEmpty())
+                            imageUploadManager.uploadProductImages(
+                                imageUris = localUris.map { it.toUri() },
+                                businessId = entity.businessId,
+                                name = entity.name
+                            )
+                        else
+                            entity.imageUrls.filterNot { it.startsWith("content://") }
+                    }
+
+                val request = AddProductRequest(
+                    clientId = entity.id,
+                    name = entity.name,
+                    description = entity.description,
+                    category = entity.category,
+                    baseSalesPrice = entity.baseSalesPrice,
+                    baseCostPrice = entity.baseCostPrice,
+                    expiryWarningDays = entity.expiryWarningDays,
+                    isActive = entity.isActive,
+                    businessId = entity.businessId,
+                    imageUrls = imagePaths,
+                    variants = productWithVariants.variants.map { variantWithStock ->
+                        ProductVariantCreateRequest(
+                            clientId = variantWithStock.variant.id,
+                            sku = variantWithStock.variant.sku,
+                            salesPrice = variantWithStock.variant.salesPrice,
+                            costPrice = variantWithStock.variant.costPrice,
+                            barcode = variantWithStock.variant.barcode,
+                            attributes = variantWithStock.attributes.map {
+                                VariantAttributeInput(it.optionName, it.optionValue)
+                            },
+                            stock = variantWithStock.stock.map {
+                                StockCreateRequest(it.quantity, it.expiryDate, it.lowStockAlert)
+                            }
+                        )
+                    }
+                )
+
+                val response = functions.invoke(
+                    function = "add_product",
+                    body = request
+                )
+                val syncResponse = response.body<SyncResponse>()
+
+                productDao.insertProduct(
+                    entity.copy(
+                        imageUrls = imagePaths,
+                        updatedAt = syncResponse.updatedAt,
+                        syncStatus = Util.SyncStatus.SYNCED
+                    )
+                )
+                productWithVariants.variants.forEach {
+                    variantDao.markSynced(it.variant.id, syncResponse.updatedAt)
+                }
+
+                // After markSynced calls in pushPendingProduct:
+                entity.imageUrls
+                    .filter { !it.startsWith("http") }  // only local cached paths
+                    .forEach { imageCacheManager.deleteCachedImage(it) }
+
+                Log.d("ProductRepo", "pushPendingProduct: Synced $productId")
+                Resource.Success(Unit)
+            } catch (e: Exception) {
+                Log.e("ProductRepo", "pushPendingProduct failed for $productId: ${e.message}", e)
+                Resource.Error(e.message ?: "Sync failed")
             }
+        }
+
+    suspend fun pushUpdate(entity: ProductEntity) {
+        Log.d("ProductRepo", "pushUpdate: ${entity.id}")
+        try {
+            postgrest.from("products")
+                .update(entity.toProductDto()) {
+                    filter { eq("id", entity.id) }
+                }
             productDao.markSynced(entity.id, Instant.now().toString())
             Log.d("ProductRepo", "pushUpdate: Success for ${entity.id}")
         } catch (e: Exception) {
             Log.e("ProductRepo", "pushUpdate failed for ${entity.id}: ${e.message}", e)
         }
     }
+
+
 }
 
 @Serializable
