@@ -19,13 +19,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,9 +63,12 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.product.component.EmptyInventoryState
+import com.techsultan.zenithpro.features.product.component.FilterInventoryBottomSheet
+import com.techsultan.zenithpro.features.product.component.SortInventoryBottomSheet
 import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import org.koin.androidx.compose.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryScreen(
     onAddProductClick: () -> Unit,
@@ -71,6 +79,9 @@ fun InventoryScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
     val snackBarHostState = remember { SnackbarHostState() }
+    var openMenuDialog by remember { mutableStateOf(false) }
+    var sortInventory by remember { mutableStateOf(false) }
+    var filterInventory by remember { mutableStateOf(false) }
 
     LaunchedEffect(businessId) {
         viewModel.init(businessId)
@@ -86,8 +97,6 @@ fun InventoryScreen(
             }
         }
     }
-
-    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackBarHostState) },
@@ -112,12 +121,73 @@ fun InventoryScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
+                    IconButton(onClick = { openMenuDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "More",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(color = Color.Transparent)
+                    ){
+                        DropdownMenu(
+                            expanded = openMenuDialog,
+                            onDismissRequest = { openMenuDialog = false },
+                            modifier = Modifier
+                                .background(color = Color.White)
+                                .align(Alignment.TopEnd)
+                        ){
+                            DropdownMenuItem(
+                                modifier = Modifier
+                                    .width(200.dp),
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            text = "Sort By",
+                                        )
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "Sort",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    openMenuDialog = false
+                                    sortInventory = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                modifier = Modifier
+                                    .width(200.dp),
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            text = "Filter",
+                                        )
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.FilterAlt,
+                                        contentDescription = "Filter",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    openMenuDialog = false
+                                    filterInventory = true
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -170,7 +240,7 @@ fun InventoryScreen(
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                     }
 
-                    state.isEmpty && !state.isLoading -> {
+                    filteredProducts.isEmpty() && !state.isLoading -> {
                         EmptyInventoryState(
                             modifier = Modifier.fillMaxSize()
                         )
@@ -208,6 +278,26 @@ fun InventoryScreen(
                 }
             }
         }
+    }
+    if (sortInventory){
+        SortInventoryBottomSheet(
+            selectedSort = state.sortOption,
+            onDismiss = { sortInventory = false },
+            onSortSelected = { viewModel.onSortOptionChanged(it) },
+            onReset = { viewModel.resetFilters() }
+        )
+    }
+    if (filterInventory){
+        FilterInventoryBottomSheet(
+            selectedStockStatus = state.selectedStockStatus,
+            minPrice = state.minPrice,
+            maxPrice = state.maxPrice,
+            onDismiss = { filterInventory = false },
+            onApply = { stockStatus, min, max ->
+                viewModel.onFilterChanged(stockStatus, min, max)
+            },
+            onReset = { viewModel.resetFilters() }
+        )
     }
 }
 

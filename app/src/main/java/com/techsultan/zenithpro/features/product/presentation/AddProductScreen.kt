@@ -98,6 +98,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.DatePickerDialog
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
@@ -1009,56 +1010,6 @@ fun SectionHeader(title: String) {
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface
     )
-}
-
-@Composable
-fun CustomTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-    prefix: String? = null,
-    leadingIcon: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
-    readOnly: Boolean = false,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 14.sp) },
-            modifier = Modifier.fillMaxWidth(),
-            prefix = if (prefix != null) { { Text(prefix, style = MaterialTheme.typography.bodyMedium) } } else null,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = keyboardType,
-                capitalization = KeyboardCapitalization.Words
-            ),
-            keyboardActions = keyboardActions,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = Color(0xFFF9FAFB),
-                focusedContainerColor = Color(0xFFF9FAFB),
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            ),
-            textStyle = MaterialTheme.typography.bodyMedium,
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
-            readOnly = readOnly
-        )
-    }
 }
 
 data class VariationItem(
