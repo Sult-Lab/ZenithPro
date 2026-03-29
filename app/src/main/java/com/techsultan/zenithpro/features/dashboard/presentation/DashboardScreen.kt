@@ -48,7 +48,8 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 
 @Composable
 fun DashboardScreen(
-    onNewSaleClick: () -> Unit
+    onNewSaleClick: () -> Unit,
+    onAddProductClick: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -153,7 +154,7 @@ fun DashboardScreen(
                 ZenithButton(
                     text = "Add Product",
                     icon = Icons.Default.Add,
-                    onClick = { /* TODO */ },
+                    onClick = { onAddProductClick() },
                     modifier = Modifier.weight(1f),
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer

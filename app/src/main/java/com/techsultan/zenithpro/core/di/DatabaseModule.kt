@@ -1,0 +1,20 @@
+package com.techsultan.zenithpro.core.di
+
+import androidx.room.Room
+import com.techsultan.zenithpro.core.database.ZenithDatabase
+import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.module
+
+val databaseModule = module {
+    single {
+        Room.databaseBuilder(
+            context = androidContext(),
+            name = ZenithDatabase.DATABASE_NAME,
+            klass = ZenithDatabase::class.java
+        ).build()
+    }
+
+    single { get<ZenithDatabase>().productDao }
+    single { get<ZenithDatabase>().productVariantDao }
+    single { get<ZenithDatabase>().stockVariantDao }
+}

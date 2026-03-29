@@ -14,7 +14,10 @@ import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 @Composable
 fun RootNavGraph(viewModel: DataPersistentViewModel){
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
-    val rootBackStack = rememberNavBackStack(Route.Auth)
+
+    if (isLoggedIn == null) return
+    val initialRoute = if (isLoggedIn == true) Route.Home else Route.Auth
+    val rootBackStack = rememberNavBackStack(initialRoute)
 
     LaunchedEffect(isLoggedIn) {
         when (isLoggedIn) {
@@ -26,7 +29,7 @@ fun RootNavGraph(viewModel: DataPersistentViewModel){
                 rootBackStack.remove(Route.Home)
                 rootBackStack.add(Route.Auth)
             }
-            null -> Unit
+            else -> {}
         }
     }
 

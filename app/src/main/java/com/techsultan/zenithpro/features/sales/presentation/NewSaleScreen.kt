@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
@@ -64,7 +65,9 @@ data class ProductItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewSaleScreen() {
+fun NewSaleScreen(
+    onBack: () -> Unit = {}
+) {
     val products = remember {
         listOf(
             ProductItem("1", "Coca-Cola", "₦250.00", 25),
@@ -88,8 +91,8 @@ fun NewSaleScreen() {
             ZenithTopAppBar(
                 title = "New Sale",
                 navigationIcon = {
-                    IconButton(onClick = { /*TODO: Handle back*/ }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    IconButton(onClick = { onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
