@@ -5,7 +5,9 @@ import com.techsultan.zenithpro.core.di.commonModule
 import com.techsultan.zenithpro.core.di.databaseModule
 import com.techsultan.zenithpro.core.di.supabaseModule
 import com.techsultan.zenithpro.features.auth.di.authModule
+import com.techsultan.zenithpro.features.dashboard.di.dashboardModule
 import com.techsultan.zenithpro.features.product.di.productModule
+import com.techsultan.zenithpro.features.sales.di.salesModule
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +38,9 @@ class ZenithApplication : Application(), KoinComponent {
                 authModule, 
                 commonModule, 
                 productModule,
-                databaseModule
+                databaseModule,
+                salesModule,
+                dashboardModule
             )
         }
 

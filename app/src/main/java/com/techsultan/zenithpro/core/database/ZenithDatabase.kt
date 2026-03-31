@@ -10,6 +10,9 @@ import com.techsultan.zenithpro.features.product.data.local.ProductStockEntity
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantDao
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantEntity
 import com.techsultan.zenithpro.features.product.data.local.VariantAttributeEntity
+import com.techsultan.zenithpro.features.sales.data.local.SaleDao
+import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
+import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
 
 @Database(
     entities = [
@@ -17,6 +20,8 @@ import com.techsultan.zenithpro.features.product.data.local.VariantAttributeEnti
         ProductVariantEntity::class,
         ProductStockEntity::class,
         VariantAttributeEntity::class,
+        SaleEntity::class,
+        SaleItemEntity::class,
                ],
     version = 1,
     exportSchema = true
@@ -26,6 +31,7 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val productDao: ProductDao
     abstract val productVariantDao: ProductVariantDao
     abstract val stockVariantDao: ProductStockDao
+    abstract val saleDao: SaleDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"

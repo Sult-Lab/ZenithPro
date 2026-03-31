@@ -19,19 +19,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,41 +53,39 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
-
-data class ProductItem(
-    val id: String,
-    val name: String,
-    val price: String,
-    val stock: Int,
-    val imageUrl: String = "" // Placeholder for image URL
-)
+import com.techsultan.zenithpro.core.util.Util.formatPrice
+import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.sales.component.PaymentDialog
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewSaleScreen(
-    onBack: () -> Unit = {}
+    businessId: String,
+    onBack: () -> Unit = {},
+    viewModel: NewSaleViewModel = koinViewModel()
 ) {
-    val products = remember {
-        listOf(
-            ProductItem("1", "Coca-Cola", "₦250.00", 25),
-            ProductItem("2", "Indomie Noodles", "₦150.00", 50),
-            ProductItem("3", "Peak Milk", "₦2,800.00", 8),
-            ProductItem("4", "Milo Tin", "₦3,500.00", 12),
-            ProductItem("5", "Golden Penny Semo", "₦800.00", 30)
-        )
-    }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val cart by viewModel.cart.collectAsStateWithLifecycle()
+    val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
+    val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
 
-    var searchQuery by remember { mutableStateOf("") }
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showPaymentDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
-    
-    // Mock cart items count and total for display
-    val cartItemCount = 3
-    val cartTotal = "₦4,450.00"
+
+    LaunchedEffect(businessId) {
+        viewModel.init(businessId)
+    }
 
     Scaffold(
         topBar = {
@@ -94,21 +95,15 @@ fun NewSaleScreen(
                     IconButton(onClick = { onBack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                actions = {
-                    IconButton(onClick = { /*TODO*/ }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
                 }
             )
         },
         bottomBar = {
-            // Cart Summary Bottom Bar
             if (cartItemCount > 0) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF4285F4)) // Blue background
+                        .background(MaterialTheme.colorScheme.primary)
                         .clickable { showBottomSheet = true }
                         .padding(16.dp)
                 ) {
@@ -121,34 +116,34 @@ fun NewSaleScreen(
                             Icon(
                                 imageVector = Icons.Default.ShoppingCart,
                                 contentDescription = "Cart",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "$cartItemCount Items",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
-                        
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "Total: ",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                             Text(
-                                text = cartTotal,
+                                text = "₦${cartTotal.formatPrice()}",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Icon(
-                                imageVector = Icons.Default.ExpandLess, // Up chevron
+                                imageVector = Icons.Default.ExpandLess,
                                 contentDescription = "Expand",
-                                tint = Color.White
+                                tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -160,15 +155,13 @@ fun NewSaleScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
             // Search Bar
             OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Search for a product by name or SKU") },
+                value = state.searchQuery,
+                onValueChange = viewModel::onSearchQueryChanged,
+                placeholder = { Text("Search for a product...") },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
@@ -176,7 +169,9 @@ fun NewSaleScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -189,23 +184,44 @@ fun NewSaleScreen(
 
             // Category Chips
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                CategoryChip("All", true)
-                CategoryChip("Drinks", false)
-                CategoryChip("Snacks", false)
-                CategoryChip("Groceries", false)
-                CategoryChip("Beauty", false)
+                categories.forEach { category ->
+                    CategoryChip(
+                        text = category,
+                        selected = state.selectedCategory == category,
+                        onClick = { viewModel.onCategoryFilterChanged(category) }
+                    )
+                }
             }
 
-            // Product List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(products) { product ->
-                    ProductItemCard(product)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (state.isLoading && filteredProducts.isEmpty()) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = filteredProducts,
+                            key = { it.product.id }
+                        ) { productWithVariants ->
+                            val cartItem = cart[productWithVariants.product.id]
+                            SaleProductItemCard(
+                                productWithVariants = productWithVariants,
+                                quantityInCart = cartItem?.quantity ?: 0,
+                                onAdd = { viewModel.addToCart(productWithVariants) },
+                                onRemove = { viewModel.removeFromCart(productWithVariants.product.id) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -216,47 +232,45 @@ fun NewSaleScreen(
             onDismissRequest = { showBottomSheet = false },
             sheetState = sheetState
         ) {
-            // Sheet content goes here
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Current Sale",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                // Placeholder content for the bottom sheet
-                Text("Cart items would be listed here...")
-                Spacer(modifier = Modifier.height(32.dp))
-                Button(
-                    onClick = { /* TODO: Process Payment */ },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
-                ) {
-                    Text("Checkout $cartTotal")
+            CartBottomSheetContent(
+                cartItems = cart.values.toList(),
+                totalAmount = cartTotal,
+                onCheckout = { 
+                    showBottomSheet = false
+                    showPaymentDialog = true 
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            )
         }
+    }
+
+    if (showPaymentDialog) {
+        PaymentDialog(
+            totalAmount = "₦${cartTotal.formatPrice()}",
+            onDismiss = { showPaymentDialog = false },
+            onConfirm = { method ->
+                showPaymentDialog = false
+                // TODO: Finalize sale with selected method
+            }
+        )
     }
 }
 
 @Composable
-fun CategoryChip(text: String, selected: Boolean) {
+fun CategoryChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable { }
+            .clickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(
             text = text,
-            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium
         )
@@ -264,7 +278,15 @@ fun CategoryChip(text: String, selected: Boolean) {
 }
 
 @Composable
-fun ProductItemCard(product: ProductItem) {
+fun SaleProductItemCard(
+    productWithVariants: ProductWithVariants,
+    quantityInCart: Int,
+    onAdd: () -> Unit,
+    onRemove: () -> Unit
+) {
+    val product = productWithVariants.product
+    val totalStock = productWithVariants.variants.sumOf { v -> v.stock.sumOf { it.quantity } }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -277,16 +299,15 @@ fun ProductItemCard(product: ProductItem) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Image Placeholder
-            Box(
+            AsyncImage(
+                model = product.imageUrls.firstOrNull(),
+                contentDescription = product.name,
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(64.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFE57373)), // Placeholder color, e.g., for Coca-Cola
-                contentAlignment = Alignment.Center
-            ) {
-                // In real app, load image
-            }
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -297,38 +318,144 @@ fun ProductItemCard(product: ProductItem) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = product.price,
+                    text = "₦${product.baseSalesPrice.formatPrice()}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "In Stock: ${product.stock} pcs",
+                    text = "Stock: $totalStock",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF2E7D32) // Green color for stock
+                    color = if (totalStock > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
                 )
             }
 
-            // Add Button
-            Button(
-                onClick = { /*TODO*/ },
-                modifier = Modifier
-                    .size(40.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
-                    tint = Color.White
-                )
+            if (quantityInCart > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(16.dp))
+                    }
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = quantityInCart.toString(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    IconButton(
+                        onClick = onAdd,
+                        enabled = totalStock > quantityInCart,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
+                    }
+                }
+            } else {
+                Button(
+                    onClick = onAdd,
+                    enabled = totalStock > 0,
+                    modifier = Modifier.height(36.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Text("Add")
+                }
             }
         }
     }
 }
 
-@Preview
+@Composable
+fun CartBottomSheetContent(
+    cartItems: List<CartItem>,
+    totalAmount: Long,
+    onCheckout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Cart Details",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(cartItems) { item ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "${item.quantity} x ₦${item.price.formatPrice()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Text(
+                        text = "₦${(item.price * item.quantity).formatPrice()}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Total Amount",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "₦${totalAmount.formatPrice()}",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onCheckout,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Proceed to Checkout", modifier = Modifier.padding(vertical = 8.dp))
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Preview(showBackground = true)
 @Composable
 fun PreviewNewSale() {
-    NewSaleScreen()
+    // Note: Preview won't work perfectly without businessId and ViewModel
 }
