@@ -57,4 +57,20 @@ interface ProductDao {
 
     @Query("SELECT id FROM products WHERE businessId = :businessId")
     suspend fun getAllProductIds(businessId: String): List<String>
+
+    // Low stock — variants where total quantity <= low_stock_alert threshold
+    @Query("""
+    SELECT COUNT(DISTINCT pv.id)
+    FROM product_variants pv
+    INNER JOIN product_stock ps ON ps.variantId = pv.id
+    WHERE pv.businessId = :businessId
+      AND pv.deletedAt IS NULL
+      AND pv.syncStatus != 'DELETED'
+      AND ps.lowStockAlert IS NOT NULL
+      AND ps.quantity <= ps.lowStockAlert
+""")
+    suspend fun getLowStockCount(businessId: String): Int
+
+    @Query("SELECT 0")
+    suspend fun getPendingPurchaseOrderCount(): Int
 }

@@ -85,4 +85,6 @@ object Util {
 
     fun Long.formatPrice(): String = String.format("%,.0f", this.toDouble())
 
+    fun String.trimOrNull(): String? = trim().ifBlank { null }
+
 }

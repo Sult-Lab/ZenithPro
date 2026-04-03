@@ -1,6 +1,6 @@
 package com.techsultan.zenithpro.features.product.di
 
-import com.techsultan.zenithpro.features.product.SyncManager
+import com.techsultan.zenithpro.core.manager.SyncManager
 import com.techsultan.zenithpro.features.product.data.repository.ProductRepositoryImpl
 import com.techsultan.zenithpro.features.product.domain.repository.ProductRepository
 import com.techsultan.zenithpro.features.product.domain.use_case.AddProductUseCase

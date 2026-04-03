@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
-import com.techsultan.zenithpro.features.sales.presentation.FilterChipItem
 
 @Composable
 fun ReportScreen() {
@@ -76,17 +75,17 @@ fun ReportScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Filter Chips
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-            ) {
-                FilterChipItem(text = "Last 7 Days", selected = true)
-                FilterChipItem(text = "Today", selected = false)
-                FilterChipItem(text = "This Month", selected = false)
-                FilterChipItem(text = "Custom", selected = false)
-            }
+//            Row(
+//                horizontalArrangement = Arrangement.spacedBy(8.dp),
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .horizontalScroll(rememberScrollState())
+//            ) {
+//                FilterChipItem(text = "Last 7 Days", selected = true)
+//                FilterChipItem(text = "Today", selected = false)
+//                FilterChipItem(text = "This Month", selected = false)
+//                FilterChipItem(text = "Custom", selected = false)
+//            }
 
             // Revenue and Profit Cards
             Row(

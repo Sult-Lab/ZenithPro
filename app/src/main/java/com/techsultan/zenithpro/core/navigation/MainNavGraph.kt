@@ -46,8 +46,14 @@ fun MainNavGraph(){
 
                     entry<Route.Home.Dashboard> {
                         DashboardScreen(
-                            onNewSaleClick = { navigator.navigate(Route.Home.NewSale) },
-                            onAddProductClick = { navigator.navigate(Route.Home.AddProduct) }
+                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                            onNewSale = { navigator.navigate(Route.Home.NewSale) },
+                            onAddProduct = { navigator.navigate(Route.Home.AddProduct) },
+                            onViewReports = {},
+                            onViewSales = {},
+                            onViewDebts = {},
+                            onViewLowStock = {},
+                            onViewPurchaseOrders = {}
                         )
                     }
                     entry<Route.Home.Inventory> {
@@ -58,7 +64,11 @@ fun MainNavGraph(){
                         )
                     }
                     entry<Route.Home.Sales> {
-                        SalesScreen()
+                        SalesScreen(
+                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                            onSaleClick = {},
+                            onNewSale = {}
+                        )
                     }
                     entry<Route.Home.Reports> {
                         ReportScreen()
@@ -68,6 +78,7 @@ fun MainNavGraph(){
                     }
                     entry<Route.Home.NewSale> {
                         NewSaleScreen(
+                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                             onBack = { navigator.goBack() }
                         )
                     }
