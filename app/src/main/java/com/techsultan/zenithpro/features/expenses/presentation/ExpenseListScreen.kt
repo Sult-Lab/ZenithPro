@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
@@ -64,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.SummaryChip
 import com.techsultan.zenithpro.core.components.SyncStatusBadge
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.expenses.data.local.CategoryBreakdown
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
@@ -71,7 +73,6 @@ import com.techsultan.zenithpro.features.expenses.data.local.ExpenseFilter
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseSummary
 import com.techsultan.zenithpro.features.expenses.viewmodel.ExpenseListViewModel
 import com.techsultan.zenithpro.features.sales.formatAmount
-import kotlinx.datetime.format
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -82,6 +83,7 @@ fun ExpenseListScreen(
     viewModel: ExpenseListViewModel = koinViewModel(),
     onAddExpense: () -> Unit,
     onExpenseClick: (ExpenseEntity) -> Unit,
+    onMenuClick: () -> Unit = {}
 ) {
     LaunchedEffect(businessId) { viewModel.init(businessId) }
 
@@ -102,6 +104,27 @@ fun ExpenseListScreen(
     }
 
     Scaffold(
+        topBar = {
+            ZenithTopAppBar(
+                title = "Expenses",
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                },
+                actions = {
+                    BadgedBox(badge = {
+                        if (state.filter.category != null ||
+                            state.filter.minAmount != null ||
+                            state.filter.maxAmount != null) Badge()
+                    }) {
+                        IconButton(onClick = { showFilterSheet = true }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter")
+                        }
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHost) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddExpense) {
@@ -114,37 +137,6 @@ fun ExpenseListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Row(
-                modifier              = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Expenses",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text  = "${state.filter.from.format(DateTimeFormatter.ofPattern("MMM d"))} " +
-                                "— ${state.filter.to.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                BadgedBox(badge = {
-                    if (state.filter.category != null ||
-                        state.filter.minAmount != null ||
-                        state.filter.maxAmount != null) Badge()
-                }) {
-                    IconButton(onClick = { showFilterSheet = true }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filter")
-                    }
-                }
-            }
-
             // ── Summary cards ─────────────────────────────────────
             state.stats?.let { stats ->
                 ExpenseSummaryRow(
@@ -272,8 +264,6 @@ private fun ExpenseSummaryRow(
     }
 }
 
-// ── Date header ───────────────────────────────────────────────────
-
 @Composable
 private fun ExpenseDateHeader(date: LocalDate, totalAmount: Long) {
     val today     = LocalDate.now()
@@ -304,8 +294,6 @@ private fun ExpenseDateHeader(date: LocalDate, totalAmount: Long) {
     }
 }
 
-// ── Expense card ──────────────────────────────────────────────────
-
 @Composable
 private fun ExpenseCard(
     expense: ExpenseEntity,
@@ -323,7 +311,6 @@ private fun ExpenseCard(
             modifier          = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Category icon
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -414,8 +401,6 @@ private fun ExpenseCard(
     }
 }
 
-// ── Filter sheet ──────────────────────────────────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExpenseFilterSheet(
@@ -442,7 +427,6 @@ private fun ExpenseFilterSheet(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold)
 
-            // Date presets
             Text("Date range", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -466,7 +450,6 @@ private fun ExpenseFilterSheet(
                 }
             }
 
-            // Category filter
             if (categories.isNotEmpty()) {
                 Text("Category", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -481,7 +464,6 @@ private fun ExpenseFilterSheet(
                 }
             }
 
-            // Amount range
             Text("Amount range", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

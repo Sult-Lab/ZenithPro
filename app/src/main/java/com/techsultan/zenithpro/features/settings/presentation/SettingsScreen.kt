@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Store
@@ -29,8 +30,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,13 +47,20 @@ import androidx.compose.ui.unit.dp
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onMenuClick: () -> Unit = {}
+) {
     Scaffold(
         topBar = {
             ZenithTopAppBar(
                 title = "Settings",
                 navigationIcon = {
-                    // No navigation icon for top level settings
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu"
+                        )
+                    }
                 },
                 actions = { }
             )
@@ -151,7 +160,7 @@ fun SettingsSection(
                 items.forEachIndexed { index, item ->
                     SettingsItem(item = item)
                     if (index < items.size - 1) {
-                        Divider(
+                        HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f),
                             thickness = 1.dp
                         )

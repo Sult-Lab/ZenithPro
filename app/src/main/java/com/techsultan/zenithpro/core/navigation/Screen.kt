@@ -30,6 +30,10 @@ sealed interface Route: NavKey {
         data object AddProduct : Route, NavKey
         @Serializable
         data object NewSale : Route, NavKey
+        @Serializable
+        data object Customers : Route, NavKey
+        @Serializable
+        data object Expenses : Route, NavKey
     }
 
 }

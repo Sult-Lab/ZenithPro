@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Card
@@ -46,13 +47,20 @@ import androidx.compose.ui.unit.dp
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 
 @Composable
-fun ReportScreen() {
+fun ReportScreen(
+    onMenuClick: () -> Unit = {}
+) {
     Scaffold(
         topBar = {
             ZenithTopAppBar(
                 title = "Business Reports",
                 navigationIcon = {
-                    // No back button as requested
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu"
+                        )
+                    }
                 },
                 actions = {
                     IconButton(onClick = { /*TODO*/ }) {
@@ -74,19 +82,6 @@ fun ReportScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Filter Chips
-//            Row(
-//                horizontalArrangement = Arrangement.spacedBy(8.dp),
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .horizontalScroll(rememberScrollState())
-//            ) {
-//                FilterChipItem(text = "Last 7 Days", selected = true)
-//                FilterChipItem(text = "Today", selected = false)
-//                FilterChipItem(text = "This Month", selected = false)
-//                FilterChipItem(text = "Custom", selected = false)
-//            }
-
             // Revenue and Profit Cards
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -374,10 +369,6 @@ fun SalesGraph() {
             color = primaryColor,
             style = Stroke(width = 3.dp.toPx())
         )
-
-        // Draw labels
-        // Note: Simple text drawing in Canvas requires TextMeasurer or native canvas, 
-        // usually simpler to overlay composables in a Box, but here we just draw the line.
     }
     
     // Day Labels overlay
