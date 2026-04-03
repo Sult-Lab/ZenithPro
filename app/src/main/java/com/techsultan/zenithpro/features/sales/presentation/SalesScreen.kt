@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PointOfSale
@@ -98,6 +99,7 @@ fun SalesScreen(
     viewModel: SalesListViewModel = koinViewModel(),
     onSaleClick: (String) -> Unit,
     onNewSale: () -> Unit,
+    onMenuClick: () -> Unit = {}
 ) {
     LaunchedEffect(businessId) { viewModel.init(businessId) }
 
@@ -120,6 +122,14 @@ fun SalesScreen(
         topBar = {
             ZenithTopAppBar(
                 title = "Sales",
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu"
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { /* export / report */ }) {
                         Icon(
@@ -836,7 +846,7 @@ private fun SaleCard(
                         text       = "₦${sale.debtAmount.formatAmount()}",
                         style      = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color      = Color(0xFFD32F2F)
+                        color = Color(0xFFD32F2F)
                     )
                 }
             }

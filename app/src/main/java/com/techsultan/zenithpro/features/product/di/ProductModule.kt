@@ -1,6 +1,8 @@
 package com.techsultan.zenithpro.features.product.di
 
 import com.techsultan.zenithpro.core.manager.SyncManager
+import com.techsultan.zenithpro.features.expenses.data.repository.ExpenseRepositoryImpl
+import com.techsultan.zenithpro.features.expenses.domain.repository.ExpenseRepository
 import com.techsultan.zenithpro.features.product.data.repository.ProductRepositoryImpl
 import com.techsultan.zenithpro.features.product.domain.repository.ProductRepository
 import com.techsultan.zenithpro.features.product.domain.use_case.AddProductUseCase
@@ -27,8 +29,10 @@ val productModule = module {
     single {
         SyncManager(
             repository = get<ProductRepository>() as ProductRepositoryImpl,
+            expenseRepository = get<ExpenseRepository>() as ExpenseRepositoryImpl,
+            expenseDao = get(),
             productDao = get(),
-            networkMonitor = get()
+            networkMonitor = get(),
         )
     }
 

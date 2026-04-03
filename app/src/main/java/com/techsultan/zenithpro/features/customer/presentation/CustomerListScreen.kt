@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -48,10 +49,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
-import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerDetailViewModel
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerListViewModel
-import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerReportsViewModel
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerTab
 import com.techsultan.zenithpro.features.sales.formatAmount
 import org.koin.androidx.compose.koinViewModel
@@ -64,6 +64,7 @@ fun CustomerListScreen(
     onCustomerClick: (String) -> Unit,
     onAddCustomer: () -> Unit,
     onViewReports: () -> Unit,
+    onMenuClick: () -> Unit = {}
 ) {
     LaunchedEffect(businessId) { viewModel.init(businessId) }
 
@@ -71,6 +72,21 @@ fun CustomerListScreen(
     val snackBarHost = remember { SnackbarHostState() }
 
     Scaffold(
+        topBar = {
+            ZenithTopAppBar(
+                title = "Customers",
+                navigationIcon = {
+                    IconButton(onClick = onMenuClick) {
+                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onViewReports) {
+                        Icon(Icons.Default.BarChart, contentDescription = "Reports")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(snackBarHost) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddCustomer) {
@@ -83,37 +99,18 @@ fun CustomerListScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Customers",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                IconButton(onClick = onViewReports) {
-                    Icon(Icons.Default.BarChart, contentDescription = "Reports")
-                }
-            }
 
             OutlinedTextField(
                 value         = state.searchQuery,
                 onValueChange = viewModel::onSearchQueryChanged,
                 modifier      = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
                 placeholder = { Text("Search by name or phone...") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
             )
-
-            Spacer(Modifier.height(8.dp))
-
 
             TabRow(selectedTabIndex = state.selectedTab.ordinal) {
                 CustomerTab.entries.forEach { tab ->
