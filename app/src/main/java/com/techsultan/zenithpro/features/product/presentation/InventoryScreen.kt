@@ -59,6 +59,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.techsultan.zenithpro.core.components.SyncStatusBadge
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.formatPrice
@@ -407,26 +408,6 @@ fun InventoryItemCard(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-fun SyncStatusBadge(status: Util.SyncStatus) {
-    val color = when (status) {
-        Util.SyncStatus.PENDING -> Color.Gray
-        Util.SyncStatus.DIRTY -> MaterialTheme.colorScheme.primary
-        Util.SyncStatus.DELETED -> MaterialTheme.colorScheme.error
-        else -> Color.Transparent
-    }
-    
-    if (color != Color.Transparent) {
-        Box(
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(color)
         )
     }
 }

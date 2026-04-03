@@ -132,4 +132,13 @@ interface SaleDao {
       AND status     = 'PARTIAL'
 """)
     suspend fun getPendingDebts(businessId: String): PendingDebtSummary
+
+    @Transaction
+    @Query("""
+    SELECT * FROM sales
+    WHERE customerId = :customerId
+      AND status     != 'CANCELLED'
+    ORDER BY soldAt DESC
+""")
+    suspend fun getSalesByCustomer(customerId: String): List<SaleWithItems>
 }

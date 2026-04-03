@@ -10,6 +10,7 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummar
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetChartDataUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetDashboardSummaryUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetPendingDebtsUseCase
+import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetUrgentActionsUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.SyncDashboardUseCase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ class DashboardViewModel(
     private val getChartDataUseCase: GetChartDataUseCase,
     private val getPendingDebtsUseCase: GetPendingDebtsUseCase,
     private val syncDashboardUseCase: SyncDashboardUseCase,
+    private val getUrgentActionsUseCase: GetUrgentActionsUseCase,
     private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
@@ -49,18 +51,22 @@ class DashboardViewModel(
             val summaryJob = async { getDashboardSummaryUseCase(businessId) }
             val chartJob   = async { getChartDataUseCase(businessId, 7) }
             val debtJob    = async { getPendingDebtsUseCase(businessId) }
+            val urgentJob  = async { getUrgentActionsUseCase(businessId) }
 
             val summary = summaryJob.await()
             val chart   = chartJob.await()
             val debt    = debtJob.await()
+            val urgent  = urgentJob.await()
 
             _state.update { s ->
                 s.copy(
-                    isLoading     = false,
-                    summary       = (summary as? Resource.Success)?.data ?: s.summary,
-                    chartData     = (chart   as? Resource.Success)?.data ?: s.chartData,
+                    isLoading = false,
+                    summary = (summary as? Resource.Success)?.data ?: s.summary,
+                    chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
                     pendingDebts  = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
-                    error         = (summary as? Resource.Error)?.message
+                    lowStockCount = urgent.first,
+                    pendingPurchaseOrderCount = urgent.second,
+                    error = (summary as? Resource.Error)?.message,
                 )
             }
 
@@ -79,12 +85,15 @@ class DashboardViewModel(
             val summary = getDashboardSummaryUseCase(businessId)
             val chart   = getChartDataUseCase(businessId, _state.value.selectedDays)
             val debt    = getPendingDebtsUseCase(businessId)
+            val urgent  = getUrgentActionsUseCase(businessId)
             _state.update { s ->
                 s.copy(
                     isRefreshing = false,
-                    summary      = (summary as? Resource.Success)?.data ?: s.summary,
-                    chartData    = (chart   as? Resource.Success)?.data ?: s.chartData,
-                    pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts
+                    summary = (summary as? Resource.Success)?.data ?: s.summary,
+                    chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
+                    pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
+                    lowStockCount = urgent.first,
+                    pendingPurchaseOrderCount = urgent.second
                 )
             }
         }
@@ -120,11 +129,14 @@ class DashboardViewModel(
                 val summary = getDashboardSummaryUseCase(businessId)
                 val chart   = getChartDataUseCase(businessId, _state.value.selectedDays)
                 val debt    = getPendingDebtsUseCase(businessId)
+                val urgent  = getUrgentActionsUseCase(businessId)
                 _state.update { s ->
                     s.copy(
-                        summary      = (summary as? Resource.Success)?.data ?: s.summary,
-                        chartData    = (chart   as? Resource.Success)?.data ?: s.chartData,
-                        pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts
+                        summary = (summary as? Resource.Success)?.data ?: s.summary,
+                        chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
+                        pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
+                        lowStockCount = urgent.first,
+                        pendingPurchaseOrderCount = urgent.second
                     )
                 }
             }
@@ -133,11 +145,13 @@ class DashboardViewModel(
 }
 
 data class DashboardUiState(
-    val isLoading: Boolean          = false,
-    val isRefreshing: Boolean       = false,
+    val isLoading: Boolean  = false,
+    val isRefreshing: Boolean  = false,
     val summary: DashboardSummary = DashboardSummary(),
     val chartData: List<ChartDataPoint> = emptyList(),
     val pendingDebts: PendingDebtSummary = PendingDebtSummary(),
-    val selectedDays: Int           = 7,
-    val error: String?              = null
+    val selectedDays: Int  = 7,
+    val lowStockCount: Int  = 0,
+    val pendingPurchaseOrderCount: Int  = 0,
+    val error: String? = null
 )

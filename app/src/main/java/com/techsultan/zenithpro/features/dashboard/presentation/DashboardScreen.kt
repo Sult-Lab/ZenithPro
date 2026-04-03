@@ -160,8 +160,8 @@ fun DashboardScreen(
                 // ── Urgent actions ─────────────────────────────────
                 item {
                     UrgentActionsSection(
-                        lowStockCount       = 1/*state.lowStockCount*/,
-                        pendingOrderCount   = 5/*state.pendingPurchaseOrderCount*/,
+                        lowStockCount       = state.lowStockCount,
+                        pendingOrderCount   = state.pendingPurchaseOrderCount,
                         onViewLowStock      = onViewLowStock,
                         onViewPurchaseOrders = onViewPurchaseOrders
                     )
@@ -262,7 +262,7 @@ private fun TodayKpiSection(
             color      = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Row(
-            modifier              = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             KpiCard(
