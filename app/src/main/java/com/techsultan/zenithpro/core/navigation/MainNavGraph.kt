@@ -16,6 +16,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
+import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
 import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
 import com.techsultan.zenithpro.features.expenses.presentation.ExpenseListScreen
@@ -30,7 +31,8 @@ import kotlinx.coroutines.launch
 fun MainNavGraph() {
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
-        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys + setOf(Route.Home.Customers, Route.Home.Expenses)
+        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys + setOf(Route.Home.Customers, Route.Home.Expenses,
+            Route.Home.Branches)
     )
     val navigator = remember { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -56,6 +58,12 @@ fun MainNavGraph() {
             scope.launch {
                 drawerState.close()
                 navigator.navigate(Route.Home.Expenses)
+            }
+        },
+        onBranchesClick = {
+            scope.launch {
+                drawerState.close()
+                navigator.navigate(Route.Home.Branches)
             }
         }
     ) {
@@ -115,7 +123,22 @@ fun MainNavGraph() {
                         }
                         entry<Route.Home.Settings> {
                             SettingsScreen(
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                                currentUserId = "",
+                                isAdmin = true,
+                                onBack = {},
+                                onAccountSettings = {},
+                                onNotifications = {},
+                                onAbout = {},
+                                onLogout = {}
+                            )
+                        }
+
+                        entry<Route.Home.Branches> {
+                            BranchScreen(
+                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
+                                isAdmin = true,
+                                onBack = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.Customers> {

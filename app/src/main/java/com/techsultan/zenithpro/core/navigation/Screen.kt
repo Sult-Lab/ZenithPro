@@ -34,6 +34,8 @@ sealed interface Route: NavKey {
         data object Customers : Route, NavKey
         @Serializable
         data object Expenses : Route, NavKey
+        @Serializable
+        data object Branches : Route, NavKey
     }
 
 }

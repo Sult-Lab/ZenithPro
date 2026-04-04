@@ -5,7 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.navigation.RootNavGraph
 import com.techsultan.zenithpro.core.theme.ZenithProTheme
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
@@ -23,6 +25,8 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
+            val isReady by viewModel.isLoading.collectAsStateWithLifecycle()
+            if (isReady) return@setContent
             ZenithProTheme {
                 RootNavGraph(viewModel = viewModel)
             }

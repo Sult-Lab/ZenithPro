@@ -4,12 +4,15 @@ import android.app.Application
 import com.techsultan.zenithpro.core.di.commonModule
 import com.techsultan.zenithpro.core.di.databaseModule
 import com.techsultan.zenithpro.core.di.supabaseModule
+import com.techsultan.zenithpro.features.analytics.di.reportsModule
 import com.techsultan.zenithpro.features.auth.di.authModule
+import com.techsultan.zenithpro.features.branch.di.branchModule
 import com.techsultan.zenithpro.features.customer.di.customerModule
 import com.techsultan.zenithpro.features.dashboard.di.dashboardModule
 import com.techsultan.zenithpro.features.expenses.di.expenseModule
 import com.techsultan.zenithpro.features.product.di.productModule
 import com.techsultan.zenithpro.features.sales.di.salesModule
+import com.techsultan.zenithpro.features.settings.di.settingsModule
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +47,10 @@ class ZenithApplication : Application(), KoinComponent {
                 salesModule,
                 dashboardModule,
                 customerModule,
-                expenseModule
+                expenseModule,
+                settingsModule,
+                reportsModule,
+                branchModule
             )
         }
 

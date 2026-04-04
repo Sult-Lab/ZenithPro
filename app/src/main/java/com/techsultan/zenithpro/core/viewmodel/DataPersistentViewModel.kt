@@ -19,8 +19,8 @@ class DataPersistentViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _isLoggedIn = MutableStateFlow<Boolean?>(null)
-    val isLoggedIn: StateFlow<Boolean?> = _isLoggedIn.asStateFlow()
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
     init {
         observeSession()
@@ -29,6 +29,10 @@ class DataPersistentViewModel(
     private fun observeSession() {
         viewModelScope.launch {
             auth.awaitInitialization()
+
+            val hasSession = auth.currentSessionOrNull() != null
+            _isLoggedIn.value = hasSession
+            _isLoading.value = false
 
             authRepository.sessionState.collect { isAuthenticated ->
                 Log.d("DataPersistentViewModel", "Session state changed: $isAuthenticated")

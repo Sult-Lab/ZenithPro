@@ -105,8 +105,8 @@ class AuthenticationRepositoryImpl(
             when (status) {
                 is SessionStatus.Authenticated -> true
                 is SessionStatus.NotAuthenticated -> false
+                is SessionStatus.RefreshFailure -> true
                 is SessionStatus.Initializing  -> null // Still loading
-                is SessionStatus.RefreshFailure -> false
             }
         }
         .filterNotNull() // Only emit when we have a definite state
