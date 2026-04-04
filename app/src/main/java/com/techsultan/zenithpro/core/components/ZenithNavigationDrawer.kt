@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.core.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,6 +17,7 @@ fun ZenithNavigationDrawer(
     onLogout: () -> Unit,
     onCustomersClick: () -> Unit,
     onExpensesClick: () -> Unit,
+    onBranchesClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
     ModalNavigationDrawer(
@@ -44,6 +46,13 @@ fun ZenithNavigationDrawer(
                         icon = { Icon(Icons.Default.Payments, contentDescription = null) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
+                    NavigationDrawerItem(
+                        label = { Text("Branches") },
+                        selected = false,
+                        onClick = onBranchesClick,
+                        icon = { Icon(Icons.Default.Store, contentDescription = null) },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
@@ -59,7 +68,7 @@ fun ZenithNavigationDrawer(
                         label = { Text("Logout") },
                         selected = false,
                         onClick = onLogout,
-                        icon = { Icon(Icons.Default.Logout, contentDescription = null) },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                     Spacer(Modifier.height(12.dp))

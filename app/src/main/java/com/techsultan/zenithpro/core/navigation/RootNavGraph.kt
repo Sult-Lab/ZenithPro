@@ -15,23 +15,8 @@ import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 fun RootNavGraph(viewModel: DataPersistentViewModel){
     val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    if (isLoggedIn == null) return
-    val initialRoute = if (isLoggedIn == true) Route.Home else Route.Auth
+    val initialRoute = if (isLoggedIn) Route.Home else Route.Auth
     val rootBackStack = rememberNavBackStack(initialRoute)
-
-    LaunchedEffect(isLoggedIn) {
-        when (isLoggedIn) {
-            true -> {
-                rootBackStack.remove(Route.Auth)
-                rootBackStack.add(Route.Home)
-            }
-            false -> {
-                rootBackStack.remove(Route.Home)
-                rootBackStack.add(Route.Auth)
-            }
-            else -> {}
-        }
-    }
 
 
     NavDisplay(
