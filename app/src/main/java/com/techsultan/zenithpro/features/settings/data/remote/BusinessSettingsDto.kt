@@ -12,6 +12,6 @@ data class BusinessSettingsDto(
     @SerialName("allow_negative_stock") val allowNegativeStock: Boolean,
     @SerialName("require_customer_sale") val requireCustomerSale: Boolean,
     @SerialName("low_stock_threshold") val lowStockThreshold: Int,
-    @SerialName("receipt_footer") val receiptFooter: String?,
+    @SerialName("receipt_footer") val receiptFooter: String? = null,
     @SerialName("updated_at") val updatedAt: String
 )

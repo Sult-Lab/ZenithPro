@@ -33,7 +33,8 @@ val dashboardModule = module {
             getPendingDebtsUseCase = get(),
             syncDashboardUseCase = get(),
             getUrgentActionsUseCase = get(),
-            networkMonitor = get()
+            networkMonitor = get(),
+            sessionManager = get()
         )
     }
 }

@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.dashboard.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
@@ -27,31 +28,36 @@ class DashboardViewModel(
     private val syncDashboardUseCase: SyncDashboardUseCase,
     private val getUrgentActionsUseCase: GetUrgentActionsUseCase,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
 
-    private var businessId = ""
+    private var businessId: String? = null
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        loadAll()
-        observeConnectivity()
+
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                loadAll()
+                observeConnectivity()
+            }
+        }
     }
 
-    // ── Load from Room immediately, then sync in background ────────
 
     private fun loadAll() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
             // All three load from local Room — fast, no network needed
-            val summaryJob = async { getDashboardSummaryUseCase(businessId) }
-            val chartJob   = async { getChartDataUseCase(businessId, 7) }
-            val debtJob    = async { getPendingDebtsUseCase(businessId) }
-            val urgentJob  = async { getUrgentActionsUseCase(businessId) }
+            val summaryJob = async { getDashboardSummaryUseCase(bId) }
+            val chartJob   = async { getChartDataUseCase(bId, 7) }
+            val debtJob    = async { getPendingDebtsUseCase(bId) }
+            val urgentJob  = async { getUrgentActionsUseCase(bId) }
 
             val summary = summaryJob.await()
             val chart   = chartJob.await()
@@ -78,14 +84,16 @@ class DashboardViewModel(
     // ── Manual pull-to-refresh ──────────────────────────────────────
 
     fun refresh() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
-            syncDashboardUseCase(businessId)
+            
+            syncDashboardUseCase(bId)
             // Reload from Room after sync
-            val summary = getDashboardSummaryUseCase(businessId)
-            val chart   = getChartDataUseCase(businessId, _state.value.selectedDays)
-            val debt    = getPendingDebtsUseCase(businessId)
-            val urgent  = getUrgentActionsUseCase(businessId)
+            val summary = getDashboardSummaryUseCase(bId)
+            val chart   = getChartDataUseCase(bId, _state.value.selectedDays)
+            val debt    = getPendingDebtsUseCase(bId)
+            val urgent  = getUrgentActionsUseCase(bId)
             _state.update { s ->
                 s.copy(
                     isRefreshing = false,
@@ -99,19 +107,17 @@ class DashboardViewModel(
         }
     }
 
-    // ── Chart period selector ───────────────────────────────────────
-
     fun onChartPeriodChanged(days: Int) {
+        val bId = businessId ?: return
         _state.update { it.copy(selectedDays = days) }
         viewModelScope.launch {
-            val chart = getChartDataUseCase(businessId, days)
+            val chart = getChartDataUseCase(bId, days)
             _state.update { s ->
                 s.copy(chartData = (chart as? Resource.Success)?.data ?: s.chartData)
             }
         }
     }
 
-    // ── Auto-sync on connectivity restore ──────────────────────────
 
     private fun observeConnectivity() {
         viewModelScope.launch {
@@ -122,14 +128,15 @@ class DashboardViewModel(
     }
 
     private fun syncInBackground() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            val result = syncDashboardUseCase(businessId)
+            val result = syncDashboardUseCase(bId)
             if (result is Resource.Success) {
                 // Reload Room data after sync completes
-                val summary = getDashboardSummaryUseCase(businessId)
-                val chart   = getChartDataUseCase(businessId, _state.value.selectedDays)
-                val debt    = getPendingDebtsUseCase(businessId)
-                val urgent  = getUrgentActionsUseCase(businessId)
+                val summary = getDashboardSummaryUseCase(bId)
+                val chart   = getChartDataUseCase(bId, _state.value.selectedDays)
+                val debt    = getPendingDebtsUseCase(bId)
+                val urgent  = getUrgentActionsUseCase(bId)
                 _state.update { s ->
                     s.copy(
                         summary = (summary as? Resource.Success)?.data ?: s.summary,

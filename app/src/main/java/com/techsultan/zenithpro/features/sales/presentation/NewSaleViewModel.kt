@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.sales.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.product.domain.use_case.GetProductsUseCase
@@ -25,7 +26,8 @@ class NewSaleViewModel(
     private val getProductsUseCase: GetProductsUseCase,
     private val processSaleUseCase: ProcessSaleUseCase,
     private val getSaleUseCase: GetSalesUseCase,
-    private val getDailySummaryUseCase: GetDailySummaryUseCase
+    private val getDailySummaryUseCase: GetDailySummaryUseCase,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -34,9 +36,8 @@ class NewSaleViewModel(
     private val _events = MutableSharedFlow<NewSaleEvent>()
     val events = _events.asSharedFlow()
 
-    private var businessId: String = ""
+    private var businessId: String? = null
 
-    // Cart management - Key is productId
     private val _cart = MutableStateFlow<Map<String, CartItem>>(emptyMap())
     val cart: StateFlow<Map<String, CartItem>> = _cart.asStateFlow()
 
@@ -46,15 +47,19 @@ class NewSaleViewModel(
     val cartItemCount: StateFlow<Int> = cart.map { it.values.sumOf { item -> item.quantity } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        observeProducts()
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                observeProducts()
+            }
+        }
     }
 
     private fun observeProducts() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            getProductsUseCase(businessId).collect { result ->
+            getProductsUseCase(bId).collect { result ->
                 when (result) {
                     is Resource.Loading -> _state.update { it.copy(isLoading = it.products.isEmpty()) }
                     is Resource.Success -> _state.update {

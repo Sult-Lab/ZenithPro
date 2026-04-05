@@ -57,7 +57,6 @@ class CustomerRepositoryImpl(
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }
             .catch { emit(Resource.Error(it.message ?: "Failed to load debtors")) }
 
-    // ── Upsert (create or update) ──────────────────────────────────
 
     override suspend fun upsertCustomer(
         request: CustomerRequest,
@@ -104,7 +103,6 @@ class CustomerRepositoryImpl(
         }
     }
 
-    // ── Delete ─────────────────────────────────────────────────────
 
     override suspend fun deleteCustomer(customerId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
@@ -124,7 +122,6 @@ class CustomerRepositoryImpl(
             }
         }
 
-    // ── Reports ────────────────────────────────────────────────────
 
     override suspend fun getTopSpenders(
         businessId: String, limit: Int
@@ -147,7 +144,6 @@ class CustomerRepositoryImpl(
         catch (e: Exception) { Resource.Error(e.message ?: "Failed") }
     }
 
-    // ── Customer transaction history ───────────────────────────────
 
     override suspend fun getCustomerSales(
         customerId: String,
@@ -161,8 +157,6 @@ class CustomerRepositoryImpl(
             Resource.Error(e.message ?: "Failed to load transactions")
         }
     }
-
-    // ── Pull from server ───────────────────────────────────────────
 
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
@@ -201,7 +195,6 @@ class CustomerRepositoryImpl(
             }
         }
 
-    // ── Internal push ──────────────────────────────────────────────
 
     internal suspend fun pushCustomer(entity: CustomerEntity) {
         try {

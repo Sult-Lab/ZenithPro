@@ -1,10 +1,12 @@
 package com.techsultan.zenithpro.features.auth.data.repository
 
 import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.data.remote.CreateStaffRequest
 import com.techsultan.zenithpro.features.auth.data.remote.CreateStaffResponse
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
+import com.techsultan.zenithpro.features.auth.data.remote.SignInResponseDto
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import io.github.jan.supabase.auth.Auth
@@ -26,6 +28,7 @@ class AuthenticationRepositoryImpl(
     private val auth: Auth,
     private val postgrest: Postgrest,
     private val functions: Functions,
+    private val sessionManager: SessionManager
 ) : AuthenticationRepository {
 
     override fun signUp(request: SignUpRequest): Flow<Resource<Unit>> = flow {
@@ -50,6 +53,9 @@ class AuthenticationRepositoryImpl(
                 password = request.password
             }
             val session = auth.currentSessionOrNull()
+            if (session != null){
+                sessionManager.initSessionFromServer(session.user?.id ?: "")
+            }
             Log.d("SignIn", "Session after login: ${session?.user?.email}")
             emit(Resource.Success(Unit))
         } catch (e: Exception) {

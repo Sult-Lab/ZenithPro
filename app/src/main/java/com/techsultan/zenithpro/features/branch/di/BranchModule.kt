@@ -17,5 +17,5 @@ val branchModule = module {
     factory { GetBranchesUseCase(get()) }
     factory { UpsertBranchUseCase(get()) }
     factory { DeleteBranchUseCase(get()) }
-    viewModel { BranchViewModel(get(), get(), get(), get()) }
+    viewModel { BranchViewModel(get(), get(), get(), get(), get()) }
 }

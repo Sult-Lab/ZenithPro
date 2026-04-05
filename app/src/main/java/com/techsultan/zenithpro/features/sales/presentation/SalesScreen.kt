@@ -95,17 +95,15 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun SalesScreen(
-    businessId: String,
     viewModel: SalesListViewModel = koinViewModel(),
     onSaleClick: (String) -> Unit,
     onNewSale: () -> Unit,
     onMenuClick: () -> Unit = {}
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
-    val state         by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredSales by viewModel.filteredSales.collectAsStateWithLifecycle()
-    val summary       by viewModel.summaryStats.collectAsStateWithLifecycle()
+    val summary by viewModel.summaryStats.collectAsStateWithLifecycle()
     val snackbarHost  = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
@@ -270,8 +268,6 @@ fun SalesScreen(
     }
 }
 
-// ── Search bar ────────────────────────────────────────────────────
-
 @Composable
 private fun SalesSearchBar(
     searchQuery: String,
@@ -283,8 +279,8 @@ private fun SalesSearchBar(
         modifier      = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        placeholder   = { Text("Search by product, SKU, amount…") },
-        leadingIcon   = {
+        placeholder = { Text("Search by product, SKU, amount…") },
+        leadingIcon = {
             Icon(
                 imageVector        = Icons.Default.Search,
                 contentDescription = null,
@@ -881,7 +877,6 @@ private fun SaleStatusBadge(status: SaleStatus) {
 @Composable
 fun PreviewSales() {
     SalesScreen(
-        businessId = "",
         onSaleClick = {},
         onNewSale = {}
     )

@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEntity
@@ -26,6 +27,7 @@ class SettingsViewModel(
     private val updateStaffRoleUseCase: UpdateStaffRoleUseCase,
     private val settingsRepository: SettingsRepository,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
@@ -34,21 +36,48 @@ class SettingsViewModel(
     private val _events = MutableSharedFlow<SettingsEvent>()
     val events = _events.asSharedFlow()
 
-    fun init(businessId: String) {
+    private var businessId: String? = null
+    var currentUserId: String? = null
+        private set
+    var isAdmin: Boolean = false
+        private set
+
+
+    init {
         viewModelScope.launch {
-            getSettingsUseCase(businessId).collect { settings ->
+            val session = sessionManager.loadSession()
+            businessId = session?.businessId
+            currentUserId = session?.userId
+            isAdmin = session?.isAdmin ?: false
+            
+            if (businessId != null) {
+                observeSettings()
+                pullFromServer()
+                loadStaff()
+            }
+        }
+    }
+
+    private fun observeSettings() {
+        val bId = businessId ?: return
+        viewModelScope.launch {
+            getSettingsUseCase(bId).collect { settings ->
                 _state.update { it.copy(settings = settings) }
             }
         }
-        viewModelScope.launch {
-            settingsRepository.pullFromServer(businessId)
-        }
-        loadStaff(businessId)
     }
 
-    fun loadStaff(businessId: String) {
+    private fun pullFromServer() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            when (val result = getStaffListUseCase(businessId)) {
+            settingsRepository.pullFromServer(bId)
+        }
+    }
+
+    fun loadStaff() {
+        val bId = businessId ?: return
+        viewModelScope.launch {
+            when (val result = getStaffListUseCase(bId)) {
                 is Resource.Success -> _state.update { it.copy(staffList = result.data ?: emptyList()) }
                 is Resource.Error   -> _state.update { it.copy(error = result.message) }
                 else -> Unit
@@ -73,11 +102,12 @@ class SettingsViewModel(
         }
     }
 
-    fun updateStaffRole(userId: String, newRole: String, businessId: String) {
+    fun updateStaffRole(userId: String, newRole: String) {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            when (val result = updateStaffRoleUseCase(userId, newRole, businessId)) {
+            when (val result = updateStaffRoleUseCase(userId, newRole, bId)) {
                 is Resource.Success -> {
-                    loadStaff(businessId)
+                    loadStaff()
                     _events.emit(SettingsEvent.RoleUpdated)
                 }
                 is Resource.Error ->
@@ -87,10 +117,10 @@ class SettingsViewModel(
         }
     }
 
-    fun updateStaffStatus(userId: String, status: String, businessId: String) {
+    fun updateStaffStatus(userId: String, status: String) {
         viewModelScope.launch {
             settingsRepository.updateUserStatus(userId, status)
-            loadStaff(businessId)
+            loadStaff()
         }
     }
 

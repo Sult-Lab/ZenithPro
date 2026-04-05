@@ -74,7 +74,6 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun InventoryScreen(
     onAddProductClick: () -> Unit,
-    businessId: String,
     viewModel: InventoryViewModel = koinViewModel(),
     onProductClick: (String) -> Unit,
     onMenuClick: () -> Unit = {}
@@ -85,10 +84,6 @@ fun InventoryScreen(
     var openMenuDialog by remember { mutableStateOf(false) }
     var sortInventory by remember { mutableStateOf(false) }
     var filterInventory by remember { mutableStateOf(false) }
-
-    LaunchedEffect(businessId) {
-        viewModel.init(businessId)
-    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -410,7 +405,6 @@ fun InventoryItemCard(
 fun PreviewInventory() {
     InventoryScreen(
         onAddProductClick = {},
-        businessId = "",
         onProductClick = {}
     )
 }

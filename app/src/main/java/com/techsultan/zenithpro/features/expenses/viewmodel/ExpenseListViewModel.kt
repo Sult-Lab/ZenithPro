@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.expenses.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
@@ -29,6 +30,7 @@ class ExpenseListViewModel(
     private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ExpenseListUiState())
@@ -37,15 +39,19 @@ class ExpenseListViewModel(
     private val _events = MutableSharedFlow<ExpenseListEvent>()
     val events = _events.asSharedFlow()
 
-    private var businessId = ""
+    private var businessId: String? = null
     private var observeJob: Job? = null
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        observeExpenses()
-        loadStats()
-        syncOnStart()
+
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                observeExpenses()
+                loadStats()
+                syncOnStart()
+            }
+        }
     }
 
     fun onFilterChanged(filter: ExpenseFilter) {
@@ -71,9 +77,10 @@ class ExpenseListViewModel(
     }
 
     fun refresh() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
-            expenseRepository.pullFromServer(businessId)
+            expenseRepository.pullFromServer(bId)
             loadStats()
             _state.update { it.copy(isRefreshing = false) }
         }
@@ -93,9 +100,10 @@ class ExpenseListViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private fun observeExpenses() {
+        val bId = businessId ?: return
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            getExpensesUseCase(businessId, _state.value.filter).collect { result ->
+            getExpensesUseCase(bId, _state.value.filter).collect { result ->
                 when (result) {
                     is Resource.Loading -> _state.update {
                         it.copy(isLoading = it.expenses.isEmpty())
@@ -112,8 +120,9 @@ class ExpenseListViewModel(
     }
 
     private fun loadStats() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            when (val result = getExpenseStatsUseCase(businessId, _state.value.filter)) {
+            when (val result = getExpenseStatsUseCase(bId, _state.value.filter)) {
                 is Resource.Success -> _state.update {
                     it.copy(
                         stats      = result.data,
@@ -126,9 +135,10 @@ class ExpenseListViewModel(
     }
 
     private fun syncOnStart() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             if (networkMonitor.isConnected()) {
-                expenseRepository.pullFromServer(businessId)
+                expenseRepository.pullFromServer(bId)
                 loadStats()
             }
         }
