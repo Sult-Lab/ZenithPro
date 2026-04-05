@@ -23,6 +23,7 @@ object SessionKeys {
     val BUSINESS_PHONE   = stringPreferencesKey("business_phone")
     val BUSINESS_ADDRESS = stringPreferencesKey("business_address")
     val CURRENCY_SYMBOL  = stringPreferencesKey("currency_symbol")
+    val BRANCH_ID = stringPreferencesKey("branch_id")
 }
 
 class SessionDataStore(private val context: Context) {
@@ -31,16 +32,17 @@ class SessionDataStore(private val context: Context) {
 
     suspend fun saveSession(session: UserSession) {
         dataStore.edit { prefs ->
-            prefs[SessionKeys.USER_ID]          = session.userId
-            prefs[SessionKeys.BUSINESS_ID]      = session.businessId
-            prefs[SessionKeys.FIRST_NAME]       = session.firstName
-            prefs[SessionKeys.LAST_NAME]        = session.lastName ?: ""
-            prefs[SessionKeys.EMAIL]            = session.email ?: ""
-            prefs[SessionKeys.ROLE]             = session.role
-            prefs[SessionKeys.BUSINESS_NAME]    = session.businessName
-            prefs[SessionKeys.BUSINESS_PHONE]   = session.businessPhone ?: ""
+            prefs[SessionKeys.USER_ID] = session.userId
+            prefs[SessionKeys.BUSINESS_ID] = session.businessId
+            prefs[SessionKeys.FIRST_NAME] = session.firstName
+            prefs[SessionKeys.LAST_NAME] = session.lastName ?: ""
+            prefs[SessionKeys.EMAIL] = session.email ?: ""
+            prefs[SessionKeys.ROLE] = session.role
+            prefs[SessionKeys.BUSINESS_NAME] = session.businessName
+            prefs[SessionKeys.BUSINESS_PHONE] = session.businessPhone ?: ""
             prefs[SessionKeys.BUSINESS_ADDRESS] = session.businessAddress ?: ""
             prefs[SessionKeys.CURRENCY_SYMBOL]  = session.currencySymbol
+            prefs[SessionKeys.BUSINESS_ID] = session.branchId ?: ""
         }
     }
 
@@ -83,7 +85,8 @@ class SessionDataStore(private val context: Context) {
                 businessName    = prefs[SessionKeys.BUSINESS_NAME]    ?: "",
                 businessPhone   = prefs[SessionKeys.BUSINESS_PHONE]?.ifBlank { null },
                 businessAddress = prefs[SessionKeys.BUSINESS_ADDRESS]?.ifBlank { null },
-                currencySymbol  = prefs[SessionKeys.CURRENCY_SYMBOL]  ?: "₦"
+                currencySymbol  = prefs[SessionKeys.CURRENCY_SYMBOL]  ?: "₦",
+                branchId = prefs[SessionKeys.BRANCH_ID]?.ifBlank { null },
             )
         }
 }

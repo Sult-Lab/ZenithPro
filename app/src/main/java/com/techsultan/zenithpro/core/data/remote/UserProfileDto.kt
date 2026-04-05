@@ -11,5 +11,6 @@ data class UserProfileDto(
     @SerialName("last_name") val lastName: String? = null,
     @SerialName("email") val email: String? = null,
     val role: String,
-    val status: String
+    val status: String,
+    @SerialName("branch_id") val branchId: String? = null
 )

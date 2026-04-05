@@ -21,8 +21,10 @@ import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
 import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
 import com.techsultan.zenithpro.features.expenses.presentation.ExpenseListScreen
+import com.techsultan.zenithpro.features.material.presentation.MaterialScreen
 import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.NewSaleScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
@@ -159,6 +161,17 @@ fun MainNavGraph(
                         entry<Route.Home.AddProduct> {
                             AddProductScreen(
                                 navigateBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Production> {
+                            ProductionScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Material> {
+                            MaterialScreen(
+                                onNewProduction = {},
+                                onMaterialClick = {}
                             )
                         }
                     }
