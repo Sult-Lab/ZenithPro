@@ -68,7 +68,6 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewSaleScreen(
-    businessId: String,
     onBack: () -> Unit = {},
     viewModel: NewSaleViewModel = koinViewModel()
 ) {
@@ -82,10 +81,6 @@ fun NewSaleScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
-
-    LaunchedEffect(businessId) {
-        viewModel.init(businessId)
-    }
 
     Scaffold(
         topBar = {

@@ -48,7 +48,8 @@ val productModule = module {
             getProductsUseCase = get(),
             syncProductsUseCase = get(),
             deleteProductUseCase = get(),
-            networkMonitor = get()
+            networkMonitor = get(),
+            sessionManager = get()
         )
     }
 

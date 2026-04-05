@@ -72,7 +72,6 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun DashboardScreen(
-    businessId: String,
     viewModel: DashboardViewModel = koinViewModel(),
     onNewSale: () -> Unit,
     onAddProduct: () -> Unit = {},
@@ -83,7 +82,6 @@ fun DashboardScreen(
     onViewPurchaseOrders: () -> Unit = {},
     onMenuClick: () -> Unit = {}
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 

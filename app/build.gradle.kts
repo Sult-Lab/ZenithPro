@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.libs
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -123,4 +124,7 @@ dependencies {
 
     //coil
     implementation(libs.io.coil)
+
+    //data-store
+    implementation(libs.data.store)
 }

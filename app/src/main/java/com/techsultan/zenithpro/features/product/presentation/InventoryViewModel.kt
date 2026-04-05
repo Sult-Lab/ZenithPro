@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.product.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
@@ -26,6 +27,7 @@ class InventoryViewModel(
     private val syncProductsUseCase: SyncProductsUseCase,
     private val deleteProductUseCase: DeleteProductUseCase,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InventoryUiState())
@@ -34,19 +36,23 @@ class InventoryViewModel(
     private val _events = MutableSharedFlow<InventoryEvent>()
     val events = _events.asSharedFlow()
 
-    private var businessId: String = ""
+    private var businessId: String? = null
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        observeProducts()
-        observeConnectivity()
-        syncOnStart()
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                observeProducts()
+                observeConnectivity()
+                syncOnStart()
+            }
+        }
     }
 
     private fun observeProducts() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            getProductsUseCase(businessId).collect { result ->
+            getProductsUseCase(bId).collect { result ->
                 when (result) {
                     is Resource.Loading -> _state.update { it.copy(isLoading = it.products.isEmpty()) }
                     is Resource.Success -> _state.update {
@@ -173,8 +179,8 @@ class InventoryViewModel(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private suspend fun syncProducts() {
-        if (businessId.isBlank()) return
-        syncProductsUseCase(businessId)
+        val bId = businessId ?: return
+        syncProductsUseCase(bId)
     }
 
     sealed class InventoryEvent {

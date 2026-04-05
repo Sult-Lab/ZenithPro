@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.customer.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
@@ -20,19 +21,24 @@ class CustomerListViewModel(
     private val getCustomersUseCase: GetCustomersUseCase,
     private val customerRepository: CustomerRepository,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerListUiState())
     val state: StateFlow<CustomerListUiState> = _state.asStateFlow()
 
-    private var businessId = ""
+    private var businessId: String? = null
     private var searchJob: Job? = null
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        observeCustomers()
-        syncOnStart()
+
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                observeCustomers()
+                syncOnStart()
+            }
+        }
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -49,16 +55,18 @@ class CustomerListViewModel(
     }
 
     fun refresh() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
-            customerRepository.pullFromServer(businessId)
+            customerRepository.pullFromServer(bId)
             _state.update { it.copy(isRefreshing = false) }
         }
     }
 
     private fun observeCustomers() {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            getCustomersUseCase(businessId, _state.value.searchQuery)
+            getCustomersUseCase(bId, _state.value.searchQuery)
                 .collect { result ->
                     when (result) {
                         is Resource.Loading -> _state.update {
@@ -80,7 +88,7 @@ class CustomerListViewModel(
 
         // Debt list tab
         viewModelScope.launch {
-            customerRepository.getCustomersWithDebt(businessId)
+            customerRepository.getCustomersWithDebt(bId)
                 .collect { result ->
                     if (result is Resource.Success) {
                         _state.update { it.copy(debtors = result.data ?: emptyList()) }
@@ -90,9 +98,10 @@ class CustomerListViewModel(
     }
 
     private fun syncOnStart() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             if (networkMonitor.isConnected()) {
-                customerRepository.pullFromServer(businessId)
+                customerRepository.pullFromServer(bId)
             }
         }
     }

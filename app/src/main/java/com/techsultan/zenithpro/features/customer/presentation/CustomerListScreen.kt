@@ -59,14 +59,12 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun CustomerListScreen(
-    businessId: String,
     viewModel: CustomerListViewModel = koinViewModel(),
     onCustomerClick: (String) -> Unit,
     onAddCustomer: () -> Unit,
     onViewReports: () -> Unit,
     onMenuClick: () -> Unit = {}
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackBarHost = remember { SnackbarHostState() }
@@ -234,10 +232,10 @@ private fun CustomerCard(
             if (showDebt && customer.totalDebt > 0) {
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text       = "₦${customer.totalDebt.formatAmount()}",
-                        style      = MaterialTheme.typography.bodyMedium,
+                        text = "₦${customer.totalDebt.formatAmount()}",
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
-                        color      = Color(0xFFD32F2F)
+                        color = Color(0xFFD32F2F)
                     )
                     Text(
                         text  = "owed",

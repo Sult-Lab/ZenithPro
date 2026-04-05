@@ -64,17 +64,15 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BranchScreen(
-    businessId: String,
-    isAdmin: Boolean,
     viewModel: BranchViewModel = koinViewModel(),
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHost  = remember { SnackbarHostState() }
     var showAddSheet  by remember { mutableStateOf(false) }
     var editingBranch by remember { mutableStateOf<BranchEntity?>(null) }
+    val isAdmin = viewModel.isAdmin
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -127,11 +125,11 @@ fun BranchScreen(
             }
             items(state.branches, key = { it.id }) { branch ->
                 BranchCard(
-                    branch    = branch,
-                    isAdmin   = isAdmin,
-                    onEdit    = { editingBranch = branch; showAddSheet = true },
-                    onDelete  = { viewModel.deleteBranch(branch.id) },
-                    onToggle  = { viewModel.toggleActive(branch.id, !branch.isActive, businessId) }
+                    branch = branch,
+                    isAdmin = isAdmin,
+                    onEdit = { editingBranch = branch; showAddSheet = true },
+                    onDelete = { viewModel.deleteBranch(branch.id) },
+                    onToggle = { viewModel.toggleActive(branch.id, !branch.isActive) }
                 )
             }
         }
@@ -142,7 +140,7 @@ fun BranchScreen(
             existing   = editingBranch,
             onSave     = { name, address, phone ->
                 viewModel.upsertBranch(
-                    editingBranch?.id, name, address, phone, businessId
+                    editingBranch?.id, name, address, phone,
                 )
                 showAddSheet  = false
                 editingBranch = null

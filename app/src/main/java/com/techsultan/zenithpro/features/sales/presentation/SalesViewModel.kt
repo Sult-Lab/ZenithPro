@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.sales.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.sales.PaymentMethod
@@ -28,6 +29,7 @@ class SalesListViewModel(
     private val getSalesUseCase: GetSalesUseCase,
     private val saleRepository: SaleRepository,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SalesListUiState())
@@ -36,20 +38,24 @@ class SalesListViewModel(
     private val _events = MutableSharedFlow<SalesListEvent>()
     val events = _events.asSharedFlow()
 
-    private var businessId: String = ""
+    private var businessId: String? = null
     private var observeJob: Job? = null
 
-    fun init(businessId: String) {
-        if (this.businessId == businessId) return
-        this.businessId = businessId
-        observeSales()
-        syncOnStart()
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+            if (businessId != null) {
+                observeSales()
+                syncOnStart()
+            }
+        }
     }
 
     private fun observeSales() {
+        val bId = businessId ?: return
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
-            getSalesUseCase(businessId, buildFilter()).collect { result ->
+            getSalesUseCase(bId, buildFilter()).collect { result ->
                 when (result) {
                     is Resource.Loading -> _state.update {
                         it.copy(isLoading = it.sales.isEmpty())
@@ -103,9 +109,10 @@ class SalesListViewModel(
     // ── Refresh ────────────────────────────────────────────────────
 
     fun refresh() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
-            saleRepository.pullSalesFromServer(businessId)
+            saleRepository.pullSalesFromServer(bId)
             _state.update { it.copy(isRefreshing = false) }
         }
     }
@@ -144,9 +151,10 @@ class SalesListViewModel(
     // ── Private helpers ────────────────────────────────────────────
 
     private fun syncOnStart() {
+        val bId = businessId ?: return
         viewModelScope.launch {
             if (networkMonitor.isConnected()) {
-                saleRepository.pullSalesFromServer(businessId)
+                saleRepository.pullSalesFromServer(bId)
             }
         }
     }

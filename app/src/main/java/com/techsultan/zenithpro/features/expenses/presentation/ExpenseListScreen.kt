@@ -79,18 +79,16 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun ExpenseListScreen(
-    businessId: String,
     viewModel: ExpenseListViewModel = koinViewModel(),
     onAddExpense: () -> Unit,
     onExpenseClick: (ExpenseEntity) -> Unit,
     onMenuClick: () -> Unit = {}
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
-    val state           by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredExpenses by viewModel.filteredExpenses.collectAsStateWithLifecycle()
-    val snackbarHost     = remember { SnackbarHostState() }
-    var showFilterSheet  by remember { mutableStateOf(false) }
+    val snackbarHost = remember { SnackbarHostState() }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->

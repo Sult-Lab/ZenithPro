@@ -25,14 +25,16 @@ val salesModule = module {
         getProductsUseCase = get(),
         processSaleUseCase = get(),
         getSaleUseCase = get(),
-        getDailySummaryUseCase = get()
+        getDailySummaryUseCase = get(),
+        sessionManager = get()
     ) }
 
     viewModel {
         SalesListViewModel(
             getSalesUseCase = get(),
             saleRepository = get(),
-            networkMonitor = get()
+            networkMonitor = get(),
+            sessionManager = get()
         )
     }
 

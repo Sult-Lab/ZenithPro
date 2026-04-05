@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.branch.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
@@ -21,6 +22,7 @@ class BranchViewModel(
     private val upsertBranchUseCase: UpsertBranchUseCase,
     private val deleteBranchUseCase: DeleteBranchUseCase,
     private val branchRepository: BranchRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BranchUiState())
@@ -28,10 +30,29 @@ class BranchViewModel(
 
     private val _events = MutableSharedFlow<BranchEvent>()
     val events = _events.asSharedFlow()
+    
+    var isAdmin: Boolean = false
+        private set
 
-    fun init(businessId: String) {
+    private var businessId: String? = null
+
+    init {
         viewModelScope.launch {
-            getBranchesUseCase(businessId).collect { result ->
+            val session = sessionManager.loadSession()
+            businessId = session?.businessId
+            isAdmin = session?.isAdmin ?: false
+            
+            if (businessId != null) {
+                observeBranches()
+                pullFromServer()
+            }
+        }
+    }
+
+    private fun observeBranches() {
+        val bId = businessId ?: return
+        viewModelScope.launch {
+            getBranchesUseCase(bId).collect { result ->
                 when (result) {
                     is Resource.Success -> _state.update {
                         it.copy(isLoading = false, branches = result.data ?: emptyList())
@@ -43,16 +64,21 @@ class BranchViewModel(
                 }
             }
         }
-        viewModelScope.launch { branchRepository.pullFromServer(businessId) }
+    }
+
+    private fun pullFromServer() {
+        val bId = businessId ?: return
+        viewModelScope.launch { branchRepository.pullFromServer(bId) }
     }
 
     fun upsertBranch(
         id: String?, name: String, address: String?,
-        phone: String?, businessId: String
+        phone: String?
     ) {
+        val bId = businessId ?: return
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
-            when (val result = upsertBranchUseCase(id, name, address, phone, businessId)) {
+            when (val result = upsertBranchUseCase(id, name, address, phone, bId)) {
                 is Resource.Success -> {
                     _state.update { it.copy(isSaving = false) }
                     _events.emit(BranchEvent.Saved)
@@ -73,7 +99,7 @@ class BranchViewModel(
         }
     }
 
-    fun toggleActive(branchId: String, isActive: Boolean, businessId: String) {
+    fun toggleActive(branchId: String, isActive: Boolean) {
         viewModelScope.launch {
             branchRepository.toggleBranchActive(branchId, isActive)
         }

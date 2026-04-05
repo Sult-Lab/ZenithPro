@@ -77,9 +77,6 @@ import java.time.Instant
 
 @Composable
 fun SettingsScreen(
-    businessId: String,
-    currentUserId: String,
-    isAdmin: Boolean,
     viewModel: SettingsViewModel = koinViewModel(),
     onBack: () -> Unit,
     onAccountSettings: () -> Unit = {},
@@ -87,7 +84,6 @@ fun SettingsScreen(
     onAbout: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
-    LaunchedEffect(businessId) { viewModel.init(businessId) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
@@ -131,7 +127,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
 
-            if (isAdmin) {
+            if (viewModel.isAdmin) {
                 item {
                     SettingsSectionHeader(title = "ADMIN")
                 }
@@ -150,21 +146,21 @@ fun SettingsScreen(
                 if (state.staffList.isNotEmpty()) {
                     item {
                         Text(
-                            text       = "Staff management",
-                            style      = MaterialTheme.typography.labelMedium,
+                            text = "Staff management",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     items(state.staffList, key = { it.id }) { staff ->
                         StaffCard(
                             staff          = staff,
-                            isCurrentUser  = staff.id == currentUserId,
+                            isCurrentUser  = staff.id == viewModel.currentUserId,
                             onRoleChange   = { role ->
-                                viewModel.updateStaffRole(staff.id, role, businessId)
+                                viewModel.updateStaffRole(staff.id, role)
                             },
                             onStatusToggle = { status ->
-                                viewModel.updateStaffStatus(staff.id, status, businessId)
+                                viewModel.updateStaffStatus(staff.id, status)
                             }
                         )
                     }

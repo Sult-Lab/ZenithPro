@@ -15,6 +15,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
+import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
@@ -28,7 +29,9 @@ import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun MainNavGraph() {
+fun MainNavGraph(
+    dataPersistentViewModel: DataPersistentViewModel
+) {
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
         topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys + setOf(Route.Home.Customers, Route.Home.Expenses,
@@ -89,7 +92,6 @@ fun MainNavGraph() {
 
                         entry<Route.Home.Dashboard> {
                             DashboardScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onAddProduct = { navigator.navigate(Route.Home.AddProduct) },
                                 onViewReports = {},
@@ -103,14 +105,12 @@ fun MainNavGraph() {
                         entry<Route.Home.Inventory> {
                             InventoryScreen(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onProductClick = {},
                                 onMenuClick = { scope.launch { drawerState.open() } }
                             )
                         }
                         entry<Route.Home.Sales> {
                             SalesScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onSaleClick = {},
                                 onNewSale = {},
                                 onMenuClick = { scope.launch { drawerState.open() } }
@@ -123,9 +123,6 @@ fun MainNavGraph() {
                         }
                         entry<Route.Home.Settings> {
                             SettingsScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
-                                currentUserId = "",
-                                isAdmin = true,
                                 onBack = {},
                                 onAccountSettings = {},
                                 onNotifications = {},
@@ -136,14 +133,11 @@ fun MainNavGraph() {
 
                         entry<Route.Home.Branches> {
                             BranchScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
-                                isAdmin = true,
                                 onBack = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.Customers> {
                             CustomerListScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onCustomerClick = {},
                                 onAddCustomer = {},
                                 onViewReports = {},
@@ -152,7 +146,6 @@ fun MainNavGraph() {
                         }
                         entry<Route.Home.Expenses> {
                             ExpenseListScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onAddExpense = {},
                                 onExpenseClick = {},
                                 onMenuClick = { scope.launch { drawerState.open() } }
@@ -160,7 +153,6 @@ fun MainNavGraph() {
                         }
                         entry<Route.Home.NewSale> {
                             NewSaleScreen(
-                                businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
                                 onBack = { navigator.goBack() }
                             )
                         }

@@ -27,6 +27,6 @@ val expenseModule = module {
     factory { GetExpenseStatsUseCase(get()) }
     factory { DeleteExpenseUseCase(get()) }
 
-    viewModel { ExpenseListViewModel(get(), get(), get(), get(), get()) }
+    viewModel { ExpenseListViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { AddEditExpenseViewModel(get(), get()) }
 }

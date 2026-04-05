@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.auth.domain.repository
 
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
+import com.techsultan.zenithpro.features.auth.data.remote.SignInResponseDto
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import kotlinx.coroutines.flow.Flow
 

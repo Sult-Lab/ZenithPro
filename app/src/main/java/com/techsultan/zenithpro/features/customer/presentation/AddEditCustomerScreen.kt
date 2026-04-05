@@ -134,7 +134,7 @@ fun AddEditCustomerScreen(
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick  = { viewModel.save(businessId) },
+                onClick  = { viewModel.save() },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled  = !state.isLoading,
                 shape    = RoundedCornerShape(10.dp),

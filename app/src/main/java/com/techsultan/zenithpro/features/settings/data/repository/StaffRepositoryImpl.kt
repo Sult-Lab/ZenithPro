@@ -82,10 +82,8 @@ class SettingsRepositoryImpl(
     override suspend fun getStaffList(businessId: String): Resource<List<StaffMember>> =
         withContext(Dispatchers.IO) {
             try {
-                val staff = postgrest.from("user_profiles")
-                    .select {
-                        filter { eq("business_id", businessId) }
-                    }
+                val staff = postgrest
+                    .rpc("get_staff_list")
                     .decodeList<StaffMember>()
                 Resource.Success(staff)
             } catch (e: Exception) {

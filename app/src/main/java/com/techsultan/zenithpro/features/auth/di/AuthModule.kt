@@ -13,7 +13,7 @@ import org.koin.dsl.module
 
 val authModule = module {
     single<AuthenticationRepository> {
-        AuthenticationRepositoryImpl(get(), get(), get())
+        AuthenticationRepositoryImpl(get(), get(), get(), get())
     }
 
     factory { SignUpUseCase(get()) }

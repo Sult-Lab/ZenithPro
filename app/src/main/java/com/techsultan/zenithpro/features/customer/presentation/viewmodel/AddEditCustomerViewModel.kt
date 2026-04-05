@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.customer.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.data.remote.CustomerRequest
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 
 class AddEditCustomerViewModel(
     private val upsertCustomerUseCase: UpsertCustomerUseCase,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddEditCustomerUiState())
@@ -23,6 +25,14 @@ class AddEditCustomerViewModel(
 
     private val _events = MutableSharedFlow<AddEditCustomerEvent>()
     val events = _events.asSharedFlow()
+
+    private var businessId: String? = null
+
+    init {
+        viewModelScope.launch {
+            businessId = sessionManager.loadSession()?.businessId
+        }
+    }
 
     // Pre-fill form when editing
     fun loadCustomer(customer: CustomerEntity) {
@@ -47,7 +57,7 @@ class AddEditCustomerViewModel(
     fun onAddressChanged(value: String)    { _state.update { it.copy(address = value) } }
     fun onNotesChanged(value: String)      { _state.update { it.copy(notes = value) } }
 
-    fun save(businessId: String) {
+    fun save() {
         val s = _state.value
         if (s.firstName.isBlank()) {
             _state.update { it.copy(firstNameError = "First name is required") }
@@ -55,6 +65,13 @@ class AddEditCustomerViewModel(
         }
 
         viewModelScope.launch {
+            val bId = businessId ?: sessionManager.loadSession()?.businessId
+            if (bId == null) {
+                _events.emit(AddEditCustomerEvent.ShowError("Session expired. Please login again."))
+                return@launch
+            }
+            businessId = bId
+
             _state.update { it.copy(isLoading = true, firstNameError = null) }
 
             val result = upsertCustomerUseCase(
@@ -67,7 +84,7 @@ class AddEditCustomerViewModel(
                     address   = s.address.trim(),
                     notes     = s.notes.trim()
                 ),
-                businessId = businessId
+                businessId = bId
             )
 
             when (result) {
