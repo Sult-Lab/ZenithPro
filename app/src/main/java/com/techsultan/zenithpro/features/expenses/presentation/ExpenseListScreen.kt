@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
@@ -82,7 +83,7 @@ fun ExpenseListScreen(
     viewModel: ExpenseListViewModel = koinViewModel(),
     onAddExpense: () -> Unit,
     onExpenseClick: (ExpenseEntity) -> Unit,
-    onMenuClick: () -> Unit = {}
+    onBack: () -> Unit
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -106,8 +107,8 @@ fun ExpenseListScreen(
             ZenithTopAppBar(
                 title = "Expenses",
                 navigationIcon = {
-                    IconButton(onClick = onMenuClick) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {

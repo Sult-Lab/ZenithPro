@@ -31,15 +31,31 @@ sealed interface Route: NavKey {
         @Serializable
         data object NewSale : Route, NavKey
         @Serializable
-        data object Customers : Route, NavKey
-        @Serializable
-        data object Expenses : Route, NavKey
-        @Serializable
         data object Branches : Route, NavKey
         @Serializable
         data object Production : Route, NavKey
         @Serializable
         data object Material : Route, NavKey
+    }
+
+    @Serializable
+    data object Expense : Route, NavKey {
+        @Serializable
+        data object ExpenseListScreen : Route, NavKey
+        @Serializable
+        data object AddEditExpenseScreen : Route, NavKey
+    }
+
+    @Serializable
+    data object Customer : Route, NavKey {
+        @Serializable
+        data object CustomerListScreen : Route, NavKey
+        @Serializable
+        data object CustomerReportScreen : Route, NavKey
+        @Serializable
+        data object CustomerDetailScreen : Route, NavKey
+        @Serializable
+        data object AddEditCustomerScreen : Route, NavKey
     }
 
 }

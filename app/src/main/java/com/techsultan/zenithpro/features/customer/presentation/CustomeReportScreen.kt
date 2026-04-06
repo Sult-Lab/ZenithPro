@@ -48,11 +48,12 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerReportsScreen(
-    businessId: String,
     viewModel: CustomerReportsViewModel = koinViewModel(),
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(businessId) { viewModel.load(businessId) }
+    val session = viewModel.session
+    val businessId = session?.businessId
+    LaunchedEffect(businessId) { viewModel.load(businessId ?: "") }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 

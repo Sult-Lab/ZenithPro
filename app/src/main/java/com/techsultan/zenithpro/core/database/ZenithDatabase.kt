@@ -9,6 +9,9 @@ import com.techsultan.zenithpro.features.customer.data.local.CustomerDao
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
+import com.techsultan.zenithpro.features.material.data.local.MaterialDao
+import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
+import com.techsultan.zenithpro.features.material.data.local.RecipeEntity
 import com.techsultan.zenithpro.features.product.data.local.ProductDao
 import com.techsultan.zenithpro.features.product.data.local.ProductEntity
 import com.techsultan.zenithpro.features.product.data.local.ProductStockDao
@@ -16,6 +19,8 @@ import com.techsultan.zenithpro.features.product.data.local.ProductStockEntity
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantDao
 import com.techsultan.zenithpro.features.product.data.local.ProductVariantEntity
 import com.techsultan.zenithpro.features.product.data.local.VariantAttributeEntity
+import com.techsultan.zenithpro.features.production.data.local.ProductionOrderDao
+import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
@@ -33,9 +38,12 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         CustomerEntity::class,
         ExpenseEntity::class,
         BusinessSettingsEntity::class,
-        BranchEntity::class
+        BranchEntity::class,
+        MaterialEntity::class,
+        RecipeEntity::class,
+        ProductionOrderEntity::class
                ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -48,6 +56,8 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val expenseDao: ExpenseDao
     abstract val branchDao: BranchDao
     abstract val businessSettingsDao: BusinessSettingsDao
+    abstract val materialDao: MaterialDao
+    abstract val productionOrderDao: ProductionOrderDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"

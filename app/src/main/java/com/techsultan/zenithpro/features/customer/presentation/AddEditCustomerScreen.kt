@@ -45,7 +45,6 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditCustomerScreen(
-    businessId: String,
     existingCustomer: CustomerEntity? = null,
     viewModel: AddEditCustomerViewModel = koinViewModel(),
     onSaved: (String) -> Unit,

@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.customer.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class CustomerDetailViewModel(
     private val getCustomerDetailUseCase: GetCustomerDetailUseCase,
     private val recordDebtPaymentUseCase: RecordDebtPaymentUseCase,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerDetailUiState())
@@ -26,6 +28,8 @@ class CustomerDetailViewModel(
 
     private val _events = MutableSharedFlow<CustomerDetailEvent>()
     val events = _events.asSharedFlow()
+
+    val session = sessionManager.currentSession
 
     fun init(customerId: String, businessId: String) {
         viewModelScope.launch {

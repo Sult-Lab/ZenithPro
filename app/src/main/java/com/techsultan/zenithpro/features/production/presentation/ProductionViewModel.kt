@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.production.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
@@ -35,16 +36,17 @@ class ProductionViewModel(
     private val _events = MutableSharedFlow<ProductionEvent>()
     val events = _events.asSharedFlow()
 
-    val session = sessionManager.currentSession!!
+    private var session: UserSession? = null
     private var businessId: String? = null
 
     init {
-      viewModelScope.launch {
-          businessId = sessionManager.loadSession()?.businessId
-          if (businessId != null){
-              init(businessId)
-          }
-      }
+        viewModelScope.launch {
+            session = sessionManager.loadSession()
+            businessId = session?.businessId
+            if (businessId != null) {
+                init(businessId)
+            }
+        }
     }
 
     fun init(businessId: String?) {
@@ -78,10 +80,17 @@ class ProductionViewModel(
     ) {
         viewModelScope.launch {
             val bId = businessId ?: return@launch
+            val currentSession = session ?: return@launch
+            
             _state.update { it.copy(isSaving = true) }
             when (val result = createOrderUseCase(
-                variantId, quantity, session.branchId, notes, bId, session.userId)
-            ) {
+                variantId, 
+                quantity, 
+                currentSession.branchId, 
+                notes, 
+                bId, 
+                currentSession.userId
+            )) {
                 is Resource.Success -> {
                     _state.update { it.copy(isSaving = false) }
                     _events.emit(ProductionEvent.OrderCreated)
@@ -103,8 +112,11 @@ class ProductionViewModel(
 
     fun completeOrder(orderId: String) {
         viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            val currentSession = session ?: return@launch
+            
             _state.update { it.copy(isCompleting = true) }
-            when (val result = completeOrderUseCase(orderId, session.businessId, session.userId)) {
+            when (val result = completeOrderUseCase(orderId, bId, currentSession.userId)) {
                 is Resource.Success -> {
                     _state.update { it.copy(isCompleting = false) }
                     _events.emit(ProductionEvent.OrderCompleted)
