@@ -18,11 +18,17 @@ import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
+import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
+import com.techsultan.zenithpro.features.customer.presentation.CustomerDetailScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
+import com.techsultan.zenithpro.features.customer.presentation.CustomerReportsScreen
 import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
+import com.techsultan.zenithpro.features.expenses.presentation.AddEditExpenseScreen
 import com.techsultan.zenithpro.features.expenses.presentation.ExpenseListScreen
+import com.techsultan.zenithpro.features.material.presentation.MaterialScreen
 import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.NewSaleScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
@@ -34,8 +40,7 @@ fun MainNavGraph(
 ) {
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
-        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys + setOf(Route.Home.Customers, Route.Home.Expenses,
-            Route.Home.Branches)
+        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys
     )
     val navigator = remember { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -54,19 +59,31 @@ fun MainNavGraph(
         onCustomersClick = {
             scope.launch {
                 drawerState.close()
-                navigator.navigate(Route.Home.Customers)
+                navigator.navigate(Route.Customer.CustomerListScreen)
             }
         },
         onExpensesClick = {
             scope.launch {
                 drawerState.close()
-                navigator.navigate(Route.Home.Expenses)
+                navigator.navigate(Route.Expense.ExpenseListScreen)
             }
         },
         onBranchesClick = {
             scope.launch {
                 drawerState.close()
                 navigator.navigate(Route.Home.Branches)
+            }
+        },
+        onMaterialClick = {
+            scope.launch {
+                drawerState.close()
+                navigator.navigate(Route.Home.Material)
+            }
+        },
+        onProductionClick = {
+            scope.launch {
+                drawerState.close()
+                navigator.navigate(Route.Home.Production)
             }
         }
     ) {
@@ -136,19 +153,25 @@ fun MainNavGraph(
                                 onBack = { navigator.goBack() }
                             )
                         }
-                        entry<Route.Home.Customers> {
+                        entry<Route.Customer.CustomerListScreen> {
                             CustomerListScreen(
-                                onCustomerClick = {},
-                                onAddCustomer = {},
-                                onViewReports = {},
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                onCustomerClick = { navigator.navigate(Route.Customer.CustomerDetailScreen) },
+                                onAddCustomer = { navigator.navigate(Route.Customer.AddEditCustomerScreen) },
+                                onViewReports = { navigator.navigate(Route.Customer.CustomerReportScreen) },
+                                onBack = { navigator.goBack() }
                             )
                         }
-                        entry<Route.Home.Expenses> {
+                        entry<Route.Expense.ExpenseListScreen> {
                             ExpenseListScreen(
-                                onAddExpense = {},
+                                onAddExpense = { navigator.navigate(Route.Expense.AddEditExpenseScreen) },
                                 onExpenseClick = {},
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Expense.AddEditExpenseScreen> {
+                            AddEditExpenseScreen(
+                                onSaved = {  },
+                                onBack = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.NewSale> {
@@ -159,6 +182,35 @@ fun MainNavGraph(
                         entry<Route.Home.AddProduct> {
                             AddProductScreen(
                                 navigateBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Production> {
+                            ProductionScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Material> {
+                            MaterialScreen(
+                                onNewProduction = {},
+                                onMaterialClick = {},
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Customer.AddEditCustomerScreen> {
+                            AddEditCustomerScreen(
+                                onSaved = { navigator.goBack() },
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Customer.CustomerDetailScreen> {
+                            CustomerDetailScreen(
+                                onEdit = {},
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Customer.CustomerReportScreen> {
+                            CustomerReportsScreen(
+                                onBack = { navigator.goBack() }
                             )
                         }
                     }

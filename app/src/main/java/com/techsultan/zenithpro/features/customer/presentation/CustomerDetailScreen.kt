@@ -66,17 +66,19 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerDetailScreen(
-    customerId: String,
-    businessId: String,
     viewModel: CustomerDetailViewModel = koinViewModel(),
     onEdit: (CustomerEntity) -> Unit,
     onBack: () -> Unit,
 ) {
-    LaunchedEffect(customerId) { viewModel.init(customerId, businessId) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val session = viewModel.session
     val snackbarHost = remember { SnackbarHostState() }
     var showPaymentSheet by remember { mutableStateOf<SaleWithItems?>(null) }
+
+//    LaunchedEffect(customerId) {
+//        viewModel.init(customerId, session?.businessId ?: "")
+//    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->

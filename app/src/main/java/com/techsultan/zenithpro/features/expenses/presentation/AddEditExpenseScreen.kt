@@ -60,16 +60,17 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditExpenseScreen(
-    businessId: String,
-    staffId: String,
     existingExpense: ExpenseEntity? = null,
     viewModel: AddEditExpenseViewModel = koinViewModel(),
     onSaved: () -> Unit,
     onBack: () -> Unit,
 ) {
+
+    val session = viewModel.session
+    val businessId = session?.businessId
     LaunchedEffect(Unit) {
         existingExpense?.let { viewModel.loadForEdit(it) }
-        viewModel.loadCategories(businessId)
+        viewModel.loadCategories(businessId ?: "")
     }
 
     val state    by viewModel.state.collectAsStateWithLifecycle()
@@ -206,7 +207,7 @@ fun AddEditExpenseScreen(
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick  = { viewModel.save(businessId, staffId) },
+                onClick  = { viewModel.save(businessId ?: "", staffId = session?.userId ?: "") },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled  = !state.isLoading,
                 shape    = RoundedCornerShape(10.dp),

@@ -48,21 +48,20 @@ class SessionManager(
         _currentSession = session
     }
 
-
     suspend fun initSessionFromServer(userId: String): Result<UserSession> {
         return try {
-
             val profile = withContext(Dispatchers.IO) {
                 postgrest
-                    .rpc("get_business_profiles")
+                    .from("user_profiles")
+                    .select()
                     .decodeList<UserProfileDto>()
-                    .firstOrNull { it.id == userId }
+                    .firstOrNull()
                     ?: throw Exception("User profile not found")
             }
 
             if (profile.status != "ACTIVE") {
                 supabaseClient.auth.signOut()
-                return Result.failure(Exception("Account is inactive. Contact your administrator."))
+                return Result.failure(Exception("Account is inactive"))
             }
 
             val business = withContext(Dispatchers.IO) {
@@ -91,13 +90,12 @@ class SessionManager(
                 businessName    = business.name,
                 businessPhone   = business.phone,
                 businessAddress = business.address,
-                currencySymbol  = settings?.currencySymbol ?: "₦"
+                currencySymbol  = settings?.currencySymbol ?: "₦",
+                branchId        = if (profile.role == "ADMIN") null else profile.branchId
             )
 
             sessionDataStore.saveSession(session)
             _currentSession = session
-
-            Log.d("SessionManager", "Session initialized: ${session.fullName} — ${session.role}")
             Result.success(session)
         } catch (e: Exception) {
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)

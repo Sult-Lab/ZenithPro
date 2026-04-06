@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.customer.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
@@ -17,10 +18,13 @@ class CustomerReportsViewModel(
     private val getCustomerReportsUseCase: GetCustomerReportsUseCase,
     private val customerRepository: CustomerRepository,
     private val networkMonitor: NetworkMonitor,
+    val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerReportsUiState())
     val state: StateFlow<CustomerReportsUiState> = _state.asStateFlow()
+
+    val session = sessionManager.currentSession
 
     fun load(businessId: String) {
         viewModelScope.launch {

@@ -11,7 +11,9 @@ import com.techsultan.zenithpro.features.branch.di.branchModule
 import com.techsultan.zenithpro.features.customer.di.customerModule
 import com.techsultan.zenithpro.features.dashboard.di.dashboardModule
 import com.techsultan.zenithpro.features.expenses.di.expenseModule
+import com.techsultan.zenithpro.features.material.di.materialModule
 import com.techsultan.zenithpro.features.product.di.productModule
+import com.techsultan.zenithpro.features.production.di.productionModule
 import com.techsultan.zenithpro.features.sales.di.salesModule
 import com.techsultan.zenithpro.features.settings.di.settingsModule
 import io.github.jan.supabase.auth.Auth
@@ -52,7 +54,9 @@ class ZenithApplication : Application(), KoinComponent {
                 settingsModule,
                 reportsModule,
                 branchModule,
-                sessionModule
+                sessionModule,
+                productionModule,
+                materialModule
             )
         }
 

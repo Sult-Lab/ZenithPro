@@ -10,7 +10,8 @@ data class UserSession(
     val businessName: String,
     val businessPhone: String?,
     val businessAddress: String?,
-    val currencySymbol: String = "₦"
+    val currencySymbol: String = "₦",
+    val branchId: String? = null,
 ) {
     val fullName: String
         get() = "$firstName ${lastName.orEmpty()}".trim()
@@ -20,4 +21,5 @@ data class UserSession(
 
     val isManager: Boolean
         get() = role in listOf("ADMIN", "MANAGER")
+    val staffId: String get() = userId
 }

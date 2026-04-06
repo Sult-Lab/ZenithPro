@@ -18,6 +18,8 @@ fun ZenithNavigationDrawer(
     onCustomersClick: () -> Unit,
     onExpensesClick: () -> Unit,
     onBranchesClick: () -> Unit,
+    onProductionClick: () -> Unit,
+    onMaterialClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
     ModalNavigationDrawer(
@@ -51,6 +53,21 @@ fun ZenithNavigationDrawer(
                         selected = false,
                         onClick = onBranchesClick,
                         icon = { Icon(Icons.Default.Store, contentDescription = null) },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Production") },
+                        selected = false,
+                        onClick = onProductionClick,
+                        icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    )
+
+                    NavigationDrawerItem(
+                        label = { Text("Material") },
+                        selected = false,
+                        onClick = onMaterialClick,
+                        icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                     

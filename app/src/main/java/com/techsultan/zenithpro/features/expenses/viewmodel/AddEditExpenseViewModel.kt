@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.expenses.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
@@ -21,6 +22,7 @@ import java.util.UUID
 class AddEditExpenseViewModel(
     private val upsertExpenseUseCase: UpsertExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddEditExpenseUiState())
@@ -28,6 +30,8 @@ class AddEditExpenseViewModel(
 
     private val _events = MutableSharedFlow<AddEditExpenseEvent>()
     val events = _events.asSharedFlow()
+
+    val session = sessionManager.currentSession
 
     fun loadForEdit(expense: ExpenseEntity) {
         _state.update {
