@@ -1,3 +1,4 @@
+import org.gradle.kotlin.dsl.libs
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -117,4 +118,13 @@ dependencies {
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.functions)
     implementation(libs.supabase.storage)
+
+    //splash screen
+    implementation(libs.core.splashscreen)
+
+    //coil
+    implementation(libs.io.coil)
+
+    //data-store
+    implementation(libs.data.store)
 }

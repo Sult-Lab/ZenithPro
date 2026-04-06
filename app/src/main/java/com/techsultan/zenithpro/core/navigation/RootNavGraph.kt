@@ -1,16 +1,22 @@
 package com.techsultan.zenithpro.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 
 @Composable
-fun RootNavGraph(){
+fun RootNavGraph(dataPersistentViewModel: DataPersistentViewModel){
+    val isLoggedIn by dataPersistentViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    val rootBackStack = rememberNavBackStack(Route.Auth)
+    val initialRoute = if (isLoggedIn) Route.Home else Route.Auth
+    val rootBackStack = rememberNavBackStack(initialRoute)
+
 
     NavDisplay(
         backStack = rootBackStack,
@@ -28,7 +34,9 @@ fun RootNavGraph(){
                 )
             }
             entry<Route.Home> {
-                MainNavGraph()
+                MainNavGraph(
+                    dataPersistentViewModel = dataPersistentViewModel
+                )
             }
         }
     )

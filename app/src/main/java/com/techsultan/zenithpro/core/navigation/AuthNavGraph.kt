@@ -33,8 +33,8 @@ fun AuthGraph(
             }
             entry<Route.Auth.SignUp> {
                 SignUpScreen(
-                    onCreateAccount = navigateToDashboard,
-                    onLoginClick = { authBackStack.add(Route.Auth.SignIn) }
+                    onCreateAccountSuccess = navigateToDashboard,
+                    onLoginClick = { authBackStack.add(Route.Auth.SignIn) },
                 )
             }
         }
