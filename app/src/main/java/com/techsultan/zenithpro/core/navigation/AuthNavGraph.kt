@@ -1,12 +1,14 @@
 package com.techsultan.zenithpro.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.techsultan.zenithpro.features.auth.presentation.ChangePasswordScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignInScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignUpScreen
 
@@ -28,13 +30,21 @@ fun AuthGraph(
             entry<Route.Auth.SignIn> {
                 SignInScreen(
                     onLoginClick = navigateToDashboard,
-                    onCreateAccountClick = { authBackStack.add(Route.Auth.SignUp) }
+                    onCreateAccountClick = { authBackStack.add(Route.Auth.SignUp) },
+                    onMustChangePassword = { authBackStack.add(Route.Auth.ChangePassword(isForced = true)) }
                 )
             }
             entry<Route.Auth.SignUp> {
                 SignUpScreen(
                     onCreateAccountSuccess = navigateToDashboard,
                     onLoginClick = { authBackStack.add(Route.Auth.SignIn) },
+                )
+            }
+            entry<Route.Auth.ChangePassword> { route ->
+                ChangePasswordScreen(
+                    isForcedChange = route.isForced,
+                    onChanged = navigateToDashboard,
+                    onBack = { authBackStack.remove(route) }
                 )
             }
         }

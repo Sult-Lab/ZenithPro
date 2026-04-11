@@ -9,6 +9,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.navigation.RootNavGraph
 import com.techsultan.zenithpro.core.theme.ZenithProTheme
+import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import org.koin.android.ext.android.inject
 
@@ -19,12 +20,10 @@ class MainActivity : ComponentActivity() {
         val dataPersistentViewModel: DataPersistentViewModel by inject()
 
         installSplashScreen().setKeepOnScreenCondition {
-            dataPersistentViewModel.isLoading.value
+            dataPersistentViewModel.authState.value == AuthState.Loading
         }
         enableEdgeToEdge()
         setContent {
-            val isReady by dataPersistentViewModel.isLoading.collectAsStateWithLifecycle()
-            if (isReady) return@setContent
             ZenithProTheme {
                 RootNavGraph(dataPersistentViewModel = dataPersistentViewModel)
             }

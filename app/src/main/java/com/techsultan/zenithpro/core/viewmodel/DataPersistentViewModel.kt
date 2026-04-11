@@ -4,17 +4,22 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.AuthState
+import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
+import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class DataPersistentViewModel(
     private val authRepository: AuthenticationRepository,
     private val auth: Auth,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(true)
@@ -23,36 +28,67 @@ class DataPersistentViewModel(
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
+    private val _logoutState = MutableStateFlow<Resource<Unit>?>(null)
+    val logoutState: StateFlow<Resource<Unit>?> = _logoutState
+
+    private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
+    val authState: StateFlow<AuthState> = _authState
+
     init {
         observeSession()
     }
 
-    private fun observeSession() {
+    fun observeSession() {
         viewModelScope.launch {
+
             auth.awaitInitialization()
 
-            // Try to load local session first
-            val localSession = sessionManager.loadSession()
-            
-            if (localSession != null) {
-                _isLoggedIn.value = true
-                _isLoading.value = false
-            } else {
-
-                val supabaseSession = auth.currentSessionOrNull()
-                if (supabaseSession != null) {
-                    val result = sessionManager.initSessionFromServer(supabaseSession.user?.id ?: "")
-                    _isLoggedIn.value = result.isSuccess
-                } else {
-                    _isLoggedIn.value = false
-                }
-                _isLoading.value = false
-            }
-
             authRepository.sessionState.collect { isAuthenticated ->
-                Log.d("DataPersistentViewModel", "Session state changed: $isAuthenticated")
-                _isLoggedIn.value = isAuthenticated
+
+                if (isAuthenticated) {
+                    val localSession = sessionManager.loadSession()
+
+                    if (localSession != null) {
+                        _authState.value = AuthState.Authenticated
+                    } else {
+                        val supabaseSession = auth.currentSessionOrNull()
+
+                        if (supabaseSession != null) {
+                            val result = sessionManager.initSessionFromServer(
+                                supabaseSession.user?.id ?: ""
+                            )
+
+                            _authState.value = if (result.isSuccess) {
+                                AuthState.Authenticated
+                            } else {
+                                AuthState.Unauthenticated
+                            }
+                        } else {
+                            _authState.value = AuthState.Unauthenticated
+                        }
+                    }
+
+                } else {
+                    _authState.value = AuthState.Unauthenticated
+                }
             }
         }
     }
+
+    fun logout() {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+
+            try {
+                logoutUseCase().collect()
+
+                // Force final state
+                _authState.value = AuthState.Unauthenticated
+
+            } catch (e: Exception) {
+                _authState.value = AuthState.Unauthenticated
+            }
+        }
+    }
+
 }

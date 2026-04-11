@@ -1,7 +1,9 @@
 package com.techsultan.zenithpro.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -14,8 +16,15 @@ import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 fun RootNavGraph(dataPersistentViewModel: DataPersistentViewModel){
     val isLoggedIn by dataPersistentViewModel.isLoggedIn.collectAsStateWithLifecycle()
 
-    val initialRoute = if (isLoggedIn) Route.Home else Route.Auth
+    val initialRoute = remember { if (isLoggedIn) Route.Home else Route.Auth }
     val rootBackStack = rememberNavBackStack(initialRoute)
+
+    LaunchedEffect(isLoggedIn) {
+        if (!isLoggedIn) {
+            rootBackStack.remove(Route.Home)
+            rootBackStack.add(Route.Auth)
+        }
+    }
 
 
     NavDisplay(

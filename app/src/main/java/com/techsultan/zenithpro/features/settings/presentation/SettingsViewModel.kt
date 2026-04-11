@@ -49,12 +49,10 @@ class SettingsViewModel(
             businessId = session?.businessId
             currentUserId = session?.userId
             isAdmin = session?.isAdmin ?: false
-            
-            if (businessId != null) {
-                observeSettings()
-                pullFromServer()
-                loadStaff()
-            }
+
+            observeSettings()
+            pullFromServer()
+            loadStaff()
         }
     }
 

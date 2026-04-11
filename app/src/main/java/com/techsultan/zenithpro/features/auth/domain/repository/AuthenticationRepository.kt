@@ -9,15 +9,8 @@ import kotlinx.coroutines.flow.Flow
 interface AuthenticationRepository {
 
     fun signUp(request: SignUpRequest): Flow<Resource<Unit>>
-    fun login(request: SignInRequest): Flow<Resource<Unit>>
+    fun login(request: SignInRequest): Flow<Resource<Boolean>>
     fun isUserLoggedIn(): Boolean
     fun logout(): Flow<Resource<Unit>>
-    fun createStaff(
-        email: String,
-        firstName: String,
-        lastName: String,
-        role: String,
-        temporaryPassword: String
-    ): Flow<Resource<String>>
     val sessionState: Flow<Boolean>
 }

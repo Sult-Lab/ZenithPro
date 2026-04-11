@@ -53,7 +53,8 @@ import org.koin.androidx.compose.koinViewModel
 fun SignInScreen(
     viewModel: AuthViewModel = koinViewModel(),
     onLoginClick: () -> Unit,
-    onCreateAccountClick: () -> Unit
+    onCreateAccountClick: () -> Unit,
+    onMustChangePassword: () -> Unit
 ) {
     val state = viewModel.loginState.value
     val context = LocalContext.current
@@ -61,13 +62,17 @@ fun SignInScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(key1 = state.isSuccess) {
-        if (state.isSuccess) {
-            onLoginClick()
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                AuthViewModel.AuthEvent.LoginSuccess -> onLoginClick()
+                AuthViewModel.AuthEvent.LoginSuccessMustChangePassword -> onMustChangePassword()
+                else -> {}
+            }
         }
     }
 
-    LaunchedEffect(key1 = state.error) {
+    LaunchedEffect(state.error) {
         state.error?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
         }
@@ -250,6 +255,6 @@ fun SignInScreen(
 
 @Preview
 @Composable
-fun SignInScreen(){
-    SignInScreen(onLoginClick = {}, onCreateAccountClick = {})
+fun SignInScreenPreview(){
+    SignInScreen(onLoginClick = {}, onCreateAccountClick = {}, onMustChangePassword = {})
 }

@@ -12,6 +12,8 @@ sealed interface Route: NavKey {
         data object SignIn : Route, NavKey
         @Serializable
         data object SignUp : Route, NavKey
+        @Serializable
+        data class ChangePassword(val isForced: Boolean) : Route, NavKey
     }
 
     @Serializable
@@ -36,6 +38,14 @@ sealed interface Route: NavKey {
         data object Production : Route, NavKey
         @Serializable
         data object Material : Route, NavKey
+
+        @Serializable
+        data object CreateStaff : Route, NavKey
+
+        @Serializable
+        data object BusinessInformationScreen : Route, NavKey
+        @Serializable
+        data object StaffManagementScreen : Route, NavKey
     }
 
     @Serializable

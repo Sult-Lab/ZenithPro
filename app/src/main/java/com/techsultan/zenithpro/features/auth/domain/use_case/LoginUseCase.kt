@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 class LoginUseCase(private val repository: AuthenticationRepository) {
 
-    operator fun invoke(request: SignInRequest): Flow<Resource<Unit>> {
+    operator fun invoke(request: SignInRequest): Flow<Resource<Boolean>> {
         return repository.login(request)
     }
 }

@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.production.data.repository
 
+import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
@@ -136,6 +137,10 @@ class ProductionRepositoryImpl(
 
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
+            if (businessId.isBlank()) {
+                Log.e("ProductionRepo", "pullFromServer: businessId is blank")
+                return@withContext Resource.Error("Business ID is missing")
+            }
             try {
                 val remote = postgrest.from("production_orders").select {
                     filter { eq("business_id", businessId) }
@@ -150,6 +155,7 @@ class ProductionRepositoryImpl(
 
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("ProductionRepo", "pullFromServer error: ${e.message}", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }

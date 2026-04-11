@@ -4,10 +4,25 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
 
 fun BusinessSettingsDto.toEntity() = BusinessSettingsEntity(
-    businessId = businessId, currencySymbol = currencySymbol,
-    currencyCode = currencyCode, taxRate = taxRate,
+    businessId = businessId,
+    currencySymbol = currencySymbol,
+    currencyCode = currencyCode,
+    taxRate = taxRate,
     allowNegativeStock = allowNegativeStock,
     requireCustomerSale = requireCustomerSale,
     lowStockThreshold = lowStockThreshold,
-    receiptFooter = receiptFooter, updatedAt = updatedAt
+    receiptFooter = receiptFooter,
+    updatedAt = updatedAt
+)
+
+fun BusinessSettingsEntity.toDto() = BusinessSettingsDto(
+    businessId = businessId,
+    currencySymbol = currencySymbol,
+    currencyCode = currencyCode,
+    taxRate = taxRate,
+    allowNegativeStock = allowNegativeStock,
+    requireCustomerSale = requireCustomerSale,
+    lowStockThreshold = lowStockThreshold,
+    receiptFooter = receiptFooter,
+    updatedAt = updatedAt
 )

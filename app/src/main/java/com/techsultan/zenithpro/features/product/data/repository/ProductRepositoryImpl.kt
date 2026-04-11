@@ -267,6 +267,12 @@ class ProductRepositoryImpl(
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
             Log.d("ProductRepo", "pullFromServer: Starting for business $businessId")
+            
+            if (businessId.isBlank()) {
+                Log.e("ProductRepo", "pullFromServer: businessId is blank")
+                return@withContext Resource.Error("Business ID is missing")
+            }
+
             try {
                 // 1. Snapshot local unsynced IDs — we never overwrite these
                 val unsyncedProductIds = productDao.getUnsyncedProducts()

@@ -3,18 +3,28 @@ package com.techsultan.zenithpro.core.navigation
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
+import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
@@ -31,7 +41,10 @@ import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.NewSaleScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
+import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
+import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
+import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -45,6 +58,8 @@ fun MainNavGraph(
     val navigator = remember { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    val logoutState by dataPersistentViewModel.logoutState.collectAsStateWithLifecycle()
 
     // Gesture and Bottom Bar visibility logic
     val isBottomBarDestination = navigationState.topLevelRoute in TOP_LEVEL_DESTINATIONS.keys
@@ -52,10 +67,38 @@ fun MainNavGraph(
     val isAtRootOfStack = currentStack?.size == 1
     val gesturesEnabled = isBottomBarDestination && isAtRootOfStack
 
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Log out") },
+            text = { Text("Are you sure you want to log out of your account?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        dataPersistentViewModel.logout()
+                    }
+                ) {
+                    Text("Log out", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     ZenithNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = gesturesEnabled,
-        onLogout = { /* TODO: Implement logout */ },
+        onLogout = {
+            scope.launch {
+                drawerState.close()
+                showLogoutDialog = true
+            }
+        },
         onCustomersClick = {
             scope.launch {
                 drawerState.close()
@@ -144,7 +187,9 @@ fun MainNavGraph(
                                 onAccountSettings = {},
                                 onNotifications = {},
                                 onAbout = {},
-                                onLogout = {}
+                                onLogout = { showLogoutDialog = true },
+                                onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
+                                onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) }
                             )
                         }
 
@@ -210,6 +255,23 @@ fun MainNavGraph(
                         }
                         entry<Route.Customer.CustomerReportScreen> {
                             CustomerReportsScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.BusinessInformationScreen> {
+                            BusinessInformationScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.StaffManagementScreen> {
+                            StaffManagementScreen(
+                                onBack = { navigator.goBack() },
+                                onAddStaff = { navigator.navigate(Route.Home.CreateStaff)}
+                            )
+                        }
+                        entry<Route.Home.CreateStaff> {
+                            CreateStaffScreen(
+                                onCreated = { navigator.goBack() },
                                 onBack = { navigator.goBack() }
                             )
                         }

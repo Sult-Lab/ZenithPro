@@ -160,6 +160,10 @@ class CustomerRepositoryImpl(
 
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
+            if (businessId.isBlank()) {
+                Log.e("CustomerRepo", "pullFromServer: businessId is blank")
+                return@withContext Resource.Error("Business ID is missing")
+            }
             try {
                 val remote = postgrest
                     .from("customers")
@@ -191,6 +195,7 @@ class CustomerRepositoryImpl(
 
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("CustomerRepo", "pullFromServer error: ${e.message}", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }

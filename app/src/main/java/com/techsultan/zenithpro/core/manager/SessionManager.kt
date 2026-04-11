@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.data.remote.UserProfileDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +19,7 @@ import kotlinx.coroutines.withContext
 class SessionManager(
     private val sessionDataStore: SessionDataStore,
     private val postgrest: Postgrest,
-    private val supabaseClient: SupabaseClient,
+    private val auth: Auth,
 ) {
 
     @Volatile
@@ -35,6 +36,7 @@ class SessionManager(
 
         // Try DataStore
         val stored = sessionDataStore.getSession()
+        Log.d("SessionManager", "Loaded session from DataStore: $stored")
         if (stored != null) {
             _currentSession = stored
             return stored
@@ -53,14 +55,13 @@ class SessionManager(
             val profile = withContext(Dispatchers.IO) {
                 postgrest
                     .from("user_profiles")
-                    .select()
-                    .decodeList<UserProfileDto>()
-                    .firstOrNull()
-                    ?: throw Exception("User profile not found")
+                    .select { filter { eq("id", userId) } }
+                    .decodeSingle<UserProfileDto>()
             }
+            Log.d("SessionManager", "Loaded profile from Supabase: $profile")
 
             if (profile.status != "ACTIVE") {
-                supabaseClient.auth.signOut()
+                auth.signOut()
                 return Result.failure(Exception("Account is inactive"))
             }
 
@@ -90,14 +91,17 @@ class SessionManager(
                 businessName    = business.name,
                 businessPhone   = business.phone,
                 businessAddress = business.address,
+                mustChangePassword = profile.mustChangePassword,
                 currencySymbol  = settings?.currencySymbol ?: "₦",
                 branchId        = if (profile.role == "ADMIN") null else profile.branchId
             )
 
             sessionDataStore.saveSession(session)
             _currentSession = session
+            Log.d("SessionManager", "Session initialized and saved for: ${session.fullName}")
             Result.success(session)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)
             Result.failure(e)
         }
@@ -105,7 +109,7 @@ class SessionManager(
 
     suspend fun signOut() {
         try {
-            supabaseClient.auth.signOut()
+            auth.signOut()
         } catch (e: Exception) {
             Log.w("SessionManager", "Supabase sign out failed: ${e.message}")
         } finally {

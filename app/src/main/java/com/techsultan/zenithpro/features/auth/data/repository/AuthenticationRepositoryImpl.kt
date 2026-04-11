@@ -1,12 +1,12 @@
 package com.techsultan.zenithpro.features.auth.data.repository
 
 import android.util.Log
+import com.techsultan.zenithpro.core.database.ZenithDatabase
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.features.auth.data.remote.CreateStaffRequest
-import com.techsultan.zenithpro.features.auth.data.remote.CreateStaffResponse
+import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
+import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffResponse
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
-import com.techsultan.zenithpro.features.auth.data.remote.SignInResponseDto
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import io.github.jan.supabase.auth.Auth
@@ -15,20 +15,20 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.ktor.client.call.body
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 class AuthenticationRepositoryImpl(
     private val auth: Auth,
     private val postgrest: Postgrest,
     private val functions: Functions,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val database: ZenithDatabase
 ) : AuthenticationRepository {
 
     override fun signUp(request: SignUpRequest): Flow<Resource<Unit>> = flow {
@@ -45,7 +45,7 @@ class AuthenticationRepositoryImpl(
         }
     }
 
-    override fun login(request: SignInRequest): Flow<Resource<Unit>> = flow {
+    override fun login(request: SignInRequest): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
             auth.signInWith(Email) {
@@ -53,11 +53,19 @@ class AuthenticationRepositoryImpl(
                 password = request.password
             }
             val session = auth.currentSessionOrNull()
-            if (session != null){
-                sessionManager.initSessionFromServer(session.user?.id ?: "")
+            if (session != null) {
+                val result = sessionManager.initSessionFromServer(session.user?.id ?: "")
+                result.fold(
+                    onSuccess = { userSession ->
+                        emit(Resource.Success(userSession.mustChangePassword))
+                    },
+                    onFailure = { e ->
+                        emit(Resource.Error(e.localizedMessage ?: "Failed to load session"))
+                    }
+                )
+            } else {
+                emit(Resource.Error("No session found after login"))
             }
-            Log.d("SignIn", "Session after login: ${session?.user?.email}")
-            emit(Resource.Success(Unit))
         } catch (e: Exception) {
             Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
             emit(Resource.Error(e.localizedMessage ?: "Login failed"))
@@ -71,40 +79,14 @@ class AuthenticationRepositoryImpl(
     override fun logout(): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading())
         try {
-            auth.signOut()
+            sessionManager.signOut()
+            database.clearAllTables()
+
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
             emit(Resource.Error(e.localizedMessage ?: "Logout failed"))
         }
-    }
-
-    override fun createStaff(
-        email: String,
-        firstName: String,
-        lastName: String,
-        role: String,
-        temporaryPassword: String
-    ): Flow<Resource<String>> = flow {
-        emit(Resource.Loading())
-        try {
-            val request = CreateStaffRequest(
-                email = email,
-                firstName = firstName,
-                lastName = lastName,
-                role = role,
-                temporaryPassword = temporaryPassword
-            )
-            
-            val response = functions.invoke(
-                function = "create_staff",
-                body = request
-            )
-            val staffResponse = response.body<CreateStaffResponse>()
-            emit(Resource.Success(staffResponse.staffUserId))
-        } catch (e: Exception) {
-            emit(Resource.Error(e.localizedMessage ?: "Failed to create staff member"))
-        }
-    }
+    }.flowOn(Dispatchers.IO)
 
     override val sessionState: Flow<Boolean> = auth.sessionStatus
         .map { status ->

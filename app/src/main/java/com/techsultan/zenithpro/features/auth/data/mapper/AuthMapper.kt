@@ -13,5 +13,6 @@ fun SignInResponseDto.toUserSession() = UserSession(
     businessName = business.name,
     businessPhone = business.phone,
     businessAddress = business.address,
-    currencySymbol = settings.currencySymbol
+    currencySymbol = settings.currencySymbol,
+    mustChangePassword = user.mustChangePassword
 )

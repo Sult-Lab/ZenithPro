@@ -12,5 +12,5 @@ val commonModule = module {
     single { ImageUploadManager(get(), androidContext()) }
     single { NetworkMonitor(androidContext()) }
     single { ImageCacheManager(androidContext()) }
-    viewModel { DataPersistentViewModel(get(), get(), get()) }
+    viewModel { DataPersistentViewModel(get(), get(), get(), get()) }
 }
