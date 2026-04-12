@@ -10,19 +10,33 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 
 @Composable
 fun RootNavGraph(dataPersistentViewModel: DataPersistentViewModel){
-    val isLoggedIn by dataPersistentViewModel.isLoggedIn.collectAsStateWithLifecycle()
+    val authState by dataPersistentViewModel.authState.collectAsStateWithLifecycle()
 
-    val initialRoute = remember { if (isLoggedIn) Route.Home else Route.Auth }
+    // Don't render anything until auth is resolved — splash screen handles this window
+    if (authState == AuthState.Loading) return
+
+    val initialRoute = remember(authState) {
+        if (authState == AuthState.Authenticated) Route.Home else Route.Auth
+    }
     val rootBackStack = rememberNavBackStack(initialRoute)
 
-    LaunchedEffect(isLoggedIn) {
-        if (!isLoggedIn) {
-            rootBackStack.remove(Route.Home)
-            rootBackStack.add(Route.Auth)
+    LaunchedEffect(authState) {
+        when (authState) {
+            AuthState.Authenticated -> {
+                rootBackStack.remove(Route.Auth)
+                if (Route.Home !in rootBackStack) rootBackStack.add(Route.Home)
+            }
+            AuthState.Unauthenticated -> {
+                rootBackStack.remove(Route.Home)
+                if (Route.Auth !in rootBackStack) rootBackStack.add(Route.Auth)
+            }
+            AuthState.Loading -> Unit
+            else -> {}
         }
     }
 

@@ -22,15 +22,6 @@ class DataPersistentViewModel(
     private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
 
-    private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _isLoggedIn = MutableStateFlow(false)
-    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
-
-    private val _logoutState = MutableStateFlow<Resource<Unit>?>(null)
-    val logoutState: StateFlow<Resource<Unit>?> = _logoutState
-
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState
 

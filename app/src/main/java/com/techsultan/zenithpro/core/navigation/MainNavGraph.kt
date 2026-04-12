@@ -59,7 +59,6 @@ fun MainNavGraph(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
-    val logoutState by dataPersistentViewModel.logoutState.collectAsStateWithLifecycle()
 
     // Gesture and Bottom Bar visibility logic
     val isBottomBarDestination = navigationState.topLevelRoute in TOP_LEVEL_DESTINATIONS.keys
