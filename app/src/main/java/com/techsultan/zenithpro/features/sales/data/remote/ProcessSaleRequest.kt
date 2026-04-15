@@ -15,5 +15,6 @@ data class ProcessSaleRequest(
     val amountPaid: Long,
     val changeAmount: Long,
     val paymentMethod: String,
-    val notes: String?
+    val notes: String?,
+    val staffId: String,
 )

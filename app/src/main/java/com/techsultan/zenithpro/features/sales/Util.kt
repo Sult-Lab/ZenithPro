@@ -9,7 +9,8 @@ enum class PaymentMethod {
     POS,
     USSD,
     SPLIT,
-    DEBT
+    DEBT,
+    CARD
 }
 enum class SaleStatus { COMPLETED, PARTIAL, REFUNDED, CANCELLED }
 

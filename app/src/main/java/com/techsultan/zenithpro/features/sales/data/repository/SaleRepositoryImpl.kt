@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.sales.data.repository
 
 import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
@@ -38,6 +39,7 @@ class SaleRepositoryImpl(
     private val functions: Functions,
     private val postgrest: Postgrest,
     private val networkMonitor: NetworkMonitor,
+    private val sessionManager: SessionManager
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -66,15 +68,16 @@ class SaleRepositoryImpl(
             // 1. Save sale locally first with PENDING status
             val saleId = UUID.randomUUID().toString()
             val now = Instant.now().toString()
+            val businessId = sessionManager.businessId
 
             saleDao.insertSale(
                 SaleEntity(
                     id = saleId,
                     clientTransactionId = request.clientTransactionId,
-                    businessId = request.items.first().let { "" }, // set from session
+                    businessId = businessId,
                     branchId = request.branchId,
                     customerId = request.customerId,
-                    staffId = "",  // set from session
+                    staffId = request.staffId,
                     subtotal = request.subtotal,
                     discountAmount = request.discountAmount,
                     taxAmount = request.taxAmount,
@@ -108,8 +111,6 @@ class SaleRepositoryImpl(
                 }
             )
 
-            // 2. Push to server — sales MUST sync immediately
-            //    (inventory deduction happens server-side atomically)
             if (!networkMonitor.isConnected()) {
                 return@withContext Resource.Error(
                     "No internet connection. Please connect and try again."
@@ -121,10 +122,10 @@ class SaleRepositoryImpl(
                 body = request
             )
             val result = response.body<ProcessSaleResponse>()
-
+            Log.d("SaleRepo", "processSale: $result")
             // 3. Update local record with server-confirmed ID and SYNCED status
             saleDao.markSynced(saleId)
-
+            Log.d("SaleRepo", "processSale: $result")
             Resource.Success(result)
         } catch (e: Exception) {
             Log.e("SaleRepo", "processSale failed: ${e.message}", e)

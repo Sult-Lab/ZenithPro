@@ -729,6 +729,7 @@ private fun SaleCard(
         PaymentMethod.SPLIT    -> Triple(Icons.AutoMirrored.Filled.CallSplit,   Color(0xFFFFF3E0), Color(0xFFF57C00))
         PaymentMethod.DEBT     -> Triple(Icons.Default.Warning,     Color(0xFFFFEBEE), Color(0xFFC62828))
         PaymentMethod.USSD -> Triple(Icons.Default.Dialpad,     Color(0xFFFFEBEE), Color(0xFF10E4EA))
+        PaymentMethod.CARD -> Triple(Icons.Default.Dialpad,     Color(0xFFFFEBEE), Color(0xFF830A2D))
     }
 
     Card(

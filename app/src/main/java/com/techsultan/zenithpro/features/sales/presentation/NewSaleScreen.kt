@@ -243,8 +243,8 @@ fun NewSaleScreen(
             totalAmount = "₦${cartTotal.formatPrice()}",
             onDismiss = { showPaymentDialog = false },
             onConfirm = { method ->
+                viewModel.checkout()
                 showPaymentDialog = false
-                // TODO: Finalize sale with selected method
             }
         )
     }

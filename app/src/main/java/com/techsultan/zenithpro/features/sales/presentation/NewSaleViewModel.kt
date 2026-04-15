@@ -36,6 +36,7 @@ class NewSaleViewModel(
     private val _events = MutableSharedFlow<NewSaleEvent>()
     val events = _events.asSharedFlow()
 
+    val currentSession = sessionManager.currentSession
     private var businessId: String? = null
 
     private val _cart = MutableStateFlow<Map<String, CartItem>>(emptyMap())
@@ -49,7 +50,7 @@ class NewSaleViewModel(
 
     init {
         viewModelScope.launch {
-            businessId = sessionManager.loadSession()?.businessId
+            businessId = currentSession?.businessId
             if (businessId != null) {
                 observeProducts()
             }
@@ -146,7 +147,7 @@ class NewSaleViewModel(
         }
     }
 
-    fun checkout(branchId: String? = null, notes: String? = null) {
+    fun checkout(notes: String? = null) {
         val currentCartMap = _cart.value
         if (currentCartMap.isEmpty()) return
         
@@ -168,25 +169,37 @@ class NewSaleViewModel(
                 )
             }
 
+            val branchId = currentSession?.branchId
             val result = processSaleUseCase(
-                cart            = remoteCart,
-                customerId      = s.selectedCustomerId,
-                branchId        = branchId,
-                amountPaid      = s.amountPaid,
-                paymentMethod   = s.paymentMethod,
-                discountAmount  = s.discountAmount,
-                notes           = notes
+                cart = remoteCart,
+                customerId = s.selectedCustomerId,
+                branchId = branchId,
+                amountPaid = s.amountPaid,
+                paymentMethod = s.paymentMethod,
+                discountAmount = s.discountAmount,
+                notes = notes,
+                staffId = sessionManager.userId
             )
 
             when (result) {
                 is Resource.Success -> {
+                    val subtotal       = remoteCart.sumOf { it.totalPrice }
+                    val total          = maxOf(0L, subtotal - s.discountAmount)
+                    val effectivePaid  = when (s.paymentMethod) {
+                        PaymentMethod.CASH,
+                        PaymentMethod.CARD,
+                        PaymentMethod.TRANSFER -> if (s.amountPaid <= 0L) total else s.amountPaid
+                        PaymentMethod.DEBT     -> 0L
+                        PaymentMethod.SPLIT    -> s.amountPaid
+                        PaymentMethod.POS,
+                        PaymentMethod.USSD -> if (s.amountPaid <= 0L) total else s.amountPaid
+                    }
                     _state.update { it.copy(isLoading = false) }
                     _events.emit(NewSaleEvent.SaleCompleted(
-                        saleId      = result.data?.saleId ?: "",
-                        change      = maxOf(0L, s.amountPaid - (remoteCart.sumOf { it.totalPrice } - s.discountAmount)),
-                        debtAmount  = result.data?.debtAmount ?: 0L
+                        saleId     = result.data?.saleId ?: "",
+                        change     = maxOf(0L, effectivePaid - total),
+                        debtAmount = result.data?.debtAmount ?: 0L
                     ))
-                    clearCart()
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
