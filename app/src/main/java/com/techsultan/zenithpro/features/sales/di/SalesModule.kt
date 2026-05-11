@@ -28,7 +28,8 @@ val salesModule = module {
         getSaleUseCase = get(),
         getDailySummaryUseCase = get(),
         sessionManager = get(),
-        customerRepository = get()
+        customerRepository = get(),
+        getCustomerDetailUseCase = get()
     ) }
 
     viewModel {

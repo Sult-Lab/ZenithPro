@@ -258,7 +258,10 @@ fun CheckoutScreen(
         PaymentDialog(
             totalAmount = "₦${cartTotal.formatPrice()}",
             viewModel = viewModel,
-            onDismiss = { showPaymentDialog = false },
+            onDismiss = {
+                showPaymentDialog = false
+                viewModel.clearCustomer()
+                        },
             onConfirm = {
                 viewModel.checkout()
                 showPaymentDialog = false

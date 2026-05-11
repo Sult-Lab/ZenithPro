@@ -6,6 +6,7 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
+import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
 import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.product.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
@@ -34,11 +35,15 @@ class CheckoutViewModel(
     private val getSaleUseCase: GetSalesUseCase,
     private val getDailySummaryUseCase: GetDailySummaryUseCase,
     private val sessionManager: SessionManager,
-    private val customerRepository: CustomerRepository
+    private val customerRepository: CustomerRepository,
+    private val getCustomerDetailUseCase: GetCustomerDetailUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
     val state: StateFlow<NewSaleUiState> = _state.asStateFlow()
+
+    private val _newlyCreatedCustomer = MutableStateFlow<CustomerEntity?>(null)
+    val newlyCreatedCustomer: StateFlow<CustomerEntity?> = _newlyCreatedCustomer.asStateFlow()
 
     private val _events = MutableSharedFlow<NewSaleEvent>()
     val events = _events.asSharedFlow()
@@ -337,6 +342,30 @@ class CheckoutViewModel(
                 }
             }
         }
+    }
+
+    fun onCustomerCreated(customerId: String) {
+        viewModelScope.launch {
+            val businessId = currentSession?.businessId ?: return@launch
+            getCustomerDetailUseCase(customerId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        result.data?.let { customer ->
+                            _newlyCreatedCustomer.value = customer
+                            setCustomer(customer.id, customer)
+                        }
+                    }
+                    is Resource.Error -> {
+                        _events.emit(NewSaleEvent.ShowError("Failed to load customer: ${result.message}"))
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    fun clearNewlyCreatedCustomer() {
+        _newlyCreatedCustomer.value = null
     }
 
     sealed class NewSaleEvent {

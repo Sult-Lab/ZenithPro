@@ -220,6 +220,7 @@ class CustomerRepositoryImpl(
             data class UpsertResponse(val customerId: String, val updatedAt: String)
 
             val result = response.body<UpsertResponse>()
+            Log.d("CustomerRepo", "pushCustomer: $result")
             customerDao.markSynced(entity.id, result.updatedAt)
             Log.d("CustomerRepo", "pushCustomer: synced ${entity.id}")
         } catch (e: Exception) {
