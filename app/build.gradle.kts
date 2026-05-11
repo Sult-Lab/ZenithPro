@@ -127,4 +127,7 @@ dependencies {
 
     //data-store
     implementation(libs.data.store)
+
+    //thermal printer
+    implementation(libs.dantsu.eco.pos)
 }

@@ -1,8 +1,10 @@
 package com.techsultan.zenithpro.core.di
 
+import com.techsultan.zenithpro.core.manager.PrinterManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
+import com.techsultan.zenithpro.core.util.ReceiptFormatter
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
@@ -13,4 +15,6 @@ val commonModule = module {
     single { NetworkMonitor(androidContext()) }
     single { ImageCacheManager(androidContext()) }
     viewModel { DataPersistentViewModel(get(), get(), get(), get()) }
+    single { ReceiptFormatter() }
+    single { PrinterManager(get()) }
 }

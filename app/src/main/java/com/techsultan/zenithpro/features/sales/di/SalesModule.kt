@@ -1,7 +1,10 @@
 package com.techsultan.zenithpro.features.sales.di
 
+import com.techsultan.zenithpro.features.sales.data.repository.PrinterRepositoryImpl
 import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
+import com.techsultan.zenithpro.features.sales.domain.repository.PrinterRepository
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
+import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
@@ -19,6 +22,13 @@ val salesModule = module {
             postgrest = get(),
             networkMonitor = get(),
             sessionManager = get()
+        )
+    }
+
+    single<PrinterRepository> {
+        PrinterRepositoryImpl(
+            formatter = get(),
+            printerManager = get()
         )
     }
 
@@ -44,5 +54,6 @@ val salesModule = module {
     factory { ProcessSaleUseCase(get()) }
     factory { GetSalesUseCase(get()) }
     factory { GetDailySummaryUseCase(get()) }
+    factory { GenerateReceiptUseCase() }
 
 }

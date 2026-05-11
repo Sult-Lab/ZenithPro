@@ -25,3 +25,10 @@ fun Long.formatAmount(): String = NumberFormat
     .getNumberInstance(Locale("en", "NG"))
     .apply { maximumFractionDigits = 0 }
     .format(this)
+
+fun generateReceiptNumber(): String {
+
+    val timestamp = System.currentTimeMillis()
+
+    return "RCP-${timestamp.toString().takeLast(6)}"
+}

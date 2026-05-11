@@ -2,6 +2,8 @@ package com.techsultan.zenithpro.features.sales.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.data.local.SplitPayment
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
@@ -11,9 +13,13 @@ import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.product.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
+import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
+import com.techsultan.zenithpro.features.sales.domain.repository.PrinterRepository
+import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
+import com.techsultan.zenithpro.features.sales.generateReceiptNumber
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem as RemoteCartItem
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +42,9 @@ class CheckoutViewModel(
     private val getDailySummaryUseCase: GetDailySummaryUseCase,
     private val sessionManager: SessionManager,
     private val customerRepository: CustomerRepository,
-    private val getCustomerDetailUseCase: GetCustomerDetailUseCase
+    private val getCustomerDetailUseCase: GetCustomerDetailUseCase,
+    private val generateReceiptUseCase: GenerateReceiptUseCase,
+    private val printerRepository: PrinterRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -45,7 +53,7 @@ class CheckoutViewModel(
     private val _newlyCreatedCustomer = MutableStateFlow<CustomerEntity?>(null)
     val newlyCreatedCustomer: StateFlow<CustomerEntity?> = _newlyCreatedCustomer.asStateFlow()
 
-    private val _events = MutableSharedFlow<NewSaleEvent>()
+    private val _events = MutableSharedFlow<CheckoutEvent>()
     val events = _events.asSharedFlow()
 
     val currentSession = sessionManager.currentSession
@@ -109,7 +117,7 @@ class CheckoutViewModel(
                     }
                     is Resource.Error -> {
                         _state.update { it.copy(isLoading = false, error = result.message) }
-                        _events.emit(NewSaleEvent.ShowError(result.message ?: "An error occurred"))
+                        _events.emit(CheckoutEvent.ShowError(result.message ?: "An error occurred"))
                     }
                 }
             }
@@ -259,7 +267,7 @@ class CheckoutViewModel(
             PaymentMethod.DEBT -> {
                 if (s.selectedCustomerId == null) {
                     viewModelScope.launch {
-                        _events.emit(NewSaleEvent.ShowError("Customer required for debt payment"))
+                        _events.emit(CheckoutEvent.ShowError("Customer required for debt payment"))
                     }
                     return
                 }
@@ -267,7 +275,7 @@ class CheckoutViewModel(
             PaymentMethod.SPLIT -> {
                 if (s.selectedCustomerId == null) {
                     viewModelScope.launch {
-                        _events.emit(NewSaleEvent.ShowError("Customer required for split payment"))
+                        _events.emit(CheckoutEvent.ShowError("Customer required for split payment"))
                     }
                     return
                 }
@@ -275,7 +283,7 @@ class CheckoutViewModel(
                 val totalAmount = cartTotal.value - s.discountAmount
                 if (totalPaid < totalAmount) {
                     viewModelScope.launch {
-                        _events.emit(NewSaleEvent.ShowError("Split amounts must cover the total"))
+                        _events.emit(CheckoutEvent.ShowError("Split amounts must cover the total"))
                     }
                     return
                 }
@@ -327,7 +335,7 @@ class CheckoutViewModel(
             when (result) {
                 is Resource.Success -> {
                     _state.update { it.copy(isLoading = false) }
-                    _events.emit(NewSaleEvent.SaleCompleted(
+                    _events.emit(CheckoutEvent.SaleCompleted(
                         saleId = result.data?.saleId ?: "",
                         change = maxOf(0L, effectivePaid - total),
                         debtAmount = result.data?.debtAmount ?: 0L
@@ -335,7 +343,7 @@ class CheckoutViewModel(
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
-                    _events.emit(NewSaleEvent.ShowError(result.message ?: "Sale failed"))
+                    _events.emit(CheckoutEvent.ShowError(result.message ?: "Sale failed"))
                 }
                 else -> {
                     _state.update { it.copy(isLoading = false) }
@@ -356,7 +364,7 @@ class CheckoutViewModel(
                         }
                     }
                     is Resource.Error -> {
-                        _events.emit(NewSaleEvent.ShowError("Failed to load customer: ${result.message}"))
+                        _events.emit(CheckoutEvent.ShowError("Failed to load customer: ${result.message}"))
                     }
                     else -> Unit
                 }
@@ -368,14 +376,72 @@ class CheckoutViewModel(
         _newlyCreatedCustomer.value = null
     }
 
-    sealed class NewSaleEvent {
-        data class ShowError(val message: String) : NewSaleEvent()
+    private suspend fun completePayment(
+        saleId: String,
+        amountPaid: Long,
+        change: Long
+    ) {
+        val s = state.value
+        val currentCartList = _cart.value.values.toList()
+        val subtotal = currentCartList.sumOf { it.unitPrice * it.quantity }
+        val total = maxOf(0L, subtotal - s.discountAmount)
+
+        val completedSale = CompletedSale(
+            saleId = saleId,
+            salesPerson = "${currentSession?.firstName} ${currentSession?.lastName ?: ""}".trim(),
+            paymentMethod = s.paymentMethod.name,
+            subtotal = subtotal,
+            discount = s.discountAmount,
+            total = total,
+            amountPaid = amountPaid,
+            change = change,
+            cartItems = currentCartList,
+            customer = s.selectedCustomer,
+            splitPayments = buildSplitPayments(),
+            createdAt = System.currentTimeMillis()
+        )
+
+        val receipt = generateReceiptUseCase(completedSale)
+
+        _events.emit(CheckoutEvent.PaymentCompleted(receipt))
+
+        val printResult = printerRepository.printReceipt(receipt)
+        if (printResult is Resource.Error) {
+            _events.emit(CheckoutEvent.PrintFailed(printResult.message ?: "Printing failed"))
+        }
+    }
+
+    private fun buildSplitPayments(): List<SplitPayment> {
+        return if (state.value.paymentMethod == PaymentMethod.SPLIT) {
+            val list = mutableListOf<SplitPayment>()
+            if (_splitCashAmount.value > 0) {
+                list.add(SplitPayment("CASH", _splitCashAmount.value))
+            }
+            if (_splitTransferAmount.value > 0) {
+                list.add(SplitPayment("TRANSFER", _splitTransferAmount.value))
+            }
+            list
+        } else emptyList()
+    }
+
+    sealed class CheckoutEvent {
+        data class ShowError(val message: String) : CheckoutEvent()
         data class SaleCompleted(
             val saleId: String,
             val change: Long,
             val debtAmount: Long
-        ) : NewSaleEvent()
+        ) : CheckoutEvent()
+
+        data class PaymentCompleted(
+            val receipt: ReceiptData
+        ) : CheckoutEvent()
+
+        data class PrintFailed(
+            val message: String
+        ) : CheckoutEvent()
     }
+
+
 }
 
 data class NewSaleUiState(

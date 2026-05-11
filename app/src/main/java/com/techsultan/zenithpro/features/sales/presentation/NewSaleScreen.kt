@@ -41,6 +41,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -79,6 +81,7 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
+    val snackbarHost  = remember { SnackbarHostState() }
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
@@ -88,17 +91,25 @@ fun CheckoutScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is CheckoutViewModel.NewSaleEvent.SaleCompleted -> {
+                is CheckoutViewModel.CheckoutEvent.SaleCompleted -> {
                     onSaleCompleted(event.saleId)
                 }
-                is CheckoutViewModel.NewSaleEvent.ShowError -> {
-                    // Show error using your preferred method (Snackbar, Toast, etc.)
+                is CheckoutViewModel.CheckoutEvent.PaymentCompleted -> {
+                    snackbarHost.showSnackbar("Payment successful")
                 }
+                is CheckoutViewModel.CheckoutEvent.ShowError -> {
+                    snackbarHost.showSnackbar(event.message)
+                }
+                is CheckoutViewModel.CheckoutEvent.PrintFailed -> {
+                    snackbarHost.showSnackbar(event.message)
+                }
+                else -> {}
             }
         }
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             ZenithTopAppBar(
                 title = "New Sale",
