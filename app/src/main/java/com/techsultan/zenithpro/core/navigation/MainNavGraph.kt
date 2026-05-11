@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,12 +18,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
-import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
@@ -39,7 +36,7 @@ import com.techsultan.zenithpro.features.material.presentation.MaterialScreen
 import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
-import com.techsultan.zenithpro.features.sales.presentation.NewSaleScreen
+import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
@@ -219,8 +216,9 @@ fun MainNavGraph(
                             )
                         }
                         entry<Route.Home.NewSale> {
-                            NewSaleScreen(
-                                onBack = { navigator.goBack() }
+                            CheckoutScreen(
+                                onBack = { navigator.goBack() },
+                                onSaleCompleted = {}
                             )
                         }
                         entry<Route.Home.AddProduct> {

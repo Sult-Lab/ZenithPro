@@ -5,7 +5,7 @@ import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
-import com.techsultan.zenithpro.features.sales.presentation.NewSaleViewModel
+import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesListViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -22,12 +22,14 @@ val salesModule = module {
         )
     }
 
-    viewModel { NewSaleViewModel(
+    viewModel { CheckoutViewModel(
         getProductsUseCase = get(),
         processSaleUseCase = get(),
         getSaleUseCase = get(),
         getDailySummaryUseCase = get(),
-        sessionManager = get()
+        sessionManager = get(),
+        customerRepository = get(),
+        getCustomerDetailUseCase = get()
     ) }
 
     viewModel {

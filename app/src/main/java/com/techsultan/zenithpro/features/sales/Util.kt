@@ -14,6 +14,13 @@ enum class PaymentMethod {
 }
 enum class SaleStatus { COMPLETED, PARTIAL, REFUNDED, CANCELLED }
 
+enum class PaymentStep {
+    CART,           // viewing cart
+    SELECT_CUSTOMER, // searching/selecting customer
+    PAYMENT,        // entering payment details
+    CONFIRM         // review before submitting
+}
+
 fun Long.formatAmount(): String = NumberFormat
     .getNumberInstance(Locale("en", "NG"))
     .apply { maximumFractionDigits = 0 }
