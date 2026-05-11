@@ -41,8 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 
 @Composable
 fun PaymentDialog(
@@ -79,7 +81,7 @@ fun PaymentDialog(
                 ) {
                     Text("")
                     Text(
-                        text = "Complete Payment",
+                        text = "Payment Details",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier

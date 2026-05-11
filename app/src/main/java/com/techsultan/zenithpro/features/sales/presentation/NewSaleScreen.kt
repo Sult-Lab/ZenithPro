@@ -63,13 +63,15 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
+import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NewSaleScreen(
+fun CheckoutScreen(
     onBack: () -> Unit = {},
-    viewModel: NewSaleViewModel = koinViewModel()
+    viewModel: CheckoutViewModel = koinViewModel(),
+    onSaleCompleted: (saleId: String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
@@ -81,6 +83,20 @@ fun NewSaleScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+
+    // Handle events
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is CheckoutViewModel.NewSaleEvent.SaleCompleted -> {
+                    onSaleCompleted(event.saleId)
+                }
+                is CheckoutViewModel.NewSaleEvent.ShowError -> {
+                    // Show error using your preferred method (Snackbar, Toast, etc.)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -241,8 +257,9 @@ fun NewSaleScreen(
     if (showPaymentDialog) {
         PaymentDialog(
             totalAmount = "₦${cartTotal.formatPrice()}",
+            viewModel = viewModel,
             onDismiss = { showPaymentDialog = false },
-            onConfirm = { method ->
+            onConfirm = {
                 viewModel.checkout()
                 showPaymentDialog = false
             }
@@ -399,15 +416,15 @@ fun CartBottomSheetContent(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = item.productName, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            text = "${item.quantity} x ₦${item.price.formatPrice()}",
+                            text = "${item.quantity} x ₦${item.unitPrice.formatPrice()}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "₦${(item.price * item.quantity).formatPrice()}",
+                        text = "₦${(item.unitPrice * item.quantity).formatPrice()}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )

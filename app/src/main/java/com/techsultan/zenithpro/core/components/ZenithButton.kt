@@ -25,6 +25,7 @@ fun ZenithButton(
     icon: ImageVector? = null,
     containerColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    enabled: Boolean = true
 ) {
     Button(
         onClick = onClick,
@@ -36,7 +37,8 @@ fun ZenithButton(
             containerColor = containerColor,
             contentColor = contentColor
         ),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        enabled = enabled
     ) {
         if (icon != null) {
             Icon(
