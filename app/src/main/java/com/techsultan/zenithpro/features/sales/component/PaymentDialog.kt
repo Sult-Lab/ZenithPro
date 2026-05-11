@@ -41,16 +41,19 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,6 +83,7 @@ import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentDialog(
     totalAmount: String,
@@ -392,7 +396,6 @@ fun PaymentDialog(
                 viewModel.setCustomer(customer.id, customer)
                 showCustomerSelector = false
             },
-            onNavigateToAddCustomer = {}
         )
     }
 }
@@ -600,23 +603,25 @@ fun SplitPaymentDialog(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerSelectorDialog(
     viewModel: CheckoutViewModel,
     onDismiss: () -> Unit,
     onCustomerSelected: (CustomerEntity) -> Unit,
-    onNavigateToAddCustomer: () -> Unit  // Just navigate, don't fetch
 ) {
+    var showAddCustomerSheet by remember { mutableStateOf(false) }
     val searchQuery by viewModel.customerSearchQuery.collectAsStateWithLifecycle()
     val searchResults by viewModel.customerSearchResults.collectAsStateWithLifecycle()
     val newlyCreatedCustomer by viewModel.newlyCreatedCustomer.collectAsStateWithLifecycle()
 
     // Auto-select and close when a new customer is created
     LaunchedEffect(newlyCreatedCustomer) {
-        if (newlyCreatedCustomer != null) {
-            onCustomerSelected(newlyCreatedCustomer!!)
-            onDismiss()
+        newlyCreatedCustomer?.let { customer ->
+            onCustomerSelected(customer)
             viewModel.clearNewlyCreatedCustomer()
+            showAddCustomerSheet = false
+            onDismiss()
         }
     }
 
@@ -680,11 +685,10 @@ fun CustomerSelectorDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Add New Customer Button
                 OutlinedButton(
                     onClick = {
                         viewModel.onCustomerSearchChanged("") // Clear search
-                        onNavigateToAddCustomer()  // Just navigate to add customer screen
+                        showAddCustomerSheet = true
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -741,61 +745,14 @@ fun CustomerSelectorDialog(
                 ) {
                     if (searchQuery.isBlank()) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Search for customers by name or phone",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
-                            }
+                            EmptyCustomerSearchState()
                         }
                     } else if (searchResults.isEmpty()) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.PersonOutline,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(48.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "No customers found for \"$searchQuery\"",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    TextButton(
-                                        onClick = {
-                                            onNavigateToAddCustomer()
-                                        }
-                                    ) {
-                                        Text("Add new customer instead?")
-                                    }
-                                }
-                            }
+                           CustomerNotFoundState(
+                               searchQuery = searchQuery,
+                               onAddCustomer = { showAddCustomerSheet = true }
+                           )
                         }
                     } else {
                         items(searchResults, key = { it.id }) { customer ->
@@ -820,6 +777,26 @@ fun CustomerSelectorDialog(
                     Text("Cancel")
                 }
             }
+        }
+    }
+
+    if (showAddCustomerSheet) {
+
+        ModalBottomSheet(
+            onDismissRequest = { showAddCustomerSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+
+            AddCustomerBottomSheetContent(
+                prefilledPhone = if (searchQuery.all { it.isDigit() }) {
+                    searchQuery
+                } else {
+                    ""
+                },
+                onSaved = {
+                    showAddCustomerSheet = false
+                }
+            )
         }
     }
 }

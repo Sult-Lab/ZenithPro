@@ -160,7 +160,7 @@ fun AddEditCustomerScreen(
 }
 
 @Composable
-private fun CustomerTextField(
+fun CustomerTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
