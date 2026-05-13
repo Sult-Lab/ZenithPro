@@ -23,6 +23,7 @@ import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUs
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -47,7 +48,8 @@ class CheckoutViewModel(
     private val generateReceiptUseCase: GenerateReceiptUseCase,
     private val printerRepository: PrinterRepository,
     private val printerDataStore: PrinterDataStore,
-    private val receiptNumberGenerator: ReceiptNumberGenerator
+    private val receiptNumberGenerator: ReceiptNumberGenerator,
+    private val getSettingsUseCase: GetSettingsUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -95,6 +97,12 @@ class CheckoutViewModel(
         viewModelScope.launch {
             sessionManager.loadSession()
             loadProducts()
+            getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
+                _state.update { it.copy(
+                    footerMessage = settings?.receiptFooter ?: "",
+                    taxRate = settings?.taxRate ?: 0.0
+                ) }
+            }
         }
     }
 
@@ -395,7 +403,9 @@ class CheckoutViewModel(
             createdAt = System.currentTimeMillis(),
             businessName = currentSession?.businessName ?: "",
             businessAddress = currentSession?.businessAddress ?: "",
-            businessNumber = currentSession?.businessName ?: ""
+            businessNumber = currentSession?.businessName ?: "",
+            taxRate = s.taxRate,
+            footerMessage = s.footerMessage
         )
 
         val receipt = generateReceiptUseCase(completedSale)
@@ -468,5 +478,7 @@ data class NewSaleUiState(
     val selectedCustomerId: String? = null,
     val selectedCustomer: CustomerEntity? = null,
     val paymentMethod: PaymentMethod = PaymentMethod.CASH,
-    val showCustomerSelector: Boolean = false
+    val showCustomerSelector: Boolean = false,
+    val footerMessage: String? = null,
+    val taxRate: Double = 0.0
 )

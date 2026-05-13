@@ -20,4 +20,6 @@ data class CompletedSale(
     val businessName: String,
     val businessAddress: String,
     val businessNumber: String,
+    val taxRate: Double = 0.0,
+    val footerMessage: String? = null
 )

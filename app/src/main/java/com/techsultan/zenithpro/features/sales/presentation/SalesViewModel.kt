@@ -20,6 +20,7 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +45,8 @@ class SalesListViewModel(
     private val printerRepository: PrinterRepository,
     private val printerDataStore: PrinterDataStore,
     private val generateReceiptUseCase: GenerateReceiptUseCase,
-    private val receiptNumberGenerator: ReceiptNumberGenerator
+    private val receiptNumberGenerator: ReceiptNumberGenerator,
+    private val getSettingsUseCase: GetSettingsUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SalesListUiState())
@@ -56,6 +58,8 @@ class SalesListViewModel(
     private val currentSession get() = sessionManager.currentSession
     private var businessId: String? = null
     private var observeJob: Job? = null
+    private var footerMessage: String? = ""
+    private var taxRate: Double = 0.0
 
     init {
         viewModelScope.launch {
@@ -64,6 +68,10 @@ class SalesListViewModel(
             if (businessId != null) {
                 observeSales()
                 syncOnStart()
+                getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
+                    footerMessage = settings?.receiptFooter
+                    taxRate = settings?.taxRate ?: 0.0
+                }
             }
         }
     }
@@ -182,7 +190,9 @@ class SalesListViewModel(
                 createdAt = try { Instant.parse(sale.soldAt).toEpochMilli() } catch (e: Exception) { System.currentTimeMillis() },
                 businessName = currentSession?.businessName ?: "",
                 businessAddress = currentSession?.businessAddress ?: "",
-                businessNumber = currentSession?.businessName ?: ""
+                businessNumber = currentSession?.businessName ?: "",
+                taxRate = taxRate,
+                footerMessage = footerMessage
             )
 
             val receipt = generateReceiptUseCase(completedSale)
@@ -280,5 +290,5 @@ data class SalesSummary(
     val totalCollected: Long    = 0L,
     val totalDebt: Long         = 0L,
     val totalOrders: Int        = 0,
-    val averageOrderValue: Long = 0L
+    val averageOrderValue: Long = 0L,
 )

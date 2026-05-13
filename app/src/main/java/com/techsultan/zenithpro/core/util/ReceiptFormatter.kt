@@ -72,7 +72,7 @@ $paidLine$changeLine[C]------------------------------
 [C]${receipt.businessName}
 [C]${receipt.businessAddress}
 [C]${receipt.businessNumber}
-[C]Thanks for your patronage
+[C]T${receipt.footerMessage}
         """.trimIndent()
     }
 }
