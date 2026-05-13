@@ -6,6 +6,7 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.product.data.remote.AddProductRequest
@@ -19,7 +20,8 @@ import java.util.UUID
 
 class AddProductViewModel(
     private val addProductUseCase: AddProductUseCase,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductUiState())
@@ -28,9 +30,29 @@ class AddProductViewModel(
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
+    private val _scannedBarcode = mutableStateOf<String?>(null)
+    val scannedBarcode: State<String?> = _scannedBarcode
+
+    val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
+
+    fun onBarcodeScanned(barcode: String) {
+        _scannedBarcode.value = barcode
+    }
+
+    fun clearScannedBarcode() {
+        _scannedBarcode.value = null
+    }
+
+    init {
+        viewModelScope.launch {
+            sessionManager.loadSession()   
+        }
+    }
+
     fun addProduct(
         addProductRequest: AddProductRequest,
-        imageUris: List<Uri>
+        imageUris: List<Uri>,
+        barcode: String? = null
     ) {
         viewModelScope.launch {
             _state.value = state.value.copy(isLoading = true)
@@ -56,9 +78,9 @@ class AddProductViewModel(
                         sku = "${addProductRequest.name.take(3).uppercase()}-DEFAULT",
                         salesPrice = addProductRequest.baseSalesPrice,
                         costPrice = addProductRequest.baseCostPrice,
-                        barcode = null,
-                        attributes = emptyList(),   // no attributes = simple product
-                        stock = addProductRequest.defaultStock   // ← see fix below
+                        barcode = barcode,
+                        attributes = emptyList(),
+                        stock = addProductRequest.defaultStock
                     )
                 )
             } else {

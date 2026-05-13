@@ -100,6 +100,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.DatePickerDialog
+import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
@@ -116,6 +117,7 @@ import java.util.UUID
 @Composable
 fun AddProductScreen(
     navigateBack: () -> Unit = {},
+    onScanBarcode: () -> Unit = {},
     viewModel: AddProductViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
@@ -127,6 +129,7 @@ fun AddProductScreen(
     var stockQuantity by remember { mutableStateOf("") }
     var lowStockAlert by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
+    var barcode by remember { mutableStateOf("") }
     var warningDay by remember { mutableStateOf("") }
     var expandWarningDay by remember { mutableStateOf(false) }
     var trackExpiryDate by remember { mutableStateOf(false) }
@@ -147,6 +150,14 @@ fun AddProductScreen(
     }
 
     val state by viewModel.state
+    val scannedBarcode by viewModel.scannedBarcode
+
+    LaunchedEffect(scannedBarcode) {
+        scannedBarcode?.let {
+            barcode = it
+            viewModel.clearScannedBarcode()
+        }
+    }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collectLatest { event ->
@@ -162,6 +173,7 @@ fun AddProductScreen(
                     stockQuantity = ""
                     lowStockAlert = ""
                     expiryDate = ""
+                    barcode = ""
                     trackExpiryDate = false
                     productImageUris = emptyList()
                     variations = listOf(
@@ -532,127 +544,134 @@ fun AddProductScreen(
 
             // Advanced Options
             SectionHeader("Advanced Options")
-            OutlinedButton(
-                onClick = { /*TODO*/ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.QrCodeScanner,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Scan Barcode",
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            
-            OutlinedButton(
-                onClick = { showVariationsSheet = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Style,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (variations.isEmpty()) "Manage Variations" else "Manage Variations (${variations.sumOf { it.items.size }})",
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (barcode.isNotEmpty()) {
+                    CustomTextField(
+                        value = barcode,
+                        onValueChange = { barcode = it },
+                        label = "Barcode",
+                        placeholder = "Product Barcode",
+                        trailingIcon = {
+                            IconButton(onClick = onScanBarcode) {
+                                Icon(Icons.Outlined.QrCodeScanner, contentDescription = "Rescan")
+                            }
+                        }
+                    )
+                } else {
+                    OutlinedButton(
+                        onClick = onScanBarcode,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.QrCodeScanner,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Scan Barcode",
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                
+                OutlinedButton(
+                    onClick = { showVariationsSheet = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Style,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (variations.isEmpty()) "Manage Variations" else "Manage Variations (${variations.sumOf { it.items.size }})",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Save Product Button
-            Button(
-                onClick = {
-                    val baseSPrice = salesPrice.toLongOrNull() ?: 0L
-                    val baseCPrice = costPrice.toLongOrNull() ?: 0L
-                    
-                    // Mapping variations to ProductVariantCreate
-                    val productVariants = mutableListOf<ProductVariantCreateRequest>()
-                    variations.forEach { variationType ->
-                        variationType.items.forEach { item ->
-                            val priceAdj = item.priceAdjustment.toLongOrNull() ?: 0L
-                            val itemStock = item.stock.toIntOrNull() ?: 0
-                            
-                            productVariants.add(
-                                ProductVariantCreateRequest(
-                                    sku = "${
-                                        productName.take(3).uppercase()
-                                    }-${variationType.title.uppercase()}-${item.name.uppercase()}",
-                                    salesPrice = baseSPrice + priceAdj,
-                                    costPrice = baseCPrice,
-                                    barcode = null,
-                                    attributes = listOf(
-                                        VariantAttributeInput(
-                                            optionName = variationType.title,
-                                            optionValue = item.name
-                                        )
-                                    ),
-                                    stock = listOf(
+
+                ZenithButton(
+                    onClick = {
+                        val baseSPrice = salesPrice.toLongOrNull() ?: 0L
+                        val baseCPrice = costPrice.toLongOrNull() ?: 0L
+
+                        // Mapping variations to ProductVariantCreate
+                        val productVariants = mutableListOf<ProductVariantCreateRequest>()
+                        variations.forEach { variationType ->
+                            variationType.items.forEach { item ->
+                                val priceAdj = item.priceAdjustment.toLongOrNull() ?: 0L
+                                val itemStock = item.stock.toIntOrNull() ?: 0
+
+                                productVariants.add(
+                                    ProductVariantCreateRequest(
+                                        sku = "${
+                                            productName.take(3).uppercase()
+                                        }-${variationType.title.uppercase()}-${item.name.uppercase()}",
+                                        salesPrice = baseSPrice + priceAdj,
+                                        costPrice = baseCPrice,
+                                        barcode = barcode.takeIf { it.isNotEmpty() },
+                                        attributes = listOf(
+                                            VariantAttributeInput(
+                                                optionName = variationType.title,
+                                                optionValue = item.name
+                                            )
+                                        ),
+                                        stock = listOf(
+                                            StockCreateRequest(
+                                                quantity = itemStock,
+                                                expiryDate = if (trackExpiryDate) expiryDate else null,
+                                                lowStockAlert = lowStockAlert.toIntOrNull()
+                                            )
+                                        ),
+                                        clientId = ""
+                                    )
+                                )
+                            }
+                        }
+
+                        viewModel.addProduct(
+                            addProductRequest = AddProductRequest(
+                                name = productName,
+                                description = productDescription,
+                                category = category,
+                                baseSalesPrice = baseSPrice,
+                                baseCostPrice = baseCPrice,
+                                expiryWarningDays = warningDay.toIntOrNull(),
+                                variants = if (productVariants.isEmpty()) null else productVariants,
+                                businessId = viewModel.businessId ?: "",
+                                clientId = "",
+                                defaultStock = if (productVariants.isEmpty()) {
+                                    listOf(
                                         StockCreateRequest(
-                                            quantity = itemStock,
+                                            quantity = stockQuantity.toIntOrNull() ?: 0,
                                             expiryDate = if (trackExpiryDate) expiryDate else null,
                                             lowStockAlert = lowStockAlert.toIntOrNull()
                                         )
-                                    ),
-                                    clientId = ""
-                                )
-                            )
-                        }
-                    }
-
-                    viewModel.addProduct(
-                        addProductRequest = AddProductRequest(
-                            name = productName,
-                            description = productDescription,
-                            category = category,
-                            baseSalesPrice = baseSPrice,
-                            baseCostPrice = baseCPrice,
-                            expiryWarningDays = warningDay.toIntOrNull(),
-                            variants = if (productVariants.isEmpty()) null else productVariants,
-                            businessId = "a6d7b373-52c6-4ae3-84ff-b4bc06d2a46d",
-                            clientId = "",
-                            defaultStock = if (productVariants.isEmpty()) {
-                                listOf(
-                                    StockCreateRequest(
-                                        quantity = stockQuantity.toIntOrNull() ?: 0,
-                                        expiryDate = if (trackExpiryDate) expiryDate else null,
-                                        lowStockAlert = lowStockAlert.toIntOrNull()
                                     )
-                                )
-                            } else emptyList()
-                        ),
-                        imageUris = productImageUris
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = !state.isLoading,
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00C853) // Green color
+                                } else emptyList()
+                            ),
+                            imageUris = productImageUris,
+                            barcode = barcode.takeIf { it.isNotEmpty() }
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    enabled = !state.isLoading,
+                    text = "Save Product"
                 )
-            ) {
-                Text(
-                    text = "Save Product",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
         }
 
             if (state.isLoading) {

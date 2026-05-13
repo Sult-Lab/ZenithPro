@@ -41,7 +41,7 @@ val productModule = module {
     factory { SyncProductsUseCase(get(), get(), get()) }
     factory { DeleteProductUseCase(get()) }
 
-    viewModel { AddProductViewModel(get(), get()) }
+    viewModel { AddProductViewModel(get(), get(), get()) }
 
     viewModel {
         InventoryViewModel(
