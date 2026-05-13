@@ -8,6 +8,7 @@ import com.techsultan.zenithpro.features.settings.domain.use_case.GetStaffListUs
 import com.techsultan.zenithpro.features.settings.domain.use_case.UpdateSettingsUseCase
 import com.techsultan.zenithpro.features.settings.domain.use_case.UpdateStaffRoleUseCase
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffViewModel
+import com.techsultan.zenithpro.features.settings.presentation.PrinterViewModel
 import com.techsultan.zenithpro.features.settings.presentation.SettingsViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -25,4 +26,5 @@ val settingsModule = module {
 
     viewModel { CreateStaffViewModel(get(), get(), get()) }
     viewModel { SettingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { PrinterViewModel(get()) }
 }

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -78,6 +79,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAccountSettings: () -> Unit = {},
     onNotifications: () -> Unit = {},
+    onPrinterSettings: () -> Unit = {},
     onStaffManagement: () -> Unit = {},
     onBusinessInformation: () -> Unit = {},
     onAbout: () -> Unit = {},
@@ -158,6 +160,11 @@ fun SettingsScreen(
                             title  = "Account settings",
                             icon   = Icons.Default.Person,
                             onClick = onAccountSettings
+                        ),
+                        SettingsNavItem(
+                            title  = "Printer settings",
+                            icon   = Icons.Default.Print,
+                            onClick = onPrinterSettings
                         ),
                         SettingsNavItem(
                             title  = "Notifications",
@@ -326,4 +333,3 @@ fun SettingsToggleRow(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
-

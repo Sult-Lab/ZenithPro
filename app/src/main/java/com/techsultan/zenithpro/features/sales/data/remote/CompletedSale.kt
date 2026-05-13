@@ -5,6 +5,7 @@ import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 
 data class CompletedSale(
     val saleId: String,
+    val receiptNumber: String,
     val salesPerson: String,
     val paymentMethod: String,
     val subtotal: Long,
@@ -15,5 +16,8 @@ data class CompletedSale(
     val cartItems: List<CartItem>,
     val customer: CustomerEntity?,
     val splitPayments: List<SplitPayment>,
-    val createdAt: Long
+    val createdAt: Long,
+    val businessName: String,
+    val businessAddress: String,
+    val businessNumber: String,
 )

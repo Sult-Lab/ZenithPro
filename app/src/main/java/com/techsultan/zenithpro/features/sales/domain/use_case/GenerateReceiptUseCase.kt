@@ -2,10 +2,6 @@ package com.techsultan.zenithpro.features.sales.domain.use_case
 
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.data.local.ReceiptItem
-import com.techsultan.zenithpro.core.data.local.SplitPayment
-import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
-import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
-import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
 
 class GenerateReceiptUseCase {
@@ -15,7 +11,7 @@ class GenerateReceiptUseCase {
     ): ReceiptData {
 
         return ReceiptData(
-            receiptNumber = sale.saleId,
+            receiptNumber = sale.receiptNumber,
             cashierName = sale.salesPerson,
             customerName = sale.customer?.fullName,
             paymentMethod = sale.paymentMethod,
@@ -34,7 +30,10 @@ class GenerateReceiptUseCase {
             amountPaid = sale.amountPaid,
             change = sale.change,
             splitPayments = sale.splitPayments,
-            createdAt = sale.createdAt
+            createdAt = sale.createdAt,
+            businessName = sale.businessName,
+            businessAddress = sale.businessAddress,
+            businessNumber = sale.businessNumber
         )
     }
 }

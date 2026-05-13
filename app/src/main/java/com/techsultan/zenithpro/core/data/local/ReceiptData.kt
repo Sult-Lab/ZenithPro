@@ -1,5 +1,7 @@
 package com.techsultan.zenithpro.core.data.local
 
+import com.techsultan.zenithpro.core.util.Util
+
 data class ReceiptData(
     val receiptNumber: String,
     val cashierName: String,
@@ -12,7 +14,10 @@ data class ReceiptData(
     val paymentMethod: String,
     val customerName: String?,
     val splitPayments: List<SplitPayment> = emptyList(),
-    val createdAt: Long
+    val createdAt: Long,
+    val businessName: String,
+    val businessAddress: String,
+    val businessNumber: String,
 )
 
 data class ReceiptItem(
@@ -25,4 +30,11 @@ data class ReceiptItem(
 data class SplitPayment(
     val method: String,
     val amount: Long
+)
+
+data class PrinterDevice(
+    val id: String,
+    val name: String,
+    val type: Util.PrinterType,
+    val address: String? = null
 )

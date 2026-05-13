@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallSplit
@@ -111,6 +114,7 @@ fun PaymentDialog(
         ) {
             Column(
                 modifier = Modifier
+                    .verticalScroll(rememberScrollState())
                     .fillMaxWidth()
                     .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -217,10 +221,7 @@ fun PaymentDialog(
                             onClick = {
                                 selectedMethod = PaymentMethod.DEBT
                                 viewModel.setPaymentMethod(PaymentMethod.DEBT)
-                                // Show customer selector for debt
-//                                if (state.selectedCustomer == null) {
-//                                    showCustomerSelector = true
-//                                }
+
                             },
                             modifier = Modifier.weight(1f),
                             icon = Icons.Default.Schedule
@@ -230,9 +231,8 @@ fun PaymentDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Show customer info for debt/split if selected
-                if ((selectedMethod == PaymentMethod.DEBT || selectedMethod == PaymentMethod.SPLIT) &&
-                    state.selectedCustomer != null) {
+                // Show customer info
+                if (state.selectedCustomer != null) {
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
@@ -274,8 +274,7 @@ fun PaymentDialog(
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                } else if ((selectedMethod == PaymentMethod.DEBT) &&
-                    state.selectedCustomer == null) {
+                } else {
                     TextButton(
                         onClick = { showCustomerSelector = true },
                         modifier = Modifier.fillMaxWidth()
@@ -286,7 +285,11 @@ fun PaymentDialog(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Select Customer (Required for ${selectedMethod.name})")
+                        Text(
+                            text = if (selectedMethod == PaymentMethod.DEBT)
+                                "Select Customer (Required for Debt)"
+                            else "Select Customer (Optional)"
+                        )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -663,7 +666,13 @@ fun CustomerSelectorDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.onCustomerSearchChanged(it) },
-                    placeholder = { Text("Search by name or phone number") },
+                    placeholder = {
+                        Text(
+                            text = "Search by name or phone number",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                                  },
                     leadingIcon = {
                         Icon(
                             Icons.Default.Search,

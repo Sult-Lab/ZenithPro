@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 
-// data/session/SessionManager.kt
 class SessionManager(
     private val sessionDataStore: SessionDataStore,
     private val postgrest: Postgrest,

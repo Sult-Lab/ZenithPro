@@ -1,8 +1,6 @@
 package com.techsultan.zenithpro.features.sales.di
 
-import com.techsultan.zenithpro.features.sales.data.repository.PrinterRepositoryImpl
 import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
-import com.techsultan.zenithpro.features.sales.domain.repository.PrinterRepository
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
@@ -25,13 +23,6 @@ val salesModule = module {
         )
     }
 
-    single<PrinterRepository> {
-        PrinterRepositoryImpl(
-            formatter = get(),
-            printerManager = get()
-        )
-    }
-
     viewModel { CheckoutViewModel(
         getProductsUseCase = get(),
         processSaleUseCase = get(),
@@ -39,7 +30,11 @@ val salesModule = module {
         getDailySummaryUseCase = get(),
         sessionManager = get(),
         customerRepository = get(),
-        getCustomerDetailUseCase = get()
+        getCustomerDetailUseCase = get(),
+        generateReceiptUseCase = get(),
+        printerRepository = get(),
+        printerDataStore = get(),
+        receiptNumberGenerator = get()
     ) }
 
     viewModel {
@@ -47,7 +42,11 @@ val salesModule = module {
             getSalesUseCase = get(),
             saleRepository = get(),
             networkMonitor = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            printerRepository = get(),
+            printerDataStore = get(),
+            generateReceiptUseCase = get(),
+            receiptNumberGenerator = get()
         )
     }
 
