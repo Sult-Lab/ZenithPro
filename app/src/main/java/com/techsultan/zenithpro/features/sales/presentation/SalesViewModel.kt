@@ -2,15 +2,25 @@ package com.techsultan.zenithpro.features.sales.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.data.local.PrinterDataStore
+import com.techsultan.zenithpro.core.data.local.PrinterDevice
+import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.domain.repository.PrinterRepository
+import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
+import com.techsultan.zenithpro.features.sales.data.remote.CartItem
+import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
 import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
+import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +28,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -29,7 +41,12 @@ class SalesListViewModel(
     private val getSalesUseCase: GetSalesUseCase,
     private val saleRepository: SaleRepository,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val printerRepository: PrinterRepository,
+    private val printerDataStore: PrinterDataStore,
+    private val generateReceiptUseCase: GenerateReceiptUseCase,
+    private val receiptNumberGenerator: ReceiptNumberGenerator,
+    private val getSettingsUseCase: GetSettingsUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SalesListUiState())
@@ -38,15 +55,23 @@ class SalesListViewModel(
     private val _events = MutableSharedFlow<SalesListEvent>()
     val events = _events.asSharedFlow()
 
+    private val currentSession get() = sessionManager.currentSession
     private var businessId: String? = null
     private var observeJob: Job? = null
+    private var footerMessage: String? = ""
+    private var taxRate: Double = 0.0
 
     init {
         viewModelScope.launch {
-            businessId = sessionManager.loadSession()?.businessId
+            sessionManager.loadSession()
+            businessId = currentSession?.businessId
             if (businessId != null) {
                 observeSales()
                 syncOnStart()
+                getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
+                    footerMessage = settings?.receiptFooter
+                    taxRate = settings?.taxRate ?: 0.0
+                }
             }
         }
     }
@@ -117,7 +142,69 @@ class SalesListViewModel(
         }
     }
 
-    // ── Derived data — computed from state, no extra DB queries ───
+    // ── Reprint ────────────────────────────────────────────────────
+    
+    fun reprintReceipt(saleWithItems: SaleWithItems) {
+        viewModelScope.launch {
+            val printer = printerDataStore.savedPrinter.first()
+                ?: if (Util.isSunmiDevice()) {
+                    PrinterDevice(
+                        id = "embedded",
+                        name = "Sunmi Embedded Printer",
+                        type = Util.PrinterType.EMBEDDED
+                    )
+                } else null
+
+            if (printer == null) {
+                _events.emit(SalesListEvent.ShowError("No printer configured. Please go to Settings > Printer settings."))
+                return@launch
+            }
+
+            val receiptNumber = receiptNumberGenerator.generate()
+            val sale = saleWithItems.sale
+            val items = saleWithItems.items.map {
+                CartItem(
+                    variantId = it.variantId,
+                    productId = it.productId,
+                    productName = it.productName,
+                    variantSku = it.variantSku,
+                    unitPrice = it.unitPrice,
+                    costPrice = it.costPrice,
+                    quantity = it.quantity
+                )
+            }
+
+            val completedSale = CompletedSale(
+                saleId = sale.id,
+                receiptNumber = receiptNumber,
+                salesPerson = currentSession?.firstName ?: "Staff",
+                paymentMethod = sale.paymentMethod.name,
+                subtotal = sale.totalAmount + sale.discountAmount,
+                discount = sale.discountAmount,
+                total = sale.totalAmount,
+                amountPaid = sale.amountPaid,
+                change = maxOf(0L, sale.amountPaid - sale.totalAmount),
+                cartItems = items,
+                customer = null, 
+                splitPayments = emptyList(),
+                createdAt = try { Instant.parse(sale.soldAt).toEpochMilli() } catch (e: Exception) { System.currentTimeMillis() },
+                businessName = currentSession?.businessName ?: "",
+                businessAddress = currentSession?.businessAddress ?: "",
+                businessNumber = currentSession?.businessName ?: "",
+                taxRate = taxRate,
+                footerMessage = footerMessage
+            )
+
+            val receipt = generateReceiptUseCase(completedSale)
+            val result = printerRepository.printReceipt(receipt, printer)
+            
+            if (result.isSuccess) {
+                _events.emit(SalesListEvent.PrintSuccess)
+            } else {
+                _events.emit(SalesListEvent.ShowError(result.exceptionOrNull()?.message ?: "Reprint failed"))
+            }
+        }
+    }
 
     val filteredSales: StateFlow<List<SaleWithItems>> = state
         .map { s ->
@@ -178,6 +265,7 @@ class SalesListViewModel(
 
     sealed class SalesListEvent {
         data class ShowError(val message: String) : SalesListEvent()
+        data object PrintSuccess : SalesListEvent()
     }
 }
 
@@ -202,5 +290,5 @@ data class SalesSummary(
     val totalCollected: Long    = 0L,
     val totalDebt: Long         = 0L,
     val totalOrders: Int        = 0,
-    val averageOrderValue: Long = 0L
+    val averageOrderValue: Long = 0L,
 )

@@ -4,11 +4,16 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.core.graphics.scale
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 object Util {
     fun convertLongToFullDate(time: Long): String {
@@ -81,6 +86,28 @@ object Util {
         PENDING,     // Awaiting first sync
         DIRTY,       // Modified locally after last sync
         DELETED      // Soft-deleted, pending server delete
+    }
+
+    enum class PrinterType {
+        BLUETOOTH,
+        USB,
+        EMBEDDED
+    }
+
+    fun String.toUtcLocalDate(): LocalDate? = runCatching {
+        OffsetDateTime.parse(this, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            // Use UTC to avoid device timezone skew in sales reports
+            .toLocalDate()
+    }.getOrNull()
+
+    fun String.formatAsTime(): String = runCatching {
+        OffsetDateTime.parse(this, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("h:mm a"))
+    }.getOrElse { "--:-- --" }
+    fun isSunmiDevice(): Boolean {
+        return Build.MANUFACTURER.contains("SUNMI", true)
     }
 
     fun Long.formatPrice(): String = String.format("%,.0f", this.toDouble())

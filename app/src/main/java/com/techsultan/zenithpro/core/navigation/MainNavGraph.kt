@@ -40,6 +40,7 @@ import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
+import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
 import kotlinx.coroutines.launch
@@ -184,6 +185,7 @@ fun MainNavGraph(
                                 onNotifications = {},
                                 onAbout = {},
                                 onLogout = { showLogoutDialog = true },
+                                onPrinterSettings = { navigator.navigate(Route.Home.PrinterSettings) },
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
                                 onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) }
                             )
@@ -269,6 +271,11 @@ fun MainNavGraph(
                         entry<Route.Home.CreateStaff> {
                             CreateStaffScreen(
                                 onCreated = { navigator.goBack() },
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.PrinterSettings> {
+                            PrinterSettingsScreen(
                                 onBack = { navigator.goBack() }
                             )
                         }

@@ -14,17 +14,17 @@ import kotlinx.coroutines.flow.map
 import kotlin.collections.get
 
 object SessionKeys {
-    val USER_ID          = stringPreferencesKey("user_id")
-    val BUSINESS_ID      = stringPreferencesKey("business_id")
-    val FIRST_NAME       = stringPreferencesKey("first_name")
-    val LAST_NAME        = stringPreferencesKey("last_name")
-    val EMAIL            = stringPreferencesKey("email")
-    val ROLE             = stringPreferencesKey("role")
-    val BUSINESS_NAME    = stringPreferencesKey("business_name")
-    val BUSINESS_PHONE   = stringPreferencesKey("business_phone")
+    val USER_ID  = stringPreferencesKey("user_id")
+    val BUSINESS_ID  = stringPreferencesKey("business_id")
+    val FIRST_NAME = stringPreferencesKey("first_name")
+    val LAST_NAME  = stringPreferencesKey("last_name")
+    val EMAIL = stringPreferencesKey("email")
+    val ROLE = stringPreferencesKey("role")
+    val BUSINESS_NAME = stringPreferencesKey("business_name")
+    val BUSINESS_PHONE = stringPreferencesKey("business_phone")
     val BUSINESS_ADDRESS = stringPreferencesKey("business_address")
-    val CURRENCY_SYMBOL  = stringPreferencesKey("currency_symbol")
-    val BRANCH_ID        = stringPreferencesKey("branch_id")
+    val CURRENCY_SYMBOL = stringPreferencesKey("currency_symbol")
+    val BRANCH_ID = stringPreferencesKey("branch_id")
 }
 
 class SessionDataStore(private val context: Context) {

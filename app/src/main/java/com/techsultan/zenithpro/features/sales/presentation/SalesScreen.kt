@@ -23,9 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Dialpad
@@ -34,12 +31,10 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,7 +42,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -80,7 +74,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
-import com.techsultan.zenithpro.core.theme.blueColor
+import com.techsultan.zenithpro.core.util.Util.formatAsTime
+import com.techsultan.zenithpro.core.util.Util.toUtcLocalDate
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.component.EmptySalesState
@@ -93,6 +88,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SalesScreen(
     viewModel: SalesListViewModel = koinViewModel(),
@@ -111,6 +107,8 @@ fun SalesScreen(
             when (event) {
                 is SalesListViewModel.SalesListEvent.ShowError ->
                     snackbarHost.showSnackbar(event.message)
+                is SalesListViewModel.SalesListEvent.PrintSuccess ->
+                    snackbarHost.showSnackbar("Receipt reprinted successfully")
             }
         }
     }
@@ -237,9 +235,7 @@ fun SalesScreen(
                             // ── Date-grouped sale cards ───────────────────
                             val grouped = filteredSales.groupBy { saleWithItems ->
                                 saleWithItems.sale.soldAt
-                                    .let { Instant.parse(it) }
-                                    .atZone(ZoneId.systemDefault())
-                                    .toLocalDate()
+                                    .toUtcLocalDate() ?: LocalDate.MIN
                             }
 
                             grouped.forEach { (date, salesOnDate) ->
@@ -256,6 +252,7 @@ fun SalesScreen(
                                     SaleCard(
                                         saleWithItems = saleWithItems,
                                         onClick       = { onSaleClick(saleWithItems.sale.id) },
+                                        onReprint     = { viewModel.reprintReceipt(saleWithItems) },
                                         modifier      = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
                                     )
                                 }
@@ -300,6 +297,7 @@ private fun SalesSearchBar(
 
 // ── Inline filter row (replaces bottom sheet) ─────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SalesFilterRow(
     state: SalesListUiState,
@@ -718,9 +716,11 @@ private fun DateGroupHeader(date: LocalDate, totalSales: Long) {
 private fun SaleCard(
     saleWithItems: SaleWithItems,
     onClick: () -> Unit,
+    onReprint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sale = saleWithItems.sale
+    var showMenu by remember { mutableStateOf(false) }
 
     val (typeIcon, iconBg, iconTint) = when (sale.paymentMethod) {
         PaymentMethod.CASH     -> Triple(Icons.Default.Money,       Color(0xFFE8F5E9), Color(0xFF2E7D32))
@@ -781,9 +781,7 @@ private fun SaleCard(
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text  = Instant.parse(sale.soldAt)
-                            .atZone(ZoneId.systemDefault())
-                            .format(DateTimeFormatter.ofPattern("h:mm a")),
+                        text = remember(sale.soldAt) { sale.soldAt.formatAsTime() },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -816,6 +814,25 @@ private fun SaleCard(
                         )
                     }
                 }
+                
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "Reprint")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Reprint Receipt") },
+                            onClick = {
+                                showMenu = false
+                                onReprint()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) }
+                        )
+                    }
+                }
             }
 
             // Status badge (non-completed only)
@@ -840,8 +857,8 @@ private fun SaleCard(
                         color = Color(0xFFD32F2F)
                     )
                     Text(
-                        text       = "₦${sale.debtAmount.formatAmount()}",
-                        style      = MaterialTheme.typography.labelSmall,
+                        text = "₦${sale.debtAmount.formatAmount()}",
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFD32F2F)
                     )

@@ -50,6 +50,7 @@ android {
         schemaDirectory(file("$projectDir/schemas").absolutePath)
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
@@ -78,6 +79,8 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
     //icon
     implementation(libs.material.icons)
@@ -127,4 +130,7 @@ dependencies {
 
     //data-store
     implementation(libs.data.store)
+
+    //thermal printer
+    implementation(libs.dantsu.eco.pos)
 }
