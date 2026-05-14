@@ -185,6 +185,24 @@ class CheckoutViewModel(
         }
     }
 
+    fun onBarcodeScanned(barcode: String): Boolean {
+        val product = state.value.products.find { p ->
+            p.variants.any { v -> v.variant.barcode == barcode }
+        }
+        return if (product != null) {
+            addToCart(product)
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ProductAddedByBarcode(product.product.name))
+            }
+            true
+        } else {
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ShowError("Product not found for barcode: $barcode"))
+            }
+            false
+        }
+    }
+
     fun removeFromCart(productId: String) {
         _cart.update { currentCart ->
             val existingItem = currentCart[productId] ?: return@update currentCart
@@ -459,6 +477,8 @@ class CheckoutViewModel(
         data class PrintFailed(
             val message: String
         ) : CheckoutEvent()
+
+        data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()
     }
 
 

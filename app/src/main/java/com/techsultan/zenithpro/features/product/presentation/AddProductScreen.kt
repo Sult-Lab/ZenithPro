@@ -118,7 +118,7 @@ import java.util.UUID
 fun AddProductScreen(
     navigateBack: () -> Unit = {},
     onScanBarcode: () -> Unit = {},
-    viewModel: AddProductViewModel = koinViewModel()
+    viewModel: AddProductViewModel
 ) {
     val context = LocalContext.current
     var productName by remember { mutableStateOf("") }
@@ -1042,9 +1042,3 @@ data class VariationType(
     val icon: ImageVector,
     val items: List<VariationItem> = emptyList()
 )
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewAddProduct() {
-    AddProductScreen()
-}

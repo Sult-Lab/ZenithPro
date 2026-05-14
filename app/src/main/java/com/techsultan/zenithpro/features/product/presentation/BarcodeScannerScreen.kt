@@ -43,17 +43,21 @@ import androidx.annotation.OptIn
 import androidx.camera.core.CameraControl
 import androidx.camera.core.ExperimentalGetImage
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.techsultan.zenithpro.core.util.Util.vibrate
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun BarcodeScannerScreen(
-    onBarcodeScanned: (String) -> Unit,
+    onBarcodeScanned: (String) -> Boolean,
     onBack: () -> Unit,
     onTypeBarcode: () -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { java.util.concurrent.Executors.newSingleThreadExecutor() }
+    val scope = rememberCoroutineScope()
     
     var hasCameraPermission by remember { 
         mutableStateOf(
@@ -62,6 +66,8 @@ fun BarcodeScannerScreen(
     }
     var isFlashOn by remember { mutableStateOf(false) }
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }
+    var isScanning by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -112,6 +118,11 @@ fun BarcodeScannerScreen(
                     val scanner = BarcodeScanning.getClient()
 
                     imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                        if (!isScanning) {
+                            imageProxy.close()
+                            return@setAnalyzer
+                        }
+
                         val mediaImage = imageProxy.image
                         if (mediaImage != null) {
                             val image = InputImage.fromMediaImage(
@@ -120,10 +131,22 @@ fun BarcodeScannerScreen(
                             )
                             scanner.process(image)
                                 .addOnSuccessListener { barcodes ->
-                                    if (barcodes.isNotEmpty()) {
-                                        barcodes.firstOrNull()?.rawValue?.let {
-                                            Log.d("BarcodeScanner", "Scanned barcode: $it")
-                                            onBarcodeScanned(it)
+                                    if (isScanning && barcodes.isNotEmpty()) {
+                                        barcodes.firstOrNull()?.rawValue?.let { barcode ->
+                                            isScanning = false
+                                            vibrate(context)
+                                            val handled = onBarcodeScanned(barcode)
+                                            if (handled) {
+                                                isScanning = false
+                                            } else {
+                                                errorMessage = "Product not found"
+                                                isScanning = false
+                                                scope.launch {
+                                                    delay(2000)
+                                                    errorMessage = null
+                                                    isScanning = true
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -200,6 +223,27 @@ fun BarcodeScannerScreen(
                     contentDescription = "Flash",
                     tint = Color.White
                 )
+            }
+        }
+
+        // Error Message Overlay
+        errorMessage?.let {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 260.dp)
+            ) {
+                Surface(
+                    color = Color.Red.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = it,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 

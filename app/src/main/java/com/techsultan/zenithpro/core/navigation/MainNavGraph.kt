@@ -39,6 +39,7 @@ import com.techsultan.zenithpro.features.product.presentation.BarcodeScannerScre
 import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
+import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
@@ -143,6 +144,7 @@ fun MainNavGraph(
         ) { paddingValues ->
 
             val addProductViewModel: AddProductViewModel = koinViewModel()
+            val checkoutViewModel: CheckoutViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -225,23 +227,37 @@ fun MainNavGraph(
                         entry<Route.Home.NewSale> {
                             CheckoutScreen(
                                 onBack = { navigator.goBack() },
-                                onSaleCompleted = {}
+                                onScanBarcode = { navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.CHECKOUT)) },
+                                viewModel = checkoutViewModel,
+                                onSaleCompleted = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.AddProduct> {
                             AddProductScreen(
                                 navigateBack = { navigator.goBack() },
                                 onScanBarcode = {
-                                    navigator.navigate(Route.Home.BarcodeScanner)
+                                    navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.ADD_PRODUCT))
                                 },
                                 viewModel = addProductViewModel
                             )
                         }
-                        entry<Route.Home.BarcodeScanner> {
+                        entry<Route.Home.BarcodeScanner> { key ->
                             BarcodeScannerScreen(
-                                onBarcodeScanned = {
-                                    addProductViewModel.onBarcodeScanned(it)
-                                    navigator.goBack()
+                                onBarcodeScanned = { barcode ->
+                                    when (key.caller) {
+                                        Route.ScannerCaller.ADD_PRODUCT -> {
+                                            addProductViewModel.onBarcodeScanned(barcode)
+                                            navigator.goBack()
+                                            true
+                                        }
+                                        Route.ScannerCaller.CHECKOUT -> {
+                                            val found = checkoutViewModel.onBarcodeScanned(barcode)
+                                            if (found) {
+                                                navigator.goBack()
+                                            }
+                                            found
+                                        }
+                                    }
                                 },
                                 onBack = { navigator.goBack() },
                                 onTypeBarcode = { navigator.goBack() }

@@ -51,7 +51,7 @@ sealed interface Route: NavKey {
         data object PrinterSettings : Route, NavKey
 
         @Serializable
-        data object BarcodeScanner : Route, NavKey
+        data class BarcodeScanner(val caller: ScannerCaller) : Route, NavKey
     }
 
     @Serializable
@@ -72,6 +72,11 @@ sealed interface Route: NavKey {
         data object CustomerDetailScreen : Route, NavKey
         @Serializable
         data object AddEditCustomerScreen : Route, NavKey
+    }
+
+    @Serializable
+    enum class ScannerCaller {
+        ADD_PRODUCT, CHECKOUT
     }
 
 }

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,7 +59,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -73,7 +73,8 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun CheckoutScreen(
     onBack: () -> Unit = {},
-    viewModel: CheckoutViewModel = koinViewModel(),
+    onScanBarcode: () -> Unit = {},
+    viewModel: CheckoutViewModel,
     onSaleCompleted: (saleId: String) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -82,7 +83,7 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
-    val snackbarHost  = remember { SnackbarHostState() }
+    val snackbarHost = remember { SnackbarHostState() }
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
@@ -104,7 +105,9 @@ fun CheckoutScreen(
                 is CheckoutViewModel.CheckoutEvent.PrintFailed -> {
                     snackbarHost.showSnackbar(event.message)
                 }
-                else -> {}
+                is CheckoutViewModel.CheckoutEvent.ProductAddedByBarcode -> {
+                    snackbarHost.showSnackbar("Added ${event.productName} to cart")
+                }
             }
         }
     }
@@ -193,6 +196,17 @@ fun CheckoutScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
+                trailingIcon = {
+                    if (state.searchQuery.isEmpty()) {
+                        IconButton(onClick = onScanBarcode) {
+                            Icon(
+                                imageVector = Icons.Outlined.QrCodeScanner,
+                                contentDescription = "Scan",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
@@ -274,7 +288,7 @@ fun CheckoutScreen(
             onDismiss = {
                 showPaymentDialog = false
                 viewModel.clearCustomer()
-                        },
+            },
             onConfirm = {
                 viewModel.checkout()
                 showPaymentDialog = false
@@ -480,10 +494,4 @@ fun CartBottomSheetContent(
         }
         Spacer(modifier = Modifier.height(16.dp))
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewNewSale() {
-    // Note: Preview won't work perfectly without businessId and ViewModel
 }
