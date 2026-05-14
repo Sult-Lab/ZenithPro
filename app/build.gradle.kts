@@ -1,4 +1,3 @@
-import org.gradle.kotlin.dsl.libs
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -136,9 +135,13 @@ dependencies {
 
     // ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.camera.mlkit.vision)
 
     // CameraX
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+
+    // ZXing for Barcode generation
+    implementation(libs.zxing.core)
 }

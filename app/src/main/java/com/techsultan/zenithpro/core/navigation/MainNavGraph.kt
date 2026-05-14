@@ -33,10 +33,11 @@ import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
 import com.techsultan.zenithpro.features.expenses.presentation.AddEditExpenseScreen
 import com.techsultan.zenithpro.features.expenses.presentation.ExpenseListScreen
 import com.techsultan.zenithpro.features.material.presentation.MaterialScreen
-import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
-import com.techsultan.zenithpro.features.product.presentation.AddProductViewModel
-import com.techsultan.zenithpro.features.product.presentation.BarcodeScannerScreen
-import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.AddProductScreen
+import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewModel
+import com.techsultan.zenithpro.features.inventory.presentation.BarcodeScannerScreen
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
@@ -170,7 +171,8 @@ fun MainNavGraph(
                             InventoryScreen(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
                                 onProductClick = {},
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                onMenuClick = { scope.launch { drawerState.open() } },
+                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) }
                             )
                         }
                         entry<Route.Home.Sales> {
@@ -261,6 +263,11 @@ fun MainNavGraph(
                                 },
                                 onBack = { navigator.goBack() },
                                 onTypeBarcode = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.PrintBarcode> {
+                            PrintBarcodeScreen(
+                                onBackClick = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.Production> {

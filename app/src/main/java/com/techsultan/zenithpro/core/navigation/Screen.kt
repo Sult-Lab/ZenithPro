@@ -52,6 +52,9 @@ sealed interface Route: NavKey {
 
         @Serializable
         data class BarcodeScanner(val caller: ScannerCaller) : Route, NavKey
+
+        @Serializable
+        data object PrintBarcode : Route, NavKey
     }
 
     @Serializable

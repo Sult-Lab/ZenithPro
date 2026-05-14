@@ -14,8 +14,8 @@ import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
-import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
-import com.techsultan.zenithpro.features.product.domain.use_case.GetProductsUseCase
+import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale

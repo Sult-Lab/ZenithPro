@@ -64,10 +64,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util.formatPrice
-import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
-import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

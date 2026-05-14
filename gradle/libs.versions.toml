@@ -24,6 +24,8 @@ dataStore = "1.1.1"
 mlkit-barcode-scanning = "17.3.0"
 camerax = "1.4.1"
 dantSuPos = "3.3.0"
+cameraMlkitVision = "1.6.1"
+zxing = "3.5.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -74,6 +76,8 @@ androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", 
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 dantsu-eco-pos = {group = "com.github.DantSu", name = "ESCPOS-ThermalPrinter-Android",  version.ref = "dantSuPos"}
+camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

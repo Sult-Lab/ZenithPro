@@ -4,8 +4,8 @@ import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
 import com.techsultan.zenithpro.features.expenses.data.repository.ExpenseRepositoryImpl
-import com.techsultan.zenithpro.features.product.data.local.ProductDao
-import com.techsultan.zenithpro.features.product.data.repository.ProductRepositoryImpl
+import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
+import com.techsultan.zenithpro.features.inventory.data.repository.ProductRepositoryImpl
 
 class SyncManager(
     private val repository: ProductRepositoryImpl,

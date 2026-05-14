@@ -8,6 +8,7 @@ import com.techsultan.zenithpro.core.manager.PrinterDriverFactory
 import com.techsultan.zenithpro.core.manager.PrinterManager
 import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.BarcodeLabelFormatter
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.ReceiptFormatter
@@ -22,6 +23,7 @@ val commonModule = module {
     single { ImageCacheManager(androidContext()) }
     viewModel { DataPersistentViewModel(get(), get(), get(), get()) }
     single { ReceiptFormatter() }
+    single { BarcodeLabelFormatter() }
 
     // Manager/DataStore
     single { AppDataStore(androidContext()) }
