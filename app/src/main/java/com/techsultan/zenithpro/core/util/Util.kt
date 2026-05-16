@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -113,5 +116,34 @@ object Util {
     fun Long.formatPrice(): String = String.format("%,.0f", this.toDouble())
 
     fun String.trimOrNull(): String? = trim().ifBlank { null }
+
+    fun vibrate(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager =
+                context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+
+            vibratorManager.defaultVibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    150, // duration in milliseconds
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                )
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            vibrator.vibrate(
+                VibrationEffect.createOneShot(
+                    150,
+                    VibrationEffect.DEFAULT_AMPLITUDE
+                )
+            )
+        }
+    }
+
+    fun generateSku(name: String, category: String = "GEN"): String {
+        val cleanName = name.filter { it.isLetterOrDigit() }.padEnd(3, 'X').take(3).uppercase()
+        val timestamp = System.currentTimeMillis().toString().takeLast(4)
+        return "$category-$cleanName-$timestamp"
+    }
 
 }

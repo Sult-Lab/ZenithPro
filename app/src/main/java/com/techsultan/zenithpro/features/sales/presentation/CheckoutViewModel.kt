@@ -14,8 +14,8 @@ import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
-import com.techsultan.zenithpro.features.product.data.local.ProductWithVariants
-import com.techsultan.zenithpro.features.product.domain.use_case.GetProductsUseCase
+import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
@@ -182,6 +182,24 @@ class CheckoutViewModel(
                 )
             }
             updatedCart
+        }
+    }
+
+    fun onBarcodeScanned(barcode: String): Boolean {
+        val product = state.value.products.find { p ->
+            p.variants.any { v -> v.variant.barcode == barcode }
+        }
+        return if (product != null) {
+            addToCart(product)
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ProductAddedByBarcode(product.product.name))
+            }
+            true
+        } else {
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ShowError("Product not found for barcode: $barcode"))
+            }
+            false
         }
     }
 
@@ -459,6 +477,8 @@ class CheckoutViewModel(
         data class PrintFailed(
             val message: String
         ) : CheckoutEvent()
+
+        data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()
     }
 
 

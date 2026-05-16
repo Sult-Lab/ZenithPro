@@ -33,10 +33,16 @@ import com.techsultan.zenithpro.features.dashboard.presentation.DashboardScreen
 import com.techsultan.zenithpro.features.expenses.presentation.AddEditExpenseScreen
 import com.techsultan.zenithpro.features.expenses.presentation.ExpenseListScreen
 import com.techsultan.zenithpro.features.material.presentation.MaterialScreen
-import com.techsultan.zenithpro.features.product.presentation.AddProductScreen
-import com.techsultan.zenithpro.features.product.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.AddProductScreen
+import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewModel
+import com.techsultan.zenithpro.features.inventory.presentation.BarcodeScannerScreen
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
+import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
+import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
+import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
@@ -44,6 +50,7 @@ import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsSc
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun MainNavGraph(
@@ -139,6 +146,10 @@ fun MainNavGraph(
             }
         ) { paddingValues ->
 
+            val addProductViewModel: AddProductViewModel = koinViewModel()
+            val productDetailViewModel: ProductDetailViewModel = koinViewModel()
+            val checkoutViewModel: CheckoutViewModel = koinViewModel()
+
             NavDisplay(
                 modifier = Modifier
                     .fillMaxSize()
@@ -162,8 +173,9 @@ fun MainNavGraph(
                         entry<Route.Home.Inventory> {
                             InventoryScreen(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
-                                onProductClick = {},
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                onProductClick = { navigator.navigate(Route.Home.ProductDetail(it)) },
+                                onMenuClick = { scope.launch { drawerState.open() } },
+                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) }
                             )
                         }
                         entry<Route.Home.Sales> {
@@ -220,12 +232,60 @@ fun MainNavGraph(
                         entry<Route.Home.NewSale> {
                             CheckoutScreen(
                                 onBack = { navigator.goBack() },
-                                onSaleCompleted = {}
+                                onScanBarcode = { navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.CHECKOUT)) },
+                                viewModel = checkoutViewModel,
+                                onSaleCompleted = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.AddProduct> {
                             AddProductScreen(
-                                navigateBack = { navigator.goBack() }
+                                navigateBack = { navigator.goBack() },
+                                onScanBarcode = {
+                                    navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.ADD_PRODUCT))
+                                },
+                                viewModel = addProductViewModel
+                            )
+                        }
+                        entry<Route.Home.ProductDetail> { key ->
+                            ProductDetailScreen(
+                                productId = key.productId,
+                                onBack = { navigator.goBack() },
+                                onScanBarcode = {
+                                    navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.PRODUCT_DETAIL))
+                                },
+                                viewModel = productDetailViewModel
+                            )
+                        }
+                        entry<Route.Home.BarcodeScanner> { key ->
+                            BarcodeScannerScreen(
+                                onBarcodeScanned = { barcode ->
+                                    when (key.caller) {
+                                        Route.ScannerCaller.ADD_PRODUCT -> {
+                                            addProductViewModel.onBarcodeScanned(barcode)
+                                            navigator.goBack()
+                                            true
+                                        }
+                                        Route.ScannerCaller.CHECKOUT -> {
+                                            val found = checkoutViewModel.onBarcodeScanned(barcode)
+                                            if (found) {
+                                                navigator.goBack()
+                                            }
+                                            found
+                                        }
+                                        Route.ScannerCaller.PRODUCT_DETAIL -> {
+                                            productDetailViewModel.onBarcodeScanned(barcode)
+                                            navigator.goBack()
+                                            true
+                                        }
+                                    }
+                                },
+                                onBack = { navigator.goBack() },
+                                onTypeBarcode = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.PrintBarcode> {
+                            PrintBarcodeScreen(
+                                onBackClick = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.Production> {

@@ -37,7 +37,7 @@ class NavigationState(
 @Composable
 fun rememberNavigationState(
     startRoute: Route,
-    topLevelDestinations: Set<Route>
+    topLevelDestinations: Set<Route> = emptySet()
 ): NavigationState {
 
     val topLevelDestination = rememberSerializable(

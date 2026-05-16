@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "e5c807cd5e56a05db6eb952389433366",
+    "identityHash": "a0731d9ebcd9cb948d4419f0f2791103",
     "entities": [
       {
         "tableName": "products",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `businessId` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `category` TEXT, `baseSalesPrice` INTEGER NOT NULL, `baseCostPrice` INTEGER NOT NULL, `imageUrl` TEXT, `isActive` INTEGER NOT NULL, `imageUrls` TEXT NOT NULL, `expiryWarningDays` INTEGER, `updatedAt` TEXT NOT NULL, `deletedAt` TEXT, `syncStatus` TEXT NOT NULL, `locallyCreatedAt` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `businessId` TEXT NOT NULL, `name` TEXT NOT NULL, `description` TEXT, `category` TEXT, `baseSalesPrice` INTEGER NOT NULL, `baseCostPrice` INTEGER NOT NULL, `isActive` INTEGER NOT NULL, `imageUrls` TEXT NOT NULL, `expiryWarningDays` INTEGER, `updatedAt` TEXT NOT NULL, `deletedAt` TEXT, `syncStatus` TEXT NOT NULL, `locallyCreatedAt` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -47,11 +47,6 @@
             "columnName": "baseCostPrice",
             "affinity": "INTEGER",
             "notNull": true
-          },
-          {
-            "fieldPath": "imageUrl",
-            "columnName": "imageUrl",
-            "affinity": "TEXT"
           },
           {
             "fieldPath": "isActive",
@@ -1148,7 +1143,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e5c807cd5e56a05db6eb952389433366')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a0731d9ebcd9cb948d4419f0f2791103')"
     ]
   }
 }
