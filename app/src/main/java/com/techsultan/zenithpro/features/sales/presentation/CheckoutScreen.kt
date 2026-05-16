@@ -226,13 +226,15 @@ fun CheckoutScreen(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                categories.forEach { category ->
-                    CategoryChip(
-                        text = category,
-                        selected = state.selectedCategory == category,
-                        onClick = { viewModel.onCategoryFilterChanged(category) }
-                    )
-                }
+                categories
+                    .filter { it.isNotBlank() }
+                    .forEach { category ->
+                        CategoryChip(
+                            text = category,
+                            selected = state.selectedCategory == category,
+                            onClick = { viewModel.onCategoryFilterChanged(category) }
+                        )
+                    }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

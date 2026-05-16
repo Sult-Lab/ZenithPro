@@ -5,6 +5,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.category.data.local.CategoryDao
+import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.customer.data.local.CustomerDao
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
@@ -41,9 +43,10 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         BranchEntity::class,
         MaterialEntity::class,
         RecipeEntity::class,
-        ProductionOrderEntity::class
+        ProductionOrderEntity::class,
+        CategoryEntity::class
                ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -58,6 +61,7 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val businessSettingsDao: BusinessSettingsDao
     abstract val materialDao: MaterialDao
     abstract val productionOrderDao: ProductionOrderDao
+    abstract val categoryDao: CategoryDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"

@@ -45,12 +45,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,6 +74,7 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
 import com.techsultan.zenithpro.core.util.Util.formatPrice
+import com.techsultan.zenithpro.features.category.presentation.CategoryPickerSheet
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.StockCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
@@ -93,6 +96,7 @@ fun ProductDetailScreen(
 
     var productName by remember(productId) { mutableStateOf("") }
     var category by remember(productId) { mutableStateOf("") }
+    var selectedCategoryId by remember(productId) { mutableStateOf<String?>(null) }
     var salesPrice by remember(productId) { mutableStateOf("") }
     var costPrice by remember(productId) { mutableStateOf("") }
     var barcode by remember(productId) { mutableStateOf("") }
@@ -109,7 +113,9 @@ fun ProductDetailScreen(
         )
     }
     var showVariationsSheet by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val categories by viewModel.categories.collectAsState()
 
     LaunchedEffect(productId) {
         viewModel.getProduct(productId)
@@ -383,14 +389,35 @@ fun ProductDetailScreen(
                             placeholder = "Enter product name"
                         )
 
-                        CustomTextField(
-                            value = category,
-                            onValueChange = { category = it },
-                            label = "Category",
-                            placeholder = "Category",
-                            readOnly = true,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, null) }
-                        )
+                        // Category Selector
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "Category",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            OutlinedTextField(
+                                value = category,
+                                onValueChange = { },
+                                placeholder = { Text("Select a category") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showCategorySheet = true },
+                                readOnly = true,
+                                enabled = false,
+                                trailingIcon = {
+                                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                                    disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                        }
 
                         SectionHeader("Pricing & Profit")
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -646,6 +673,21 @@ fun ProductDetailScreen(
                 variations = updatedVariations
                 showVariationsSheet = false
             }
+        )
+    }
+
+    if (showCategorySheet) {
+        CategoryPickerSheet(
+            categories = categories,
+            selectedCategoryId = selectedCategoryId,
+            businessId = viewModel.businessId ?: "",
+            upsertCategoryUseCase = viewModel.upsertCategoryUseCase,
+            onCategorySelected = {
+                category = it.name
+                selectedCategoryId = it.id
+                showCategorySheet = false
+            },
+            onDismiss = { showCategorySheet = false }
         )
     }
 }
