@@ -73,4 +73,63 @@ interface ProductDao {
 
     @Query("SELECT 0")
     suspend fun getPendingPurchaseOrderCount(): Int
+
+    // ProductDao.kt — add these
+    @Query("SELECT * FROM products WHERE id = :id")
+    suspend fun getProductById(id: String): ProductEntity?
+
+    @Query("""
+    UPDATE products SET
+        name              = :name,
+        description       = :description,
+        category          = :category,
+        baseSalesPrice    = :baseSalesPrice,
+        baseCostPrice     = :baseCostPrice,
+        expiryWarningDays = :expiryWarningDays,
+        isActive          = :isActive,
+        imageUrls         = :imageUrls,
+        updatedAt         = :updatedAt,
+        syncStatus        = :syncStatus
+    WHERE id = :id
+""")
+    suspend fun updateProduct(
+        id: String,
+        name: String,
+        description: String?,
+        category: String?,
+        baseSalesPrice: Long,
+        baseCostPrice: Long,
+        expiryWarningDays: Int?,
+        isActive: Boolean,
+        imageUrls: List<String>,
+        updatedAt: String,
+        syncStatus: Util.SyncStatus
+    )
+
+    // ProductVariantDao.kt — add these
+    @Query("SELECT * FROM product_variants WHERE productId = :productId AND syncStatus != 'DELETED'")
+    suspend fun getVariantsForProduct(productId: String): List<ProductVariantEntity>
+
+    @Query("""
+    UPDATE product_variants SET
+        sku        = :sku,
+        salesPrice = :salesPrice,
+        costPrice  = :costPrice,
+        barcode    = :barcode,
+        updatedAt  = :updatedAt,
+        syncStatus = :syncStatus
+    WHERE id = :id
+""")
+    suspend fun updateVariant(
+        id: String,
+        sku: String,
+        salesPrice: Long,
+        costPrice: Long,
+        barcode: String?,
+        updatedAt: String,
+        syncStatus: Util.SyncStatus
+    )
+
+    @Query("DELETE FROM variant_attributes WHERE variantId = :variantId")
+    suspend fun deleteAttributesForVariant(variantId: String)
 }

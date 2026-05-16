@@ -140,4 +140,10 @@ object Util {
         }
     }
 
+    fun generateSku(name: String, category: String = "GEN"): String {
+        val cleanName = name.filter { it.isLetterOrDigit() }.padEnd(3, 'X').take(3).uppercase()
+        val timestamp = System.currentTimeMillis().toString().takeLast(4)
+        return "$category-$cleanName-$timestamp"
+    }
+
 }

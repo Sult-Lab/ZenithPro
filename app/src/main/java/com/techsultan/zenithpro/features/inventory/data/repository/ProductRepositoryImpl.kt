@@ -25,6 +25,7 @@ import com.techsultan.zenithpro.features.inventory.data.remote.ProductStockDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantDto
 import com.techsultan.zenithpro.features.inventory.data.remote.StockCreateRequest
+import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.VariantAttributeDto
 import com.techsultan.zenithpro.features.inventory.data.remote.VariantAttributeInput
 import com.techsultan.zenithpro.features.inventory.domain.repository.ProductRepository
@@ -34,6 +35,7 @@ import io.ktor.client.call.body
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
@@ -61,6 +63,20 @@ class ProductRepositoryImpl(
             }
             .catch { emit(Resource.Error(it.message ?: "Failed to load products")) }
             .onStart { emit(Resource.Loading()) }
+
+    override fun getProduct(productId: String): Flow<Resource<ProductWithVariants>> = flow {
+        emit(Resource.Loading())
+        try {
+            val product = productDao.getProductWithVariants(productId)
+            if (product != null) {
+                emit(Resource.Success(product))
+            } else {
+                emit(Resource.Error("Product not found"))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Failed to load product"))
+        }
+    }
 
     override suspend fun addProduct(
         productRequest: AddProductRequest,
@@ -95,7 +111,6 @@ class ProductRepositoryImpl(
                     category = productRequest.category,
                     baseSalesPrice = productRequest.baseSalesPrice,
                     baseCostPrice = productRequest.baseCostPrice,
-                    imageUrl = imageUrls.firstOrNull(),
                     isActive = productRequest.isActive,
                     imageUrls = imageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
@@ -161,6 +176,108 @@ class ProductRepositoryImpl(
         } catch (e: Exception) {
             Log.e("ProductRepo", "addProduct error: ${e.message}", e)
             Resource.Error(e.message ?: "Failed to add product")
+        }
+    }
+
+    override suspend fun updateProduct(
+        productRequest: AddProductRequest,
+        imageUris: List<Uri>
+    ): Resource<Unit> {
+        Log.d("ProductRepo", "updateProduct: Starting for product: ${productRequest.name}")
+        return try {
+            val productId = productRequest.clientId
+            val now = Instant.now().toString()
+
+            // 1. Handle Images
+            val currentProduct = productDao.getProductWithVariants(productId)
+            
+            // New images (content://) need uploading
+            val localUris = imageUris.filter { it.toString().startsWith("content://") }
+            val existingRemoteUrls = imageUris.filter { it.toString().startsWith("http") }.map { it.toString() }
+            
+            val newRemoteUrls = if (localUris.isNotEmpty()) {
+                imageUploadManager.uploadProductImages(
+                    imageUris = localUris,
+                    businessId = productRequest.businessId,
+                    name = productRequest.name
+                )
+            } else emptyList()
+            
+            val allImageUrls = existingRemoteUrls + newRemoteUrls
+
+            // 2. Update Product locally
+            productDao.insertProduct(
+                ProductEntity(
+                    id = productId,
+                    businessId = productRequest.businessId,
+                    name = productRequest.name,
+                    description = productRequest.description,
+                    category = productRequest.category,
+                    baseSalesPrice = productRequest.baseSalesPrice,
+                    baseCostPrice = productRequest.baseCostPrice,
+                    isActive = productRequest.isActive,
+                    imageUrls = allImageUrls,
+                    expiryWarningDays = productRequest.expiryWarningDays,
+                    updatedAt = now,
+                    deletedAt = null,
+                    syncStatus = Util.SyncStatus.DIRTY,
+                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt
+                )
+            )
+
+            // 3. Update Variants & Stock
+            variantDao.deleteVariantsForProduct(productId)
+            
+            productRequest.variants?.forEach { variantReq ->
+                val variantId = variantReq.clientId
+                variantDao.insertVariant(
+                    ProductVariantEntity(
+                        id = variantId,
+                        productId = productId,
+                        businessId = productRequest.businessId,
+                        sku = variantReq.sku,
+                        salesPrice = variantReq.salesPrice,
+                        costPrice = variantReq.costPrice,
+                        barcode = variantReq.barcode,
+                        updatedAt = now,
+                        deletedAt = null,
+                        syncStatus = Util.SyncStatus.DIRTY
+                    )
+                )
+                variantDao.insertAttributes(
+                    variantReq.attributes.map {
+                        VariantAttributeEntity(
+                            id = UUID.randomUUID().toString(),
+                            variantId = variantId,
+                            optionName = it.optionName,
+                            optionValue = it.optionValue
+                        )
+                    }
+                )
+                stockDao.insertStock(
+                    variantReq.stock.map {
+                        ProductStockEntity(
+                            id = UUID.randomUUID().toString(),
+                            variantId = variantId,
+                            quantity = it.quantity,
+                            expiryDate = it.expiryDate,
+                            lowStockAlert = it.lowStockAlert,
+                            updatedAt = now,
+                            syncStatus = Util.SyncStatus.DIRTY
+                        )
+                    }
+                )
+            }
+
+            // 4. Sync
+            if (networkMonitor.isConnected()) {
+                pushNewProduct(productId)
+            }
+
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Log.e("ProductRepo", "updateProduct error: ${e.message}", e)
+            Resource.Error(e.message ?: "Failed to update product")
         }
     }
 
@@ -325,6 +442,7 @@ class ProductRepositoryImpl(
                     .filter { it.id !in unsyncedProductIds }
                     .map { it.toProductEntity() }
                 if (productsToUpsert.isNotEmpty()) {
+                    Log.d("Product Repo", "Products to Upsert: $productsToUpsert")
                     productDao.insertProducts(productsToUpsert) // REPLACE strategy handles upsert
                 }
 
@@ -343,7 +461,6 @@ class ProductRepositoryImpl(
                 if (variantsToUpsert.isNotEmpty()) {
                     variantDao.insertVariants(variantsToUpsert)
                 }
-
                 // 8. Handle server-side variant deletes
                 val remoteVariantIds = remoteVariants.map { it.id }.toSet()
                 val localVariantIds  = variantDao.getAllVariantIdsForBusiness(businessId).toSet()
@@ -351,13 +468,30 @@ class ProductRepositoryImpl(
                     .filter { it !in remoteVariantIds && it !in unsyncedVariantIds }
                 variantsToDelete.forEach { variantDao.hardDelete(it) }
 
-                // 9. Upsert stock and attributes unconditionally —
-                //    these have no local-only state, server is always authoritative
+                // 9. Refresh stock and attributes —
+                //    Clear local records for variants we are pulling (excluding unsynced)
+                //    to ensure consistency if items were removed on the server.
+                val variantIdsToRefresh = variantIds.filter { it !in unsyncedVariantIds }
+                if (variantIdsToRefresh.isNotEmpty()) {
+                    stockDao.deleteForVariants(variantIdsToRefresh)
+                    variantDao.deleteAttributesForVariants(variantIdsToRefresh)
+                }
+
                 if (remoteStock.isNotEmpty()) {
-                    stockDao.insertStock(remoteStock.map { it.toEntity() })
+                    val stockToInsert = remoteStock
+                        .filter { it.variantId in variantIdsToRefresh }
+                        .map { it.toEntity() }
+                    if (stockToInsert.isNotEmpty()) {
+                        stockDao.insertStock(stockToInsert)
+                    }
                 }
                 if (remoteAttributes.isNotEmpty()) {
-                    variantDao.insertAttributes(remoteAttributes.map { it.toEntity() })
+                    val attrsToInsert = remoteAttributes
+                        .filter { it.variantId in variantIdsToRefresh }
+                        .map { it.toEntity() }
+                    if (attrsToInsert.isNotEmpty()) {
+                        variantDao.insertAttributes(attrsToInsert)
+                    }
                 }
 
                 Log.d(
@@ -455,6 +589,187 @@ class ProductRepositoryImpl(
                 Resource.Error(e.message ?: "Sync failed")
             }
         }
+
+    override suspend fun updateProduct(
+        request: UpdateProductRequest,
+        newImageUris: List<Uri>
+    ): Resource<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val now      = Instant.now().toString()
+            val existing = productDao.getProductById(request.clientId)
+                ?: return@withContext Resource.Error("Product not found")
+
+            // Upload new images and combine with kept existing URLs
+            val uploadedUrls: List<String> = if (newImageUris.isNotEmpty()) {
+                imageUploadManager.uploadProductImages(
+                    imageUris  = newImageUris,
+                    businessId = request.businessId,
+                    name       = request.name
+                )
+            } else emptyList()
+
+            val finalImageUrls = request.imageUrls + uploadedUrls
+
+            Log.d("ProductRepo", "updateProduct images: kept=${request.imageUrls.size} new=${uploadedUrls.size} total=${finalImageUrls.size}")
+
+            productDao.updateProduct(
+                id                = request.clientId,
+                name              = request.name,
+                description       = request.description,
+                category          = request.category,
+                baseSalesPrice    = request.baseSalesPrice,
+                baseCostPrice     = request.baseCostPrice,
+                expiryWarningDays = request.expiryWarningDays,
+                isActive          = request.isActive,
+                imageUrls         = finalImageUrls,
+                updatedAt         = now,
+                syncStatus        = Util.SyncStatus.DIRTY
+            )
+
+            reconcileVariantsLocally(
+                productId  = request.clientId,
+                businessId = request.businessId,
+                variants   = request.variants,
+                now        = now
+            )
+
+            if (networkMonitor.isConnected()) {
+                pushUpdatedProduct(
+                    productId = request.clientId,
+                    request   = request.copy(imageUrls = finalImageUrls)
+                )
+            }
+
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Log.e("ProductRepo", "updateProduct: ${e.message}", e)
+            Resource.Error(e.message ?: "Failed to update product")
+        }
+    }
+
+    internal suspend fun pushUpdatedProduct(
+        productId: String,
+        request: UpdateProductRequest
+    ) {
+        try {
+            val syncRequest = AddProductRequest(
+                clientId  = productId,
+                name = request.name,
+                description = request.description,
+                category = request.category,
+                baseSalesPrice = request.baseSalesPrice,
+                baseCostPrice = request.baseCostPrice,
+                expiryWarningDays = request.expiryWarningDays,
+                isActive = request.isActive,
+                businessId = request.businessId,
+                imageUrls = request.imageUrls,
+                variants = request.variants
+            )
+
+            val response = functions.invoke(
+                function = "add_product",
+                body     = syncRequest
+            )
+
+            val syncResponse = response.body<SyncResponse>()
+            productDao.markSynced(productId, syncResponse.updatedAt)
+
+            // Mark all variants synced too
+            request.variants.forEach {
+                variantDao.markSynced(it.clientId, syncResponse.updatedAt)
+            }
+
+            Log.d("ProductRepo", "pushUpdatedProduct: synced $productId")
+        } catch (e: Exception) {
+            Log.w("ProductRepo", "pushUpdatedProduct failed for $productId: ${e.message}")
+            // Left as DIRTY — SyncManager will retry
+        }
+    }
+
+    private suspend fun reconcileVariantsLocally(
+        productId: String,
+        businessId: String,
+        variants: List<ProductVariantCreateRequest>,
+        now: String
+    ) {
+        val existingVariants = variantDao.getVariantsForProduct(productId)
+        val existingIds      = existingVariants.map { it.id }.toSet()
+        val incomingIds      = variants.map { it.clientId }.toSet()
+
+        // Soft-delete variants removed during edit
+        // Soft-delete preserves FK reference from sale_items
+        existingIds
+            .filter { it !in incomingIds }
+            .forEach { removedId ->
+                variantDao.softDelete(removedId, now)
+                // Also clean up stock and attributes for removed variants
+                stockDao.deleteForVariant(removedId)
+                variantDao.deleteAttributesForVariant(removedId)
+            }
+
+        // Upsert each incoming variant
+        variants.forEach { variantReq ->
+            if (variantReq.clientId in existingIds) {
+                // Update existing — never touch SKU
+                variantDao.updateVariant(
+                    id         = variantReq.clientId,
+                    sku        = existingVariants.first { it.id == variantReq.clientId }.sku,
+                    salesPrice = variantReq.salesPrice,
+                    costPrice  = variantReq.costPrice,
+                    barcode    = variantReq.barcode,
+                    updatedAt  = now,
+                    syncStatus = Util.SyncStatus.DIRTY
+                )
+            } else {
+                // New variant added during edit
+                variantDao.insertVariant(
+                    ProductVariantEntity(
+                        id         = variantReq.clientId,
+                        productId  = productId,
+                        businessId = businessId,
+                        sku        = variantReq.sku,
+                        salesPrice = variantReq.salesPrice,
+                        costPrice  = variantReq.costPrice,
+                        barcode    = variantReq.barcode,
+                        updatedAt  = now,
+                        deletedAt  = null,
+                        syncStatus = Util.SyncStatus.PENDING
+                    )
+                )
+            }
+
+            // Replace attributes entirely — delete then reinsert
+            variantDao.deleteAttributesForVariant(variantReq.clientId)
+            if (variantReq.attributes.isNotEmpty()) {
+                variantDao.insertAttributes(
+                    variantReq.attributes.map {
+                        VariantAttributeEntity(
+                            id          = UUID.randomUUID().toString(),
+                            variantId   = variantReq.clientId,
+                            optionName  = it.optionName,
+                            optionValue = it.optionValue
+                        )
+                    }
+                )
+            }
+
+            // Replace stock — delete then reinsert
+            stockDao.deleteForVariant(variantReq.clientId)
+            stockDao.insertStock(
+                variantReq.stock.map {
+                    ProductStockEntity(
+                        id            = UUID.randomUUID().toString(),
+                        variantId     = variantReq.clientId,
+                        quantity      = it.quantity,
+                        expiryDate    = it.expiryDate,
+                        lowStockAlert = it.lowStockAlert,
+                        updatedAt     = now,
+                        syncStatus    = Util.SyncStatus.DIRTY
+                    )
+                }
+            )
+        }
+    }
 
     suspend fun pushUpdate(entity: ProductEntity) {
         Log.d("ProductRepo", "pushUpdate: ${entity.id}")

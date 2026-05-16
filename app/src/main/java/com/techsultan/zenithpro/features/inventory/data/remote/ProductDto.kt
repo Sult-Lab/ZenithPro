@@ -15,8 +15,6 @@ data class ProductDto(
     val baseSalesPrice: Long,
     @SerialName("base_cost_price")
     val baseCostPrice: Long,
-    @SerialName("image_url")
-    val imageUrl: String? = null,
     @SerialName("is_active")
     val isActive: Boolean,
     @SerialName("image_urls") val imageUrls: List<String> = emptyList(),

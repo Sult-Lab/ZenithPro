@@ -31,6 +31,8 @@ sealed interface Route: NavKey {
         @Serializable
         data object AddProduct : Route, NavKey
         @Serializable
+        data class ProductDetail(val productId: String) : Route, NavKey
+        @Serializable
         data object NewSale : Route, NavKey
         @Serializable
         data object Branches : Route, NavKey
@@ -79,7 +81,7 @@ sealed interface Route: NavKey {
 
     @Serializable
     enum class ScannerCaller {
-        ADD_PRODUCT, CHECKOUT
+        ADD_PRODUCT, CHECKOUT, PRODUCT_DETAIL
     }
 
 }

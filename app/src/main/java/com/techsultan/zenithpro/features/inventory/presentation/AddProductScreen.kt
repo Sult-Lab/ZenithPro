@@ -100,6 +100,7 @@ import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
+import com.techsultan.zenithpro.core.util.Util.generateSku
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.StockCreateRequest

@@ -38,6 +38,8 @@ import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewMo
 import com.techsultan.zenithpro.features.inventory.presentation.BarcodeScannerScreen
 import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
+import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
+import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
@@ -145,6 +147,7 @@ fun MainNavGraph(
         ) { paddingValues ->
 
             val addProductViewModel: AddProductViewModel = koinViewModel()
+            val productDetailViewModel: ProductDetailViewModel = koinViewModel()
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
 
             NavDisplay(
@@ -170,7 +173,7 @@ fun MainNavGraph(
                         entry<Route.Home.Inventory> {
                             InventoryScreen(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
-                                onProductClick = {},
+                                onProductClick = { navigator.navigate(Route.Home.ProductDetail(it)) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) }
                             )
@@ -243,6 +246,16 @@ fun MainNavGraph(
                                 viewModel = addProductViewModel
                             )
                         }
+                        entry<Route.Home.ProductDetail> { key ->
+                            ProductDetailScreen(
+                                productId = key.productId,
+                                onBack = { navigator.goBack() },
+                                onScanBarcode = {
+                                    navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.PRODUCT_DETAIL))
+                                },
+                                viewModel = productDetailViewModel
+                            )
+                        }
                         entry<Route.Home.BarcodeScanner> { key ->
                             BarcodeScannerScreen(
                                 onBarcodeScanned = { barcode ->
@@ -258,6 +271,11 @@ fun MainNavGraph(
                                                 navigator.goBack()
                                             }
                                             found
+                                        }
+                                        Route.ScannerCaller.PRODUCT_DETAIL -> {
+                                            productDetailViewModel.onBarcodeScanned(barcode)
+                                            navigator.goBack()
+                                            true
                                         }
                                     }
                                 },

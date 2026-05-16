@@ -13,7 +13,6 @@ data class ProductEntity(
     val category: String?,
     val baseSalesPrice: Long,
     val baseCostPrice: Long,
-    val imageUrl: String?,
     val isActive: Boolean,
     val imageUrls: List<String>,
     val expiryWarningDays: Int?,

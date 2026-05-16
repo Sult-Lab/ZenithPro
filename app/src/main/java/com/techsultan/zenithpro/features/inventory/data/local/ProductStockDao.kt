@@ -22,4 +22,7 @@ interface ProductStockDao {
 
     @Query("DELETE FROM product_stock WHERE variantId = :variantId")
     suspend fun deleteForVariant(variantId: String)
+
+    @Query("DELETE FROM product_stock WHERE variantId IN (:variantIds)")
+    suspend fun deleteForVariants(variantIds: List<String>)
 }

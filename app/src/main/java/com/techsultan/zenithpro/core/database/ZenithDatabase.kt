@@ -43,7 +43,7 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         RecipeEntity::class,
         ProductionOrderEntity::class
                ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

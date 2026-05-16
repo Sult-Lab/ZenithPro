@@ -31,16 +31,6 @@ data class ProductVariantCreateRequest(
 )
 
 @Serializable
-data class ProductVariantCreate(
-    val sku: String,
-    val salesPrice: Long,
-    val costPrice: Long,
-    val barcode: String?,
-    val attributes: List<VariantAttributeInput>,
-    val stock: List<StockCreateRequest>
-)
-
-@Serializable
 data class VariantAttributeInput(
     @SerialName("optionName") val optionName: String,
     @SerialName("optionValue") val optionValue: String
@@ -53,11 +43,6 @@ data class StockCreateRequest(
     @SerialName("lowStockAlert") val lowStockAlert: Int? = null
 )
 
-@Serializable
-data class CreateVariantsRequest(
-    @SerialName("productId") val productId: String,
-    @SerialName("variants") val variants: List<ProductVariantCreate>
-)
 
 @Serializable
 data class ImageUploadRequest(

@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.Util.generateSku
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.domain.use_case.AddProductUseCase
