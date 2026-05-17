@@ -801,57 +801,56 @@ private fun SaleCard(
         border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier          = Modifier.fillMaxWidth()
-            ) {
-                Box(
-                    modifier        = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(iconBg),
-                    contentAlignment = Alignment.Center
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier          = Modifier.fillMaxWidth().padding(end = 32.dp)
                 ) {
-                    Icon(
-                        imageVector        = typeIcon,
-                        contentDescription = null,
-                        tint               = iconTint,
-                        modifier           = Modifier.size(22.dp)
-                    )
-                }
+                    Box(
+                        modifier        = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = typeIcon,
+                            contentDescription = null,
+                            tint               = iconTint,
+                            modifier           = Modifier.size(22.dp)
+                        )
+                    }
 
-                Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(12.dp))
 
-                // Item names
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = saleWithItems.items
+                    // Item names
+                    Column(modifier = Modifier.weight(1f)) {
+                        val itemsText = saleWithItems.items
                             .take(2)
                             .joinToString(", ") { it.productName }
                             .let {
                                 if (saleWithItems.items.size > 2)
                                     "$it +${saleWithItems.items.size - 2} more"
                                 else it
-                            },
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = remember(sale.soldAt) { sale.soldAt.formatAsTime() },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                            }
+                        
+                        Text(
+                            modifier = Modifier.fillMaxWidth(),
+                            text = itemsText.ifBlank { "Sale Transaction" },
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = remember(sale.soldAt) { sale.soldAt.formatAsTime() },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
 
                     Column(
                         horizontalAlignment = Alignment.End
@@ -885,83 +884,86 @@ private fun SaleCard(
                             )
                         }
                     }
-
-                    IconButton(
-                        onClick = { showMenu = true }
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "More"
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Reprint Receipt") },
-                            onClick = {
-                                showMenu = false
-                                onReprint()
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Print,
-                                    contentDescription = null
-                                )
-                            }
-                        )
-                    }
                 }
-            }
 
-            // Status badge (non-completed only)
-            if (sale.status != SaleStatus.COMPLETED) {
-                Spacer(Modifier.height(8.dp))
-                SaleStatusBadge(status = sale.status)
-                branchName?.let { name ->
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(
-                                horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                // Status badge (non-completed only)
+                if (sale.status != SaleStatus.COMPLETED) {
+                    Spacer(Modifier.height(8.dp))
+                    SaleStatusBadge(status = sale.status)
+                    branchName?.let { name ->
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
                         ) {
-                            Icon(Icons.Default.Store, null,
-                                tint     = Color(0xFF1976D2),
-                                modifier = Modifier.size(10.dp))
-                            Text(name,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF1976D2))
+                            Row(
+                                modifier = Modifier.padding(
+                                    horizontal = 6.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(Icons.Default.Store, null,
+                                    tint     = Color(0xFF1976D2),
+                                    modifier = Modifier.size(10.dp))
+                                Text(name,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF1976D2))
+                            }
                         }
                     }
                 }
+
+                // Debt row
+                if (sale.debtAmount > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFD32F2F).copy(alpha = 0.07f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text  = "Outstanding debt",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFD32F2F)
+                        )
+                        Text(
+                            text = "₦${sale.debtAmount.formatAmount()}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFD32F2F)
+                        )
+                    }
+                }
             }
 
-            // Debt row
-            if (sale.debtAmount > 0) {
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFFD32F2F).copy(alpha = 0.07f), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+            // More Icon positioned at TopEnd
+            Box(modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 4.dp)) {
+                IconButton(
+                    onClick = { showMenu = true }
                 ) {
-                    Text(
-                        text  = "Outstanding debt",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFD32F2F)
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "More"
                     )
-                    Text(
-                        text = "₦${sale.debtAmount.formatAmount()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFD32F2F)
+                }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Reprint Receipt") },
+                        onClick = {
+                            showMenu = false
+                            onReprint()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Print,
+                                contentDescription = null
+                            )
+                        }
                     )
                 }
             }
