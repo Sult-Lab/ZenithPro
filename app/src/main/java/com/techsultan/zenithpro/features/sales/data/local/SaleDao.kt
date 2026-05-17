@@ -46,19 +46,21 @@ interface SaleDao {
 
     @Transaction
     @Query("""
-        SELECT * FROM sales
-        WHERE businessId = :businessId
-          AND (:staffId IS NULL OR staffId = :staffId)
-          AND (:paymentMethod IS NULL OR paymentMethod = :paymentMethod)
-          AND soldAt BETWEEN :from AND :to
-        ORDER BY soldAt DESC
-    """)
+    SELECT * FROM sales
+    WHERE businessId  = :businessId
+      AND soldAt      BETWEEN :from AND :to
+      AND (:staffId        IS NULL OR staffId       = :staffId)
+      AND (:paymentMethod  IS NULL OR paymentMethod = :paymentMethod)
+      AND (:branchId       IS NULL OR branchId      = :branchId)
+    ORDER BY soldAt DESC
+""")
     fun getSalesFiltered(
         businessId: String,
         from: String,
         to: String,
         staffId: String?,
-        paymentMethod: String?
+        paymentMethod: String?,
+        branchId: String?
     ): Flow<List<SaleWithItems>>
 
     @Transaction

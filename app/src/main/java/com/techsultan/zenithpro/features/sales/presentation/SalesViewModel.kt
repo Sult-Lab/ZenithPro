@@ -4,13 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.PrinterDataStore
 import com.techsultan.zenithpro.core.data.local.PrinterDevice
-import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.domain.repository.PrinterRepository
 import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
@@ -20,7 +21,9 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
+import com.techsultan.zenithpro.features.settings.data.remote.StaffMember
 import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetStaffListUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +50,8 @@ class SalesListViewModel(
     private val generateReceiptUseCase: GenerateReceiptUseCase,
     private val receiptNumberGenerator: ReceiptNumberGenerator,
     private val getSettingsUseCase: GetSettingsUseCase,
+    private val getBranchesUseCase: GetBranchesUseCase,
+    private val getStaffListUseCase: GetStaffListUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SalesListUiState())
@@ -63,12 +68,19 @@ class SalesListViewModel(
 
     init {
         viewModelScope.launch {
-            sessionManager.loadSession()
-            businessId = currentSession?.businessId
-            if (businessId != null) {
+            val session = sessionManager.loadSession()
+            businessId = session?.businessId
+            if (session != null) {
+
+                if (session.hasBranch && !session.isManager) {
+                    _state.update { it.copy(filterBranchId = session.branchId) }
+                }
+
                 observeSales()
                 syncOnStart()
-                getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
+                loadBranches()
+                loadStaff()
+                getSettingsUseCase(session.businessId).collect { settings ->
                     footerMessage = settings?.receiptFooter
                     taxRate = settings?.taxRate ?: 0.0
                 }
@@ -100,7 +112,32 @@ class SalesListViewModel(
         }
     }
 
-    // ── Filters ────────────────────────────────────────────────────
+    private fun loadBranches() {
+        viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            getBranchesUseCase.invoke(bId).collect { result ->
+                when(result){
+                    is Resource.Error -> {}
+                    is Resource.Loading -> {}
+                    is Resource.Success -> {
+                        _state.update { it.copy(availableBranches = result.data ?: emptyList()) }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun loadStaff() {
+        viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            when (val result = getStaffListUseCase(bId)) {
+                is Resource.Success -> {
+                    _state.update { it.copy(availableStaff = result.data ?: emptyList()) }
+                }
+                else -> {}
+            }
+        }
+    }
 
     fun onDateRangeChanged(from: LocalDate, to: LocalDate) {
         _state.update { it.copy(filterFrom = from, filterTo = to) }
@@ -119,19 +156,23 @@ class SalesListViewModel(
 
     fun clearFilters() {
         _state.update { it.copy(
-            filterFrom          = LocalDate.now().minusDays(30),
-            filterTo            = LocalDate.now(),
-            filterStaffId       = null,
-            filterPaymentMethod = null
+            filterFrom  = LocalDate.now().minusDays(30),
+            filterTo = LocalDate.now(),
+            filterStaffId = null,
+            filterPaymentMethod = null,
+            filterBranchId = null
         )}
+        restartObserver()
+    }
+
+    fun onBranchFilterChanged(branchId: String?) {
+        _state.update { it.copy(filterBranchId = branchId) }
         restartObserver()
     }
 
     fun onSearchQueryChanged(query: String) {
         _state.update { it.copy(searchQuery = query) }
     }
-
-    // ── Refresh ────────────────────────────────────────────────────
 
     fun refresh() {
         val bId = businessId ?: return
@@ -141,8 +182,6 @@ class SalesListViewModel(
             _state.update { it.copy(isRefreshing = false) }
         }
     }
-
-    // ── Reprint ────────────────────────────────────────────────────
     
     fun reprintReceipt(saleWithItems: SaleWithItems) {
         viewModelScope.launch {
@@ -174,10 +213,11 @@ class SalesListViewModel(
                 )
             }
 
+            val session = currentSession
             val completedSale = CompletedSale(
                 saleId = sale.id,
                 receiptNumber = receiptNumber,
-                salesPerson = currentSession?.firstName ?: "Staff",
+                salesPerson = session?.firstName ?: "Staff",
                 paymentMethod = sale.paymentMethod.name,
                 subtotal = sale.totalAmount + sale.discountAmount,
                 discount = sale.discountAmount,
@@ -188,9 +228,9 @@ class SalesListViewModel(
                 customer = null, 
                 splitPayments = emptyList(),
                 createdAt = try { Instant.parse(sale.soldAt).toEpochMilli() } catch (e: Exception) { System.currentTimeMillis() },
-                businessName = currentSession?.businessName ?: "",
-                businessAddress = currentSession?.businessAddress ?: "",
-                businessNumber = currentSession?.businessName ?: "",
+                businessName = session?.businessName ?: "",
+                businessAddress = session?.businessAddress ?: "",
+                businessNumber = session?.businessName ?: "",
                 taxRate = taxRate,
                 footerMessage = footerMessage
             )
@@ -226,6 +266,13 @@ class SalesListViewModel(
             }
             SalesSummary(
                 totalRevenue     = sales.sumOf { it.sale.totalAmount },
+                cashRevenue      = sales.filter { it.sale.paymentMethod == PaymentMethod.CASH }.sumOf { it.sale.totalAmount },
+                transferRevenue  = sales.filter { it.sale.paymentMethod == PaymentMethod.TRANSFER }.sumOf { it.sale.totalAmount },
+                cardRevenue      = sales.filter { 
+                    it.sale.paymentMethod == PaymentMethod.POS || 
+                    it.sale.paymentMethod == PaymentMethod.CARD ||
+                    it.sale.paymentMethod == PaymentMethod.USSD
+                }.sumOf { it.sale.totalAmount },
                 totalCollected   = sales.sumOf { it.sale.amountPaid },
                 totalDebt        = sales.sumOf { it.sale.debtAmount },
                 totalOrders      = sales.size,
@@ -235,7 +282,6 @@ class SalesListViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SalesSummary())
 
-    // ── Private helpers ────────────────────────────────────────────
 
     private fun syncOnStart() {
         val bId = businessId ?: return
@@ -259,7 +305,8 @@ class SalesListViewModel(
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant().toString(),
             staffId       = s.filterStaffId,
-            paymentMethod = s.filterPaymentMethod?.name
+            paymentMethod = s.filterPaymentMethod?.name,
+            branchId      = s.filterBranchId
         )
     }
 
@@ -270,16 +317,18 @@ class SalesListViewModel(
 }
 
 data class SalesListUiState(
-    val isLoading: Boolean              = false,
-    val isRefreshing: Boolean           = false,
-    val sales: List<SaleWithItems>      = emptyList(),
-    val searchQuery: String             = "",
+    val isLoading: Boolean  = false,
+    val isRefreshing: Boolean  = false,
+    val sales: List<SaleWithItems> = emptyList(),
+    val searchQuery: String  = "",
     val filterFrom: LocalDate = LocalDate.now().minusDays(30),
-    val filterTo: LocalDate             = LocalDate.now(),
-    val filterStaffId: String?          = null,
+    val filterTo: LocalDate = LocalDate.now(),
+    val filterStaffId: String? = null,
     val filterPaymentMethod: PaymentMethod? = null,
-    val error: String?                  = null,
-   // val availableStaff: List<Staff> = emptyList()
+    val filterBranchId: String? = null,
+    val availableBranches: List<BranchEntity> = emptyList(),
+    val availableStaff: List<StaffMember> = emptyList(),
+    val error: String? = null
 )
 
 data class SalesSummary(

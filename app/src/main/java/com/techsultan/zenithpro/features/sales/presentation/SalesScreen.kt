@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -76,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util.formatAsTime
 import com.techsultan.zenithpro.core.util.Util.toUtcLocalDate
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.component.EmptySalesState
@@ -166,7 +168,7 @@ fun SalesScreen(
                             contentPadding      = PaddingValues(bottom = 88.dp),
                             verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
-                            // ── Search bar ────────────────────────────────
+
                             item {
                                 SalesSearchBar(
                                     searchQuery    = state.searchQuery,
@@ -174,7 +176,6 @@ fun SalesScreen(
                                 )
                             }
 
-                            // ── Inline filter chips ───────────────────────
                             item {
                                 SalesFilterRow(
                                     state                      = state,
@@ -183,11 +184,11 @@ fun SalesScreen(
                                     },
                                     onPaymentMethodSelected    = viewModel::onPaymentMethodFilterChanged,
                                     onStaffSelected            = viewModel::onStaffFilterChanged,
+                                    onBranchSelected           = viewModel::onBranchFilterChanged,
                                     onClearFilters             = viewModel::clearFilters
                                 )
                             }
 
-                            // ── Summary hero card ─────────────────────────
                             item {
                                 SalesSummaryHeroCard(
                                     summary  = summary,
@@ -195,7 +196,6 @@ fun SalesScreen(
                                 )
                             }
 
-                            // ── Secondary summary chips ───────────────────
                             item {
                                 SalesSecondaryStats(
                                     summary  = summary,
@@ -203,7 +203,6 @@ fun SalesScreen(
                                 )
                             }
 
-                            // ── Section header ────────────────────────────
                             item {
                                 Row(
                                     modifier              = Modifier
@@ -213,13 +212,13 @@ fun SalesScreen(
                                     verticalAlignment     = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text       = "Transactions",
-                                        style      = MaterialTheme.typography.titleMedium,
+                                        text = "Transactions",
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
                                     if (filteredSales.isNotEmpty()) {
                                         Text(
-                                            text  = "${filteredSales.size} records",
+                                            text = "${filteredSales.size} records",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -227,12 +226,10 @@ fun SalesScreen(
                                 }
                             }
 
-                            // ── Empty state ───────────────────────────────
                             if (filteredSales.isEmpty() && !state.isLoading) {
                                 item { EmptySalesState() }
                             }
 
-                            // ── Date-grouped sale cards ───────────────────
                             val grouped = filteredSales.groupBy { saleWithItems ->
                                 saleWithItems.sale.soldAt
                                     .toUtcLocalDate() ?: LocalDate.MIN
@@ -251,6 +248,7 @@ fun SalesScreen(
                                 ) { saleWithItems ->
                                     SaleCard(
                                         saleWithItems = saleWithItems,
+                                        branches     = state.availableBranches,
                                         onClick       = { onSaleClick(saleWithItems.sale.id) },
                                         onReprint     = { viewModel.reprintReceipt(saleWithItems) },
                                         modifier      = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
@@ -295,8 +293,6 @@ private fun SalesSearchBar(
     )
 }
 
-// ── Inline filter row (replaces bottom sheet) ─────────────────────
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SalesFilterRow(
@@ -304,11 +300,13 @@ private fun SalesFilterRow(
     onDatePresetSelected: (LocalDate, LocalDate) -> Unit,
     onPaymentMethodSelected: (PaymentMethod?) -> Unit,
     onStaffSelected: (String?) -> Unit,
+    onBranchSelected: (String?) -> Unit,
     onClearFilters: () -> Unit,
 ) {
     var showDateMenu    by remember { mutableStateOf(false) }
     var showPaymentMenu by remember { mutableStateOf(false) }
     var showStaffMenu   by remember { mutableStateOf(false) }
+    var showBranchMenu  by remember { mutableStateOf(false) }
 
     val datePresets = listOf(
         "Today"      to (LocalDate.now() to LocalDate.now()),
@@ -323,6 +321,9 @@ private fun SalesFilterRow(
         val defaultTo   = LocalDate.now()
         state.filterFrom != defaultFrom || state.filterTo != defaultTo
     }
+
+    val hasAnyFilter = hasDateFilter || state.filterPaymentMethod != null ||
+            state.filterStaffId != null || state.filterBranchId != null
 
     val dateLabel = when {
         state.filterFrom == LocalDate.now() && state.filterTo == LocalDate.now() -> "Today"
@@ -339,160 +340,222 @@ private fun SalesFilterRow(
     Row(
         modifier              = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment     = Alignment.CenterVertically
     ) {
-
-        // ── Date filter chip ──────────────────────────────────────
-        Box {
-            FilterChip(
-                selected      = hasDateFilter,
-                onClick       = { showDateMenu = true },
-                label         = { Text(dateLabel, style = MaterialTheme.typography.labelSmall) },
-                trailingIcon  = {
-                    Icon(
-                        imageVector        = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier           = Modifier.size(14.dp)
-                    )
-                },
-                shape = RoundedCornerShape(20.dp)
-            )
-            DropdownMenu(
-                expanded        = showDateMenu,
-                onDismissRequest = { showDateMenu = false }
-            ) {
-                datePresets.forEach { (label, range) ->
-                    DropdownMenuItem(
-                        text    = { Text(label, style = MaterialTheme.typography.bodySmall) },
-                        onClick = {
-                            onDatePresetSelected(range.first, range.second)
-                            showDateMenu = false
-                        },
-                        leadingIcon = if (
-                            state.filterFrom == range.first && state.filterTo == range.second
-                        ) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
-                    )
-                }
-            }
-        }
-
-        // ── Payment method filter chip ────────────────────────────
-        Box {
-            FilterChip(
-                selected     = state.filterPaymentMethod != null,
-                onClick      = { showPaymentMenu = true },
-                label        = {
-                    Text(
-                        text  = state.filterPaymentMethod
-                            ?.name?.lowercase()?.replaceFirstChar { it.uppercase() }
-                            ?: "Payment",
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                },
-                trailingIcon = {
-                    Icon(
-                        imageVector        = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier           = Modifier.size(14.dp)
-                    )
-                },
-                shape = RoundedCornerShape(20.dp)
-            )
-            DropdownMenu(
-                expanded         = showPaymentMenu,
-                onDismissRequest = { showPaymentMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text    = { Text("All methods", style = MaterialTheme.typography.bodySmall) },
-                    onClick = {
-                        onPaymentMethodSelected(null)
-                        showPaymentMenu = false
-                    },
-                    leadingIcon = if (state.filterPaymentMethod == null) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null
-                )
-                HorizontalDivider()
-                PaymentMethod.entries.forEach { method ->
-                    DropdownMenuItem(
-                        text    = {
-                            Text(
-                                text  = method.name.lowercase().replaceFirstChar { it.uppercase() },
-                                style = MaterialTheme.typography.bodySmall
+        LazyRow(
+            modifier              = Modifier.weight(1f),
+            contentPadding      = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            item {
+                Box {
+                    FilterChip(
+                        selected      = hasDateFilter,
+                        onClick       = { showDateMenu = true },
+                        label         = { Text(dateLabel, style = MaterialTheme.typography.labelSmall) },
+                        trailingIcon  = {
+                            Icon(
+                                imageVector        = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp)
                             )
                         },
-                        onClick = {
-                            onPaymentMethodSelected(method)
-                            showPaymentMenu = false
-                        },
-                        leadingIcon = if (state.filterPaymentMethod == method) {
-                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
+                        shape = RoundedCornerShape(20.dp)
                     )
+                    DropdownMenu(
+                        expanded        = showDateMenu,
+                        onDismissRequest = { showDateMenu = false }
+                    ) {
+                        datePresets.forEach { (label, range) ->
+                            DropdownMenuItem(
+                                text    = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                                onClick = {
+                                    onDatePresetSelected(range.first, range.second)
+                                    showDateMenu = false
+                                },
+                                leadingIcon = if (
+                                    state.filterFrom == range.first && state.filterTo == range.second
+                                ) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
                 }
             }
-        }
 
-        // ── Staff filter chip ─────────────────────────────────────
-        Box {
-            FilterChip(
-                selected     = state.filterStaffId != null,
-                onClick      = { showStaffMenu = true },
-                label        = {
-                    Text(
-                        text  = if (state.filterStaffId != null) "Staff active" else "Staff",
-                        style = MaterialTheme.typography.labelSmall
+            item {
+                Box {
+                    FilterChip(
+                        selected     = state.filterPaymentMethod != null,
+                        onClick      = { showPaymentMenu = true },
+                        label        = {
+                            Text(
+                                text  = state.filterPaymentMethod
+                                    ?.name?.lowercase()?.replaceFirstChar { it.uppercase() }
+                                    ?: "Payment",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector        = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(20.dp)
                     )
-                },
-                trailingIcon = {
-                    Icon(
-                        imageVector        = Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier           = Modifier.size(14.dp)
+                    DropdownMenu(
+                        expanded         = showPaymentMenu,
+                        onDismissRequest = { showPaymentMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text    = { Text("All methods", style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                onPaymentMethodSelected(null)
+                                showPaymentMenu = false
+                            },
+                            leadingIcon = if (state.filterPaymentMethod == null) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null
+                        )
+                        HorizontalDivider()
+                        PaymentMethod.entries.forEach { method ->
+                            DropdownMenuItem(
+                                text    = {
+                                    Text(
+                                        text  = method.name.lowercase().replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
+                                onClick = {
+                                    onPaymentMethodSelected(method)
+                                    showPaymentMenu = false
+                                },
+                                leadingIcon = if (state.filterPaymentMethod == method) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+
+                Box {
+                    FilterChip(
+                        selected     = state.filterStaffId != null,
+                        onClick      = { showStaffMenu = true },
+                        label        = {
+                            Text(
+                                text  = if (state.filterStaffId != null) "Staff active" else "Staff",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector        = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp)
+                            )
+                        },
+                        shape = RoundedCornerShape(20.dp)
                     )
-                },
-                shape = RoundedCornerShape(20.dp)
-            )
-            DropdownMenu(
-                expanded         = showStaffMenu,
-                onDismissRequest = { showStaffMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text    = { Text("All staff", style = MaterialTheme.typography.bodySmall) },
-                    onClick = {
-                        onStaffSelected(null)
-                        showStaffMenu = false
-                    },
-                    leadingIcon = if (state.filterStaffId == null) {
-                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                    } else null
-                )
-                HorizontalDivider()
-//                state.availableStaff.forEach { staff ->
-//                    DropdownMenuItem(
-//                        text    = { Text(staff.name, style = MaterialTheme.typography.bodySmall) },
-//                        onClick = {
-//                            onStaffSelected(staff.id)
-//                            showStaffMenu = false
-//                        },
-//                        leadingIcon = if (state.filterStaffId == staff.id) {
-//                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-//                        } else null
-//                    )
-//                }
+                    DropdownMenu(
+                        expanded         = showStaffMenu,
+                        onDismissRequest = { showStaffMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text    = { Text("All staff", style = MaterialTheme.typography.bodySmall) },
+                            onClick = {
+                                onStaffSelected(null)
+                                showStaffMenu = false
+                            },
+                            leadingIcon = if (state.filterStaffId == null) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            } else null
+                        )
+                        HorizontalDivider()
+                        state.availableStaff.forEach { staff ->
+                            DropdownMenuItem(
+                                text    = { Text(staff.firstName, style = MaterialTheme.typography.bodySmall) },
+                                onClick = {
+                                    onStaffSelected(staff.id)
+                                    showStaffMenu = false
+                                },
+                                leadingIcon = if (state.filterStaffId == staff.id) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (state.availableBranches.size > 1) {
+                item {
+                    Box {
+                        FilterChip(
+                            selected     = state.filterBranchId != null,
+                            onClick      = { showBranchMenu = true },
+                            label        = {
+                                val branchName = state.availableBranches.find { it.id == state.filterBranchId }?.name
+                                Text(
+                                    text  = branchName ?: "Branch",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector        = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(14.dp)
+                                )
+                            },
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        DropdownMenu(
+                            expanded         = showBranchMenu,
+                            onDismissRequest = { showBranchMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text    = { Text("All branches", style = MaterialTheme.typography.bodySmall) },
+                                onClick = {
+                                    onBranchSelected(null)
+                                    showBranchMenu = false
+                                },
+                                leadingIcon = if (state.filterBranchId == null) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                            HorizontalDivider()
+                            state.availableBranches.forEach { branch ->
+                                DropdownMenuItem(
+                                    text    = { Text(branch.name, style = MaterialTheme.typography.bodySmall) },
+                                    onClick = {
+                                        onBranchSelected(branch.id)
+                                        showBranchMenu = false
+                                    },
+                                    leadingIcon = if (state.filterBranchId == branch.id) {
+                                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                    } else null
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
         // ── Clear all (only visible when any filter is active) ────
-        if (hasDateFilter || state.filterPaymentMethod != null || state.filterStaffId != null) {
-            Spacer(Modifier.weight(1f))
+        if (hasAnyFilter) {
             TextButton(
                 onClick      = onClearFilters,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
                 Text(
                     text  = "Clear",
@@ -594,8 +657,6 @@ private fun HeroStatItem(label: String, value: String, color: Color) {
     }
 }
 
-// ── Secondary stat chips ──────────────────────────────────────────
-
 @Composable
 private fun SalesSecondaryStats(
     summary: SalesSummary,
@@ -646,22 +707,22 @@ private fun SecondaryStatChip(
         border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
     ) {
         Row(
-            modifier          = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier  = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
-                imageVector        = icon,
+                imageVector = icon,
                 contentDescription = null,
-                tint               = color,
-                modifier           = Modifier.size(14.dp)
+                tint = color,
+                modifier = Modifier.size(14.dp)
             )
             Column {
                 Text(
-                    text       = value,
-                    style      = MaterialTheme.typography.labelMedium,
+                    text = value,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color      = color
+                    color = color
                 )
                 Text(
                     text  = label,
@@ -672,8 +733,6 @@ private fun SecondaryStatChip(
         }
     }
 }
-
-// ── Date group header ─────────────────────────────────────────────
 
 @Composable
 private fun DateGroupHeader(date: LocalDate, totalSales: Long) {
@@ -710,16 +769,19 @@ private fun DateGroupHeader(date: LocalDate, totalSales: Long) {
     }
 }
 
-// ── Sale card ─────────────────────────────────────────────────────
 
 @Composable
 private fun SaleCard(
     saleWithItems: SaleWithItems,
+    branches: List<BranchEntity>,
     onClick: () -> Unit,
     onReprint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sale = saleWithItems.sale
+    val branchName = remember(sale.branchId, branches) {
+        branches.firstOrNull { it.id == sale.branchId }?.name
+    }
     var showMenu by remember { mutableStateOf(false) }
 
     val (typeIcon, iconBg, iconTint) = when (sale.paymentMethod) {
@@ -744,7 +806,6 @@ private fun SaleCard(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier          = Modifier.fillMaxWidth()
             ) {
-                // Payment-type icon
                 Box(
                     modifier        = Modifier
                         .size(44.dp)
@@ -765,6 +826,7 @@ private fun SaleCard(
                 // Item names
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        modifier = Modifier.fillMaxWidth(),
                         text = saleWithItems.items
                             .take(2)
                             .joinToString(", ") { it.productName }
@@ -773,11 +835,11 @@ private fun SaleCard(
                                     "$it +${saleWithItems.items.size - 2} more"
                                 else it
                             },
-                        style      = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines   = 1,
-                        overflow   = TextOverflow.Ellipsis,
-                        color      = MaterialTheme.colorScheme.onSurface
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
@@ -787,38 +849,52 @@ private fun SaleCard(
                     )
                 }
 
-                // Amount + status
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text       = "₦${sale.totalAmount.formatAmount()}",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment     = Alignment.CenterVertically
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Column(
+                        horizontalAlignment = Alignment.End
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(iconTint)
-                        )
                         Text(
-                            text  = sale.paymentMethod.name
-                                .lowercase().replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "₦${sale.totalAmount.formatAmount()}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(Modifier.height(2.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(iconTint)
+                            )
+
+                            Text(
+                                text = sale.paymentMethod.name
+                                    .lowercase()
+                                    .replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { showMenu = true }
+                    ) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "More"
                         )
                     }
-                }
-                
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Reprint")
-                    }
+
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
@@ -829,7 +905,12 @@ private fun SaleCard(
                                 showMenu = false
                                 onReprint()
                             },
-                            leadingIcon = { Icon(Icons.Default.Print, contentDescription = null) }
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Print,
+                                    contentDescription = null
+                                )
+                            }
                         )
                     }
                 }
@@ -839,6 +920,26 @@ private fun SaleCard(
             if (sale.status != SaleStatus.COMPLETED) {
                 Spacer(Modifier.height(8.dp))
                 SaleStatusBadge(status = sale.status)
+                branchName?.let { name ->
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = 6.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Icon(Icons.Default.Store, null,
+                                tint     = Color(0xFF1976D2),
+                                modifier = Modifier.size(10.dp))
+                            Text(name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF1976D2))
+                        }
+                    }
+                }
             }
 
             // Debt row

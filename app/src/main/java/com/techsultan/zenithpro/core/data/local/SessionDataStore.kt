@@ -25,6 +25,7 @@ object SessionKeys {
     val BUSINESS_ADDRESS = stringPreferencesKey("business_address")
     val CURRENCY_SYMBOL = stringPreferencesKey("currency_symbol")
     val BRANCH_ID = stringPreferencesKey("branch_id")
+    val BRANCH_NAME = stringPreferencesKey("branch_name")
 }
 
 class SessionDataStore(private val context: Context) {
@@ -45,6 +46,7 @@ class SessionDataStore(private val context: Context) {
                 prefs[SessionKeys.BUSINESS_ADDRESS] = session.businessAddress ?: ""
                 prefs[SessionKeys.CURRENCY_SYMBOL]  = session.currencySymbol
                 prefs[SessionKeys.BRANCH_ID] = session.branchId ?: ""
+                prefs[SessionKeys.BRANCH_NAME] = session.branchName ?: ""
             }
             Log.d("SessionDataStore", "Session saved successfully for user: ${session.userId}")
         } catch (e: Exception) {
@@ -72,17 +74,18 @@ class SessionDataStore(private val context: Context) {
         }
 
         return UserSession(
-            userId          = userId,
-            businessId      = businessId,
-            firstName       = firstName,
-            lastName        = prefs[SessionKeys.LAST_NAME]?.ifBlank { null },
-            email           = prefs[SessionKeys.EMAIL]?.ifBlank { null },
-            role            = prefs[SessionKeys.ROLE] ?: "STAFF",
-            businessName    = prefs[SessionKeys.BUSINESS_NAME] ?: "",
-            businessPhone   = prefs[SessionKeys.BUSINESS_PHONE]?.ifBlank { null },
+            userId = userId,
+            businessId = businessId,
+            firstName = firstName,
+            lastName = prefs[SessionKeys.LAST_NAME]?.ifBlank { null },
+            email = prefs[SessionKeys.EMAIL]?.ifBlank { null },
+            role = prefs[SessionKeys.ROLE] ?: "STAFF",
+            businessName = prefs[SessionKeys.BUSINESS_NAME] ?: "",
+            businessPhone = prefs[SessionKeys.BUSINESS_PHONE]?.ifBlank { null },
             businessAddress = prefs[SessionKeys.BUSINESS_ADDRESS]?.ifBlank { null },
-            currencySymbol  = prefs[SessionKeys.CURRENCY_SYMBOL] ?: "₦",
-            branchId        = prefs[SessionKeys.BRANCH_ID]?.ifBlank { null }
+            currencySymbol = prefs[SessionKeys.CURRENCY_SYMBOL] ?: "₦",
+            branchId = prefs[SessionKeys.BRANCH_ID]?.ifBlank { null },
+            branchName = prefs[SessionKeys.BRANCH_NAME]?.ifBlank { null },
         )
     }
 

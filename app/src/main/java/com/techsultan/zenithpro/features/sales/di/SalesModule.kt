@@ -35,7 +35,8 @@ val salesModule = module {
         printerRepository = get(),
         printerDataStore = get(),
         receiptNumberGenerator = get(),
-        getSettingsUseCase = get()
+        getSettingsUseCase = get(),
+        getBranchesUseCase = get()
     ) }
 
     viewModel {
@@ -48,7 +49,9 @@ val salesModule = module {
             printerDataStore = get(),
             generateReceiptUseCase = get(),
             receiptNumberGenerator = get(),
-            getSettingsUseCase = get()
+            getSettingsUseCase = get(),
+            getBranchesUseCase = get(),
+            getStaffListUseCase = get()
         )
     }
 
