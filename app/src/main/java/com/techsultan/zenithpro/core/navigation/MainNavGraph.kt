@@ -45,6 +45,7 @@ import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
+import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
 import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
@@ -199,7 +200,8 @@ fun MainNavGraph(
                                 onLogout = { showLogoutDialog = true },
                                 onPrinterSettings = { navigator.navigate(Route.Home.PrinterSettings) },
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
-                                onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) }
+                                onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) },
+                                onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) }
                             )
                         }
 
@@ -336,6 +338,11 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.PrinterSettings> {
                             PrinterSettingsScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.CategoryManagementScreen> {
+                            CategoryManagementScreen(
                                 onBack = { navigator.goBack() }
                             )
                         }

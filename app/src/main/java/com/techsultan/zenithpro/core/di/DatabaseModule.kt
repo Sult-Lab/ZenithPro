@@ -26,4 +26,5 @@ val databaseModule = module {
     single { get<ZenithDatabase>().businessSettingsDao }
     single { get<ZenithDatabase>().materialDao }
     single { get<ZenithDatabase>().productionOrderDao }
+    single { get<ZenithDatabase>().categoryDao }
 }

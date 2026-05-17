@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
@@ -84,6 +85,7 @@ fun SettingsScreen(
     onBusinessInformation: () -> Unit = {},
     onAbout: () -> Unit = {},
     onLogout: () -> Unit = {},
+    onCategoryManagement: () -> Unit = {}
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -143,10 +145,15 @@ fun SettingsScreen(
                                 onClick = onStaffManagement
                             ),
                             SettingsNavItem(
+                                title  = "Category Management",
+                                icon   = Icons.Default.Category,
+                                onClick = onCategoryManagement
+                            ),
+                            SettingsNavItem(
                                 title  = "Business Information",
                                 icon   = Icons.Default.Store,
                                 onClick = onBusinessInformation
-                            )
+                            ),
                         )
                     )
                 }

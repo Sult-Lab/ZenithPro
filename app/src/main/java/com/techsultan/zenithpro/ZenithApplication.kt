@@ -8,6 +8,7 @@ import com.techsultan.zenithpro.core.di.supabaseModule
 import com.techsultan.zenithpro.features.analytics.di.reportsModule
 import com.techsultan.zenithpro.features.auth.di.authModule
 import com.techsultan.zenithpro.features.branch.di.branchModule
+import com.techsultan.zenithpro.features.category.di.categoryModule
 import com.techsultan.zenithpro.features.customer.di.customerModule
 import com.techsultan.zenithpro.features.dashboard.di.dashboardModule
 import com.techsultan.zenithpro.features.expenses.di.expenseModule
@@ -56,7 +57,8 @@ class ZenithApplication : Application(), KoinComponent {
                 branchModule,
                 sessionModule,
                 productionModule,
-                materialModule
+                materialModule,
+                categoryModule
             )
         }
 

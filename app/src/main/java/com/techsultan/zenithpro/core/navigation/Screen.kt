@@ -57,6 +57,9 @@ sealed interface Route: NavKey {
 
         @Serializable
         data object PrintBarcode : Route, NavKey
+
+        @Serializable
+        data object CategoryManagementScreen : Route, NavKey
     }
 
     @Serializable

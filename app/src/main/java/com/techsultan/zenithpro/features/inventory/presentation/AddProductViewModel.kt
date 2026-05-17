@@ -9,24 +9,35 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.Util.generateSku
+import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
+import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
+import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.domain.use_case.AddProductUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
 
 class AddProductViewModel(
     private val addProductUseCase: AddProductUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase,
+    val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductUiState())
     val state: State<ProductUiState> = _state
+
+    private val _categories = MutableStateFlow<List<CategoryEntity>>(emptyList())
+    val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
 
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
@@ -46,7 +57,19 @@ class AddProductViewModel(
 
     init {
         viewModelScope.launch {
-            sessionManager.loadSession()   
+            sessionManager.loadSession()
+            observeCategories()
+        }
+    }
+
+    private fun observeCategories() {
+        viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            getCategoriesUseCase(bId).collect { result ->
+                if (result is Resource.Success) {
+                    _categories.value = result.data ?: emptyList()
+                }
+            }
         }
     }
 

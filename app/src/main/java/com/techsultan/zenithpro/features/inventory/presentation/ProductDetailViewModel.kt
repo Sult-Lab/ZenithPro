@@ -9,13 +9,19 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
+import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
+import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.UpdateProductUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -24,12 +30,17 @@ import java.util.UUID
 class ProductDetailViewModel(
     private val getProductUseCase: GetProductUseCase,
     private val updateProductUseCase: UpdateProductUseCase,
+    private val getCategoriesUseCase: GetCategoriesUseCase,
+    val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductDetailUiState())
     val state: State<ProductDetailUiState> = _state
+
+    private val _categories = MutableStateFlow<List<CategoryEntity>>(emptyList())
+    val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
 
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
@@ -50,6 +61,21 @@ class ProductDetailViewModel(
     fun clearState() {
         _state.value = ProductDetailUiState()
         _scannedBarcode.value = null
+    }
+
+    init {
+        observeCategories()
+    }
+
+    private fun observeCategories() {
+        viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            getCategoriesUseCase(bId).collect { result ->
+                if (result is Resource.Success) {
+                    _categories.value = result.data ?: emptyList()
+                }
+            }
+        }
     }
 
     fun getProduct(productId: String) {
