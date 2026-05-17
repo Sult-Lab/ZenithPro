@@ -88,6 +88,9 @@ fun CheckoutScreen(
     var showPaymentDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
+    val vatAmount = (cartTotal * (state.taxRate / 100)).toLong()
+    val grandTotal = cartTotal + vatAmount
+
     // Handle events
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -160,7 +163,7 @@ fun CheckoutScreen(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Text(
-                                text = "₦${cartTotal.formatPrice()}",
+                                text = "₦${grandTotal.formatPrice()}",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary
@@ -273,7 +276,8 @@ fun CheckoutScreen(
         ) {
             CartBottomSheetContent(
                 cartItems = cart.values.toList(),
-                totalAmount = cartTotal,
+                subTotal = cartTotal,
+                taxRate = state.taxRate,
                 onCheckout = { 
                     showBottomSheet = false
                     showPaymentDialog = true 
@@ -284,7 +288,7 @@ fun CheckoutScreen(
 
     if (showPaymentDialog) {
         PaymentDialog(
-            totalAmount = "₦${cartTotal.formatPrice()}",
+            totalAmount = "₦${grandTotal.formatPrice()}",
             viewModel = viewModel,
             onDismiss = {
                 showPaymentDialog = false
@@ -422,9 +426,13 @@ fun SaleProductItemCard(
 @Composable
 fun CartBottomSheetContent(
     cartItems: List<CartItem>,
-    totalAmount: Long,
+    subTotal: Long,
+    taxRate: Double,
     onCheckout: () -> Unit
 ) {
+    val vatAmount = (subTotal * (taxRate / 100)).toLong()
+    val totalAmount = subTotal + vatAmount
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -466,6 +474,44 @@ fun CartBottomSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
         HorizontalDivider()
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Sub Total
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Sub Total",
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                text = "₦${subTotal.formatPrice()}",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        if (taxRate > 0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "VAT (${taxRate}%)",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = "₦${vatAmount.formatPrice()}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

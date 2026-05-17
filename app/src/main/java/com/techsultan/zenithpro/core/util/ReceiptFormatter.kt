@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.core.util
 
 import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.util.Util.formatDateTime
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 
 class ReceiptFormatter {
@@ -33,11 +34,14 @@ class ReceiptFormatter {
             ""
         }
 
-        val subtotalLine = if (receipt.discount > 0 && receipt.subtotal > 0) {
-            "[L]Subtotal:[R] NGN ${receipt.subtotal.formatPrice()}\n"
+        val vatAmount = (receipt.subtotal * (receipt.taxRate / 100)).toLong()
+        val vatLine = if (receipt.taxRate > 0) {
+            "[L]VAT (${receipt.taxRate}%):[R] NGN ${vatAmount.formatPrice()}\n"
         } else {
             ""
         }
+
+        val subtotalLine = "[L]Subtotal:[R] NGN ${receipt.subtotal.formatPrice()}\n"
 
         val paidLine = if (receipt.amountPaid > 0) {
             "[L]Paid:[R] NGN ${receipt.amountPaid.formatPrice()}\n"
@@ -57,22 +61,34 @@ class ReceiptFormatter {
             ""
         }
 
+        val footerLine = if (!receipt.footerMessage.isNullOrBlank()) {
+            "[C]${receipt.footerMessage}\n"
+        } else {
+            ""
+        }
+
+        val finalTotal = receipt.subtotal - receipt.discount + vatAmount
+
         return """
 [C]<font size='big'><b>${receipt.businessName}</b></font>
 [C]------------------------------
+[L]Date:[R]${receipt.printedAt.formatDateTime()}
 [L]Receipt No:[R]${receipt.receiptNumber}
 [L]Cashier:[R]${receipt.cashierName}
 [L]Payment:[R]${receipt.paymentMethod}
 $customerLine[C]------------------------------
 $itemsText
 [C]------------------------------
-$subtotalLine$discountLine[L]<b>TOTAL:</b>[R]<b>NGN ${receipt.total.formatPrice()}</b>
+$subtotalLine$discountLine$vatLine[L]<b>TOTAL:</b>[R]<b>NGN ${finalTotal.formatPrice()}</b>
 $splitSection[C]------------------------------
 $paidLine$changeLine[C]------------------------------
 [C]${receipt.businessName}
 [C]${receipt.businessAddress}
 [C]${receipt.businessNumber}
-[C]T${receipt.footerMessage}
+$footerLine
+[C]<b>THANKS YOU FOR YOUR PATRONAGE</b>
+
+
         """.trimIndent()
     }
 }

@@ -25,6 +25,12 @@ object Util {
         return format.format(date)
     }
 
+    fun Long.formatDateTime(): String {
+        val date = Date(this)
+        val format = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+        return format.format(date)
+    }
+
     fun Context.compressImageFromUri(
         uri: Uri,
         quality: Int = 70 // 60–80 is usually the sweet spot

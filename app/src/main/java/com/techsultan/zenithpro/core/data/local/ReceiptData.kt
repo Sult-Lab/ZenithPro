@@ -15,6 +15,7 @@ data class ReceiptData(
     val customerName: String?,
     val splitPayments: List<SplitPayment> = emptyList(),
     val createdAt: Long,
+    val printedAt: Long = System.currentTimeMillis(),
     val businessName: String,
     val businessAddress: String,
     val businessNumber: String,

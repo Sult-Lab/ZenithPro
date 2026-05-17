@@ -31,9 +31,12 @@ class GenerateReceiptUseCase {
             change = sale.change,
             splitPayments = sale.splitPayments,
             createdAt = sale.createdAt,
+            printedAt = System.currentTimeMillis(),
             businessName = sale.businessName,
             businessAddress = sale.businessAddress,
-            businessNumber = sale.businessNumber
+            businessNumber = sale.businessNumber,
+            taxRate = sale.taxRate,
+            footerMessage = sale.footerMessage
         )
     }
 }
