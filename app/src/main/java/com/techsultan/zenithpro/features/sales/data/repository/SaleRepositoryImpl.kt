@@ -51,10 +51,11 @@ class SaleRepositoryImpl(
     override fun getSalesFiltered(businessId: String, filter: SaleFilter) =
         saleDao.getSalesFiltered(
             businessId    = businessId,
-            from          = filter.from,
-            to            = filter.to,
-            staffId       = filter.staffId,
-            paymentMethod = filter.paymentMethod
+            from = filter.from,
+            to  = filter.to,
+            staffId = filter.staffId,
+            paymentMethod = filter.paymentMethod,
+            branchId = filter.branchId
         )
             .map<List<SaleWithItems>, Resource<List<SaleWithItems>>> { Resource.Success(it) }
             .catch { emit(Resource.Error(it.message ?: "Failed to load sales")) }

@@ -5,6 +5,7 @@ import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.SessionDataStore
 import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.data.remote.UserProfileDto
+import com.techsultan.zenithpro.features.branch.data.remote.BranchDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
@@ -71,6 +72,17 @@ class SessionManager(
                     .decodeSingle<BusinessDto>()
             }
 
+            val branchName: String? = profile.branchId?.let { branchId ->
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        postgrest.from("branches")
+                            .select { filter { eq("id", branchId) } }
+                            .decodeSingle<BranchDto>()
+                            .name
+                    }
+                }.getOrNull()
+            }
+
             val settings = runCatching {
                 withContext(Dispatchers.IO) {
                     postgrest
@@ -81,18 +93,19 @@ class SessionManager(
             }.getOrNull()
 
             val session = UserSession(
-                userId          = userId,
-                businessId      = profile.businessId,
-                firstName       = profile.firstName,
-                lastName        = profile.lastName,
-                email           = profile.email,
-                role            = profile.role,
-                businessName    = business.name,
-                businessPhone   = business.phone,
+                userId = userId,
+                businessId = profile.businessId,
+                firstName = profile.firstName,
+                lastName = profile.lastName,
+                email = profile.email,
+                role = profile.role,
+                businessName = business.name,
+                businessPhone = business.phone,
                 businessAddress = business.address,
                 mustChangePassword = profile.mustChangePassword,
-                currencySymbol  = settings?.currencySymbol ?: "₦",
-                branchId        = if (profile.role == "ADMIN") null else profile.branchId
+                currencySymbol = settings?.currencySymbol ?: "₦",
+                branchId = if (profile.role == "ADMIN") null else profile.branchId,
+                branchName = if (profile.role == "ADMIN") null else branchName,
             )
 
             sessionDataStore.saveSession(session)

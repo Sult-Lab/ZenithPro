@@ -29,8 +29,10 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -45,7 +47,9 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +69,8 @@ import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
+import com.techsultan.zenithpro.features.sales.component.BranchSelectorChip
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 
@@ -136,44 +142,78 @@ fun CheckoutScreen(
                         .clickable { showBottomSheet = true }
                         .padding(16.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = "Cart",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "$cartItemCount Items",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                    Column(modifier = Modifier) {
+                        if (state.availableBranches.isNotEmpty() &&
+                            state.selectedBranchId == null){
+                            Surface(
+                                shape  = RoundedCornerShape(8.dp),
+                                color  = Color(0xFFD32F2F).copy(alpha = 0.08f),
+                                border = BorderStroke(
+                                    1.dp, Color(0xFFD32F2F).copy(alpha = 0.3f)
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.Warning, null,
+                                        tint     = Color(0xFFD32F2F),
+                                        modifier = Modifier.size(16.dp))
+                                    Text("Select a branch to continue",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFFD32F2F),
+                                        modifier = Modifier.weight(1f))
+                                    TextButton(
+                                        onClick = { viewModel.onShowBranchPicker() },
+                                        colors  = ButtonDefaults.textButtonColors(
+                                            contentColor = Color(0xFFD32F2F)
+                                        )
+                                    ) { Text("Select") }
+                                }
+                            }
                         }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingCart,
+                                    contentDescription = "Cart",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "$cartItemCount Items",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Total: ",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Text(
-                                text = "₦${grandTotal.formatPrice()}",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Icon(
-                                imageVector = Icons.Default.ExpandLess,
-                                contentDescription = "Expand",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Total: ",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Text(
+                                    text = "₦${grandTotal.formatPrice()}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ExpandLess,
+                                    contentDescription = "Expand",
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
                 }
@@ -251,6 +291,15 @@ fun CheckoutScreen(
                         contentPadding = PaddingValues(bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        if (state.availableBranches.isNotEmpty()) {
+                            item {
+                                BranchSelectorChip(
+                                    selectedBranchName = state.selectedBranchName,
+                                    canSelect          = state.canSelectBranch,
+                                    onClick            = { viewModel.onShowBranchPicker() }
+                                )
+                            }
+                        }
                         items(
                             items = filteredProducts,
                             key = { it.product.id }
@@ -267,6 +316,15 @@ fun CheckoutScreen(
                 }
             }
         }
+    }
+
+    if (state.showBranchPicker) {
+        BranchPickerSheet(
+            branches   = state.availableBranches,
+            selectedId = state.selectedBranchId,
+            onSelect   = { viewModel.onBranchSelected(it) },
+            onDismiss  = { viewModel.onDismissBranchPicker() }
+        )
     }
 
     if (showBottomSheet) {
