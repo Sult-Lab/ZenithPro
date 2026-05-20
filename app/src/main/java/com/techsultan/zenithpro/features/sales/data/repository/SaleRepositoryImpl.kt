@@ -24,6 +24,7 @@ import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleResponse
 import com.techsultan.zenithpro.features.sales.data.remote.SaleDto
 import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.data.remote.SaleItemDto
+import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
@@ -77,6 +78,7 @@ class SaleRepositoryImpl(
             val saleId = UUID.randomUUID().toString()
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
+            val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
 
             saleDao.insertSale(
                 SaleEntity(
@@ -92,7 +94,7 @@ class SaleRepositoryImpl(
                     totalAmount = request.totalAmount,
                     amountPaid = request.amountPaid,
                     changeAmount = request.changeAmount,
-                    debtAmount = maxOf(0L, request.totalAmount - request.amountPaid),
+                    debtAmount = debtAmount,
                     paymentMethod = PaymentMethod.valueOf(request.paymentMethod),
                     status = if (request.amountPaid >= request.totalAmount)
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
@@ -101,7 +103,7 @@ class SaleRepositoryImpl(
                     syncStatus = Util.SyncStatus.PENDING
                 )
             )
-            Log.d("SaleRepo", "processSale: $request")
+            
             saleDao.insertSaleItems(
                 cart.map { item ->
                     SaleItemEntity(
@@ -119,26 +121,81 @@ class SaleRepositoryImpl(
                     )
                 }
             )
-            Log.d("SaleRepo", "processSale: $request")
+            
             if (!networkMonitor.isConnected()) {
-                return@withContext Resource.Error(
-                    "No internet connection. Please connect and try again."
+                return@withContext Resource.Success(
+                    ProcessSaleResponse(
+                        saleId = saleId,
+                        status = "Saved locally. Sync pending.",
+                        debtAmount = debtAmount,
+                        idempotent = false
+                    )
                 )
             }
+
+            val remoteResult = pushSale(saleId)
+            
+            if (remoteResult != null) {
+                Resource.Success(remoteResult)
+            } else {
+                Resource.Success(
+                    ProcessSaleResponse(
+                        saleId = saleId,
+                        status = "Saved locally. Sync failed.",
+                        debtAmount = debtAmount,
+                        idempotent = false
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("SaleRepo", "processSale failed: ${e.message}", e)
+            Resource.Error(e.message ?: "Sale failed")
+        }
+    }
+
+    internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
+        try {
+            val saleWithItems = saleDao.getSaleById(saleId) ?: return null
+            
+            val request = ProcessSaleRequest(
+                clientTransactionId = saleWithItems.sale.clientTransactionId,
+                branchId = saleWithItems.sale.branchId,
+                customerId = saleWithItems.sale.customerId,
+                subtotal = saleWithItems.sale.subtotal,
+                discountAmount = saleWithItems.sale.discountAmount,
+                taxAmount = saleWithItems.sale.taxAmount,
+                totalAmount = saleWithItems.sale.totalAmount,
+                amountPaid = saleWithItems.sale.amountPaid,
+                changeAmount = saleWithItems.sale.changeAmount,
+                paymentMethod = saleWithItems.sale.paymentMethod.name,
+                notes = saleWithItems.sale.notes,
+                staffId = saleWithItems.sale.staffId,
+                items = saleWithItems.items.map {
+                    SaleItemRequest(
+                        variantId = it.variantId,
+                        productId = it.productId,
+                        productName = it.productName,
+                        variantSku = it.variantSku,
+                        unitPrice = it.unitPrice,
+                        costPrice = it.costPrice,
+                        quantity = it.quantity,
+                        discount = it.discount
+                    )
+                }
+            )
 
             val response = functions.invoke(
                 function = "process_sale",
                 body = request
             )
+            
             val result = response.body<ProcessSaleResponse>()
-            Log.d("SaleRepo", "processSale: $result")
-            // 3. Update local record with server-confirmed ID and SYNCED status
             saleDao.markSynced(saleId)
-            Log.d("SaleRepo", "processSale: $result")
-            Resource.Success(result)
+            Log.d("SaleRepo", "pushSale: Synced $saleId")
+            return result
         } catch (e: Exception) {
-            Log.e("SaleRepo", "processSale failed: ${e.message}", e)
-            Resource.Error(e.message ?: "Sale failed")
+            Log.e("SaleRepo", "pushSale failed for $saleId: ${e.message}")
+            return null
         }
     }
 

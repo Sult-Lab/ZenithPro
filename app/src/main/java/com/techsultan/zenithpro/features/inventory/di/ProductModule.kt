@@ -33,11 +33,21 @@ val productModule = module {
 
     single {
         SyncManager(
-            repository = get<ProductRepository>() as ProductRepositoryImpl,
             expenseRepository = get<ExpenseRepository>() as ExpenseRepositoryImpl,
             expenseDao = get(),
             productDao = get(),
             networkMonitor = get(),
+            productRepository = get<ProductRepository>() as ProductRepositoryImpl,
+            categoryRepository = get(),
+            branchRepository = get(),
+            customerRepository = get(),
+            saleRepository = get(),
+            productionRepository = get(),
+            categoryDao = get(),
+            branchDao = get(),
+            customerDao = get(),
+            saleDao = get(),
+            productionDao = get(),
         )
     }
 

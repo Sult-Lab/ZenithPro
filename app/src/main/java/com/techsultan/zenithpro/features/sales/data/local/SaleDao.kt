@@ -70,6 +70,10 @@ interface SaleDao {
     @Query("SELECT * FROM sales WHERE syncStatus = 'PENDING'")
     suspend fun getUnsyncedSales(): List<SaleEntity>
 
+    @Transaction
+    @Query("SELECT * FROM sales WHERE syncStatus = 'PENDING'")
+    suspend fun getUnsyncedSalesWithItems(): List<SaleWithItems>
+
     @Query("UPDATE sales SET syncStatus = 'SYNCED' WHERE id = :id")
     suspend fun markSynced(id: String)
 
