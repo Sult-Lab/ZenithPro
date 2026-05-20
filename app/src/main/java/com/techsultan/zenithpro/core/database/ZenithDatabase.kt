@@ -9,6 +9,8 @@ import com.techsultan.zenithpro.features.category.data.local.CategoryDao
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.customer.data.local.CustomerDao
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.material.data.local.MaterialDao
@@ -44,9 +46,10 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         MaterialEntity::class,
         RecipeEntity::class,
         ProductionOrderEntity::class,
-        CategoryEntity::class
+        CategoryEntity::class,
+        DebtPaymentEntity::class
                ],
-    version = 7,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -62,6 +65,7 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val materialDao: MaterialDao
     abstract val productionOrderDao: ProductionOrderDao
     abstract val categoryDao: CategoryDao
+    abstract val debtPaymentDao: DebtPaymentDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"
