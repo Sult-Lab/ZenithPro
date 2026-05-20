@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.customer.presentation
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerDetailViewModel
@@ -69,6 +72,7 @@ fun CustomerDetailScreen(
     viewModel: CustomerDetailViewModel = koinViewModel(),
     onEdit: (CustomerEntity) -> Unit,
     onBack: () -> Unit,
+    customerId: String
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -76,9 +80,9 @@ fun CustomerDetailScreen(
     val snackbarHost = remember { SnackbarHostState() }
     var showPaymentSheet by remember { mutableStateOf<SaleWithItems?>(null) }
 
-//    LaunchedEffect(customerId) {
-//        viewModel.init(customerId, session?.businessId ?: "")
-//    }
+    LaunchedEffect(customerId) {
+        viewModel.init(customerId, session?.businessId ?: "")
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -94,11 +98,11 @@ fun CustomerDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text(state.customer?.fullName ?: "Customer") },
+            ZenithTopAppBar(
+                title = state.customer?.fullName ?: "Customer",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Menu")
                     }
                 },
                 actions = {
@@ -112,17 +116,18 @@ fun CustomerDetailScreen(
         }
     ) { padding ->
         LazyColumn(
-            modifier            = Modifier.fillMaxSize().padding(padding),
-            contentPadding      = PaddingValues(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── Stats row ─────────────────────────────────────────
+
             state.customer?.let { customer ->
                 item {
                     CustomerStatsRow(customer = customer)
                 }
 
-                // ── Debt alert ────────────────────────────────────
                 if (customer.totalDebt > 0) {
                     item {
                         DebtAlertCard(
@@ -149,7 +154,9 @@ fun CustomerDetailScreen(
             if (state.sales.isEmpty()) {
                 item {
                     Box(
-                        modifier         = Modifier.fillMaxWidth().padding(32.dp),
+                        modifier         = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -231,21 +238,21 @@ private fun DebtAlertCard(
     Card(
         shape  = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFD32F2F).copy(alpha = 0.08f)
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.08f)
         ),
-        border = BorderStroke(1.dp, Color(0xFFD32F2F).copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(
-                text       = "Outstanding debt: ₦${customer.totalDebt.formatAmount()}",
-                style      = MaterialTheme.typography.bodyMedium,
+                text = "Outstanding debt: ₦${customer.totalDebt.formatAmount()}",
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color      = Color(0xFFD32F2F)
+                color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
             debtSales.forEach { sale ->
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
@@ -256,7 +263,7 @@ private fun DebtAlertCard(
                                 .format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
                         }",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFFD32F2F)
+                        color = MaterialTheme.colorScheme.error
                     )
                     TextButton(
                         onClick = { onRecordPayment(sale) },
@@ -264,7 +271,8 @@ private fun DebtAlertCard(
                             contentColor = Color(0xFFD32F2F)
                         )
                     ) {
-                        Text("Pay", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            text = "Pay", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -278,6 +286,8 @@ private fun CustomerTransactionCard(
     onRecordPayment: (() -> Unit)?,
 ) {
     val sale = saleWithItems.sale
+    Log.d("Customer Detail Screen", "CustomerTransactionCard: $saleWithItems")
+    Log.d("Customer Detail Screen", "CustomerTransactionCard: ${saleWithItems.items.joinToString(", ")}")
     Card(
         shape     = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -285,7 +295,7 @@ private fun CustomerTransactionCard(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
-                modifier              = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
@@ -296,8 +306,8 @@ private fun CustomerTransactionCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text       = "₦${sale.totalAmount.formatAmount()}",
-                    style      = MaterialTheme.typography.bodyMedium,
+                    text = "₦${sale.totalAmount.formatAmount()}",
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -314,24 +324,26 @@ private fun CustomerTransactionCard(
             if (sale.debtAmount > 0) {
                 Spacer(Modifier.height(8.dp))
                 Row(
-                    modifier              = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text  = "₦${sale.debtAmount.formatAmount()} unpaid",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFFD32F2F)
+                        color = MaterialTheme.colorScheme.error
                     )
                     onRecordPayment?.let {
                         TextButton(
                             onClick = it,
                             colors  = ButtonDefaults.textButtonColors(
-                                contentColor = Color(0xFFD32F2F)
+                                contentColor = MaterialTheme.colorScheme.error
                             )
                         ) {
-                            Text("Record payment",
-                                style = MaterialTheme.typography.labelSmall)
+                            Text(
+                                text = "Record payment",
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     }
                 }
@@ -405,7 +417,9 @@ private fun DebtPaymentSheet(
                         onConfirm(amount, method, notes.trimOrNull())
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
                 shape    = RoundedCornerShape(10.dp),
                 colors   = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
                 enabled  = (amountText.toLongOrNull() ?: 0L) in 1..outstanding

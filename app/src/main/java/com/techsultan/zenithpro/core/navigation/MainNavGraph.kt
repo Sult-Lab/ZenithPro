@@ -45,6 +45,7 @@ import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
+import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
 import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
 import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsScreen
@@ -201,6 +202,7 @@ fun MainNavGraph(
                                 onPrinterSettings = { navigator.navigate(Route.Home.PrinterSettings) },
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
                                 onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) },
+                                onBusinessProfile = { navigator.navigate(Route.Home.BusinessProfileScreen) },
                                 onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) }
                             )
                         }
@@ -212,7 +214,7 @@ fun MainNavGraph(
                         }
                         entry<Route.Customer.CustomerListScreen> {
                             CustomerListScreen(
-                                onCustomerClick = { navigator.navigate(Route.Customer.CustomerDetailScreen) },
+                                onCustomerClick = { navigator.navigate(Route.Customer.CustomerDetailScreen(it)) },
                                 onAddCustomer = { navigator.navigate(Route.Customer.AddEditCustomerScreen) },
                                 onViewReports = { navigator.navigate(Route.Customer.CustomerReportScreen) },
                                 onBack = { navigator.goBack() }
@@ -308,10 +310,11 @@ fun MainNavGraph(
                                 onBack = { navigator.goBack() }
                             )
                         }
-                        entry<Route.Customer.CustomerDetailScreen> {
+                        entry<Route.Customer.CustomerDetailScreen> { key ->
                             CustomerDetailScreen(
                                 onEdit = {},
-                                onBack = { navigator.goBack() }
+                                onBack = { navigator.goBack() },
+                                customerId = key.customerId
                             )
                         }
                         entry<Route.Customer.CustomerReportScreen> {
@@ -322,6 +325,12 @@ fun MainNavGraph(
                         entry<Route.Home.BusinessInformationScreen> {
                             BusinessInformationScreen(
                                 onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.BusinessProfileScreen> {
+                            BusinessProfileScreen(
+                                onBack = { navigator.goBack() },
+                                onSaveChanges = { navigator.goBack() }
                             )
                         }
                         entry<Route.Home.StaffManagementScreen> {

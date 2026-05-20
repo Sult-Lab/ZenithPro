@@ -16,6 +16,7 @@ import com.techsultan.zenithpro.features.material.di.materialModule
 import com.techsultan.zenithpro.features.inventory.di.productModule
 import com.techsultan.zenithpro.features.production.di.productionModule
 import com.techsultan.zenithpro.features.sales.di.salesModule
+import com.techsultan.zenithpro.features.settings.di.businessModule
 import com.techsultan.zenithpro.features.settings.di.settingsModule
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,8 @@ class ZenithApplication : Application(), KoinComponent {
                 sessionModule,
                 productionModule,
                 materialModule,
-                categoryModule
+                categoryModule,
+                businessModule
             )
         }
 

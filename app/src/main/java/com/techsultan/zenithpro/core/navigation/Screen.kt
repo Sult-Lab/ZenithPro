@@ -47,6 +47,8 @@ sealed interface Route: NavKey {
         @Serializable
         data object BusinessInformationScreen : Route, NavKey
         @Serializable
+        data object BusinessProfileScreen : Route, NavKey
+        @Serializable
         data object StaffManagementScreen : Route, NavKey
 
         @Serializable
@@ -77,7 +79,7 @@ sealed interface Route: NavKey {
         @Serializable
         data object CustomerReportScreen : Route, NavKey
         @Serializable
-        data object CustomerDetailScreen : Route, NavKey
+        data class CustomerDetailScreen(val customerId: String) : Route, NavKey
         @Serializable
         data object AddEditCustomerScreen : Route, NavKey
     }

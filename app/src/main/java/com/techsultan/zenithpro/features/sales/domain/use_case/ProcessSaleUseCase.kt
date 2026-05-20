@@ -76,7 +76,7 @@ class ProcessSaleUseCase(private val repository: SaleRepository) {
             paymentMethod       = paymentMethod.name,
             notes               = notes
         )
-
+        Log.d("ProcessSaleUseCase", request.toString())
         return repository.processSale(request, cart)
     }
 }

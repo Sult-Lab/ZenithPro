@@ -29,11 +29,10 @@ class CustomerDetailViewModel(
     private val _events = MutableSharedFlow<CustomerDetailEvent>()
     val events = _events.asSharedFlow()
 
-    val session = sessionManager.currentSession
+    val session get() = sessionManager.currentSession
 
     fun init(customerId: String, businessId: String) {
         viewModelScope.launch {
-            // Observe customer live (debt amount updates after payment)
             launch {
                 getCustomerDetailUseCase(customerId).collect { result ->
                     if (result is Resource.Success) {
@@ -41,7 +40,7 @@ class CustomerDetailViewModel(
                     }
                 }
             }
-            // Load transaction history once
+
             when (val sales = getCustomerDetailUseCase.getSales(customerId, businessId)) {
                 is Resource.Success -> _state.update { it.copy(sales = sales.data ?: emptyList()) }
                 is Resource.Error   -> _state.update { it.copy(error = sales.message) }

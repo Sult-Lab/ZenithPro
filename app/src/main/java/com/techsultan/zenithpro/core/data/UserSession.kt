@@ -13,7 +13,11 @@ data class UserSession(
     val currencySymbol: String = "₦",
     val branchId: String? = null,
     val branchName: String? = null,
-    val mustChangePassword: Boolean = false
+    val mustChangePassword: Boolean = false,
+    val businessType: String?,
+    val businessEmail: String?,
+    val businessLogoUrl: String?,
+    val currencyCode: String   = "NGN",
 ) {
     val fullName: String
         get() = "$firstName ${lastName.orEmpty()}".trim()

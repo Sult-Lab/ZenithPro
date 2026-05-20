@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.PrinterDataStore
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val TAG = "CheckoutViewModel"
 class CheckoutViewModel(
     private val getProductsUseCase: GetProductsUseCase,
     private val processSaleUseCase: ProcessSaleUseCase,
@@ -100,19 +102,20 @@ class CheckoutViewModel(
         viewModelScope.launch {
             sessionManager.loadSession()
             loadProducts()
+            initBranch()
             getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
                 _state.update { it.copy(
                     footerMessage = settings?.receiptFooter ?: "",
                     taxRate = settings?.taxRate ?: 0.0
                 ) }
             }
-            initBranch()
         }
     }
 
     private fun initBranch() {
-        val session = sessionManager.currentSession ?: return
-
+        Log.d(TAG, "initBranch: called")
+        val session = currentSession ?: return
+        Log.d(TAG, "initBranch: $session")
         if (session.hasBranch) {
             // Staff has a fixed branch — set it automatically, no selection needed
             _state.update {
@@ -124,7 +127,7 @@ class CheckoutViewModel(
                 )
             }
         } else if (session.isAdmin || session.isManager) {
-            // Admin/Manager can select — load available branches
+            Log.d(TAG, "Loading branches...")
             loadBranches()
         }
     }
@@ -149,7 +152,7 @@ class CheckoutViewModel(
 
                         val branchList = result.data?.filter { it.isActive } ?: emptyList()
                         val branchCount = branchList.size
-
+                        Log.d(TAG, branchList.toString())
                         _state.update { s ->
                             s.copy(
                                 availableBranches = branchList,

@@ -94,6 +94,7 @@ class SaleRepositoryImpl(
                     syncStatus = Util.SyncStatus.PENDING
                 )
             )
+            Log.d("SaleRepo", "processSale: $request")
             saleDao.insertSaleItems(
                 cart.map { item ->
                     SaleItemEntity(
@@ -111,7 +112,7 @@ class SaleRepositoryImpl(
                     )
                 }
             )
-
+            Log.d("SaleRepo", "processSale: $request")
             if (!networkMonitor.isConnected()) {
                 return@withContext Resource.Error(
                     "No internet connection. Please connect and try again."
@@ -138,7 +139,7 @@ class SaleRepositoryImpl(
         request: DebtPaymentRequest
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
-            functions.invoke(function = "record-debt-payment", body = request)
+            functions.invoke(function = "record_debt_payment", body = request)
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Payment failed")
