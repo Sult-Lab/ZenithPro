@@ -5,6 +5,7 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
 import com.techsultan.zenithpro.features.customer.data.mapper.toEntity
@@ -47,7 +48,8 @@ class SaleRepositoryImpl(
     private val postgrest: Postgrest,
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
-    private val debtPaymentDao: DebtPaymentDao
+    private val debtPaymentDao: DebtPaymentDao,
+    private val branchDao: BranchDao
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -80,6 +82,15 @@ class SaleRepositoryImpl(
             val businessId = sessionManager.businessId
             val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
 
+            if (request.branchId == null) {
+                val branchCount = branchDao.getActiveBranchCount(businessId)
+                if (branchCount > 0) {
+                    return@withContext Resource.Error(
+                        "A branch must be selected for this sale"
+                    )
+                }
+            }
+            Log.d("SaleRepo", "processSale: branchId=${request.branchId} saleId=$saleId")
             saleDao.insertSale(
                 SaleEntity(
                     id = saleId,
@@ -156,7 +167,9 @@ class SaleRepositoryImpl(
     internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
         try {
             val saleWithItems = saleDao.getSaleById(saleId) ?: return null
-            
+            Log.d("SaleRepo", "pushSale: branchId=${saleWithItems.sale.branchId} saleId=$saleId")
+
+            if (saleWithItems.sale.branchId == null) return null
             val request = ProcessSaleRequest(
                 clientTransactionId = saleWithItems.sale.clientTransactionId,
                 branchId = saleWithItems.sale.branchId,
@@ -204,7 +217,7 @@ class SaleRepositoryImpl(
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             val response = functions.invoke(
-                function = "record-debt-payment",
+                function = "record_debt_payment",
                 body     = request
             )
 

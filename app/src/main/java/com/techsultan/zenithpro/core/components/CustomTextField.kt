@@ -69,7 +69,7 @@ fun CustomTextField(
             readOnly = readOnly,
             supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
             isError = error != null,
-            minLines = minLines
+            minLines = minLines,
         )
     }
 }

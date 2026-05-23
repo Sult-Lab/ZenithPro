@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.customer.util
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
+
 sealed class CustomerTransaction {
     data class Sale(
         val saleWithItems: SaleWithItems

@@ -37,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -58,6 +59,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.CustomTextField
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,11 +94,11 @@ fun CreateStaffScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Add staff member") },
+            ZenithTopAppBar(
+                title = "Add staff member",
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Default.ArrowBack, null)
+                    IconButton(onClick = { onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -136,53 +139,43 @@ fun CreateStaffScreen(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+                CustomTextField(
                     value = state.firstName,
                     onValueChange = viewModel::onFirstNameChanged,
-                    label = { Text("First name *") },
+                    label = "First name *",
+                    keyboardType = KeyboardType.Text,
+                    placeholder = "Enter first name",
                     modifier = Modifier.weight(1f),
-                    isError = state.firstNameError != null,
-                    supportingText = state.firstNameError?.let {
-                        { Text(it, color = MaterialTheme.colorScheme.error) }
-                    },
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(10.dp)
+                    error = state.firstNameError,
                 )
-                OutlinedTextField(
-                    value         = state.lastName,
+                CustomTextField(
+                    value  = state.lastName,
                     onValueChange = viewModel::onLastNameChanged,
-                    label         = { Text("Last name") },
-                    modifier      = Modifier.weight(1f),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(10.dp)
+                    label = "Last name *",
+                    keyboardType = KeyboardType.Text,
+                    placeholder = "Enter last name",
+                    modifier = Modifier.weight(1f),
                 )
             }
 
-            OutlinedTextField(
-                value         = state.phone,
+            CustomTextField(
+                value = state.phone,
                 onValueChange = viewModel::onPhoneChanged,
-                label         = { Text("Phone number") },
-                modifier      = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                singleLine    = true,
-                shape         = RoundedCornerShape(10.dp)
+                label = "Phone number",
+                keyboardType = KeyboardType.Phone,
+                placeholder = "Enter phone number",
+                modifier = Modifier,
             )
 
-            OutlinedTextField(
-                value         = state.email,
+            CustomTextField(
+                value  = state.email,
                 onValueChange = viewModel::onEmailChanged,
-                label         = { Text("Email address *") },
-                modifier      = Modifier.fillMaxWidth(),
-                isError       = state.emailError != null,
-                supportingText = state.emailError?.let {
-                    { Text(it, color = MaterialTheme.colorScheme.error) }
-                },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                singleLine    = true,
-                shape         = RoundedCornerShape(10.dp)
+                label = "Email address",
+                keyboardType = KeyboardType.Email,
+                placeholder = "Enter email address",
+                modifier = Modifier,
+                error = state.emailError,
             )
-
-            // ── Password ──────────────────────────────────────────
             OutlinedTextField(
                 value         = state.password,
                 onValueChange = viewModel::onPasswordChanged,
@@ -206,7 +199,12 @@ fun CreateStaffScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = Color(0xFFF9FAFB),
+                    focusedContainerColor = Color(0xFFF9FAFB),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                ),
             )
 
             Text(
@@ -291,7 +289,12 @@ fun CreateStaffScreen(
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(showBranchMenu)
                         },
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = Color(0xFFF9FAFB),
+                            focusedContainerColor = Color(0xFFF9FAFB),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        ),
                     )
                     ExposedDropdownMenu(
                         expanded         = showBranchMenu,
@@ -365,7 +368,7 @@ fun CreateStaffScreen(
                 enabled  = !state.isLoading,
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00C853)
+                    containerColor = MaterialTheme.colorScheme.primary,
                 )
             ) {
                 if (state.isLoading) {

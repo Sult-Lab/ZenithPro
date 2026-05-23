@@ -20,7 +20,8 @@ val salesModule = module {
             postgrest = get(),
             networkMonitor = get(),
             sessionManager = get(),
-            debtPaymentDao = get()
+            debtPaymentDao = get(),
+            branchDao = get()
         )
     }
 

@@ -4,6 +4,8 @@ import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEntity
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffResponse
+import com.techsultan.zenithpro.features.settings.data.remote.EditStaffRequest
+import com.techsultan.zenithpro.features.settings.data.remote.EditStaffResponse
 import com.techsultan.zenithpro.features.settings.data.remote.StaffMember
 import kotlinx.coroutines.flow.Flow
 
@@ -18,4 +20,5 @@ interface SettingsRepository {
     suspend fun createStaff(request: CreateStaffRequest): Resource<CreateStaffResponse>
     suspend fun updateStaffBranch(userId: String, branchId: String?): Resource<Unit>
     suspend fun removeStaff(userId: String): Resource<Unit>
+    suspend fun editStaff(request: EditStaffRequest): Resource<EditStaffResponse>
 }

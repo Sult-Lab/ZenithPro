@@ -26,18 +26,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Dialpad
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +69,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -101,6 +105,9 @@ fun PaymentDialog(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val splitCashAmount by viewModel.splitCashAmount.collectAsStateWithLifecycle()
     val splitTransferAmount by viewModel.splitTransferAmount.collectAsStateWithLifecycle()
+
+    val needsBranchSelection = state.availableBranches.size > 1 &&
+            state.selectedBranchId == null && state.canSelectBranch
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -150,205 +157,289 @@ fun PaymentDialog(
                     style = MaterialTheme.typography.bodyMedium,
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PaymentOption(
-                            title = "Cash",
-                            selected = selectedMethod == PaymentMethod.CASH,
-                            onClick = {
-                                selectedMethod = PaymentMethod.CASH
-                                viewModel.setPaymentMethod(PaymentMethod.CASH)
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Money
-                        )
-
-                        PaymentOption(
-                            title = "Bank Transfer",
-                            selected = selectedMethod == PaymentMethod.TRANSFER,
-                            onClick = {
-                                selectedMethod = PaymentMethod.TRANSFER
-                                viewModel.setPaymentMethod(PaymentMethod.TRANSFER)
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.AccountBalance
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PaymentOption(
-                            title = "POS (Card)",
-                            selected = selectedMethod == PaymentMethod.POS,
-                            onClick = {
-                                selectedMethod = PaymentMethod.POS
-                                viewModel.setPaymentMethod(PaymentMethod.POS)
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.CreditCard
-                        )
-
-                        PaymentOption(
-                            title = "USSD",
-                            selected = selectedMethod == PaymentMethod.USSD,
-                            onClick = {
-                                selectedMethod = PaymentMethod.USSD
-                                viewModel.setPaymentMethod(PaymentMethod.USSD)
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Dialpad
-                        )
-                    }
-
-                    // Split Payment Option
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PaymentOption(
-                            title = "Split",
-                            selected = selectedMethod == PaymentMethod.SPLIT,
-                            onClick = {
-                                selectedMethod = PaymentMethod.SPLIT
-                                viewModel.setPaymentMethod(PaymentMethod.SPLIT)
-                                showSplitDialog = true
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.AutoMirrored.Filled.CallSplit
-                        )
-
-                        PaymentOption(
-                            title = "Debt",
-                            selected = selectedMethod == PaymentMethod.DEBT,
-                            onClick = {
-                                selectedMethod = PaymentMethod.DEBT
-                                viewModel.setPaymentMethod(PaymentMethod.DEBT)
-
-                            },
-                            modifier = Modifier.weight(1f),
-                            icon = Icons.Default.Schedule
-                        )
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Show customer info
-                if (state.selectedCustomer != null) {
+                if (state.availableBranches.size > 1) {
+                    BranchSelectorRow(
+                        selectedBranchName = state.selectedBranchName,
+                        isRequired = needsBranchSelection,
+                        canSelect = state.canSelectBranch,
+                        onSelect = { viewModel.onShowBranchPicker() }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                } else if (state.selectedBranchName != null) {
                     Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1976D2).copy(alpha = 0.08f),
+                        border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.2f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column {
+                            Icon(
+                                imageVector = Icons.Default.Store,
+                                contentDescription = null,
+                                tint = Color(0xFF1976D2),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                state.selectedBranchName!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF1976D2),
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color(0xFF1976D2).copy(alpha = 0.12f)
+                            ) {
                                 Text(
-                                    text = "Customer",
+                                    "Auto-selected",
+                                    modifier = Modifier.padding(
+                                        horizontal = 6.dp, vertical = 2.dp
+                                    ),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    text = state.selectedCustomer!!.fullName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                if (selectedMethod == PaymentMethod.DEBT && state.selectedCustomer!!.totalDebt > 0) {
-                                    Text(
-                                        text = "Existing debt: ₦${state.selectedCustomer!!.totalDebt.formatPrice()}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { showCustomerSelector = true }) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    contentDescription = "Change",
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    color = Color(0xFF1976D2)
                                 )
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                } else {
-                    TextButton(
-                        onClick = { showCustomerSelector = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Default.PersonAdd,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (selectedMethod == PaymentMethod.DEBT)
-                                "Select Customer (Required for Debt)"
-                            else "Select Customer (Optional)"
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PaymentOption(
+                        title = "Cash",
+                        selected = selectedMethod == PaymentMethod.CASH,
+                        onClick = {
+                            selectedMethod = PaymentMethod.CASH
+                            viewModel.setPaymentMethod(PaymentMethod.CASH)
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Money
+                    )
+
+                    PaymentOption(
+                        title = "Bank Transfer",
+                        selected = selectedMethod == PaymentMethod.TRANSFER,
+                        onClick = {
+                            selectedMethod = PaymentMethod.TRANSFER
+                            viewModel.setPaymentMethod(PaymentMethod.TRANSFER)
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.AccountBalance
+                    )
                 }
 
-                // Show split payment summary if selected
-                if (selectedMethod == PaymentMethod.SPLIT &&
-                    (splitCashAmount > 0 || splitTransferAmount > 0)) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.fillMaxWidth()
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PaymentOption(
+                        title = "POS (Card)",
+                        selected = selectedMethod == PaymentMethod.POS,
+                        onClick = {
+                            selectedMethod = PaymentMethod.POS
+                            viewModel.setPaymentMethod(PaymentMethod.POS)
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.CreditCard
+                    )
+
+                    PaymentOption(
+                        title = "USSD",
+                        selected = selectedMethod == PaymentMethod.USSD,
+                        onClick = {
+                            selectedMethod = PaymentMethod.USSD
+                            viewModel.setPaymentMethod(PaymentMethod.USSD)
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Dialpad
+                    )
+                }
+
+                // Split Payment Option
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PaymentOption(
+                        title = "Split",
+                        selected = selectedMethod == PaymentMethod.SPLIT,
+                        onClick = {
+                            selectedMethod = PaymentMethod.SPLIT
+                            viewModel.setPaymentMethod(PaymentMethod.SPLIT)
+                            showSplitDialog = true
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.AutoMirrored.Filled.CallSplit
+                    )
+
+                    PaymentOption(
+                        title = "Debt",
+                        selected = selectedMethod == PaymentMethod.DEBT,
+                        onClick = {
+                            selectedMethod = PaymentMethod.DEBT
+                            viewModel.setPaymentMethod(PaymentMethod.DEBT)
+
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Default.Schedule
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Show customer info
+            if (state.selectedCustomer != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        Column {
                             Text(
-                                text = "Split Payment Breakdown",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "Customer",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = state.selectedCustomer!!.fullName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            if (selectedMethod == PaymentMethod.DEBT && state.selectedCustomer!!.totalDebt > 0) {
+                                Text(
+                                    text = "Existing debt: ₦${state.selectedCustomer!!.totalDebt.formatPrice()}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                        IconButton(onClick = { showCustomerSelector = true }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Change",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            } else {
+                TextButton(
+                    onClick = { showCustomerSelector = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.PersonAdd,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (selectedMethod == PaymentMethod.DEBT)
+                            "Select Customer (Required for Debt)"
+                        else "Select Customer (Optional)"
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Show split payment summary if selected
+            if (selectedMethod == PaymentMethod.SPLIT &&
+                (splitCashAmount > 0 || splitTransferAmount > 0)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Split Payment Breakdown",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Cash:", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "₦${splitCashAmount.formatPrice()}",
                                 fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Transfer:", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                "₦${splitTransferAmount.formatPrice()}",
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        if (splitCashAmount + splitTransferAmount > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                thickness = DividerDefaults.Thickness,
+                                color = DividerDefaults.color
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Cash:", style = MaterialTheme.typography.bodySmall)
-                                Text("₦${splitCashAmount.formatPrice()}", fontWeight = FontWeight.Medium)
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Transfer:", style = MaterialTheme.typography.bodySmall)
-                                Text("₦${splitTransferAmount.formatPrice()}", fontWeight = FontWeight.Medium)
-                            }
-                            if (splitCashAmount + splitTransferAmount > 0) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(vertical = 4.dp),
-                                    thickness = DividerDefaults.Thickness,
-                                    color = DividerDefaults.color
+                                Text("Total Paid:", style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    "₦${(splitCashAmount + splitTransferAmount).formatPrice()}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text("Total Paid:", style = MaterialTheme.typography.bodySmall)
-                                    Text(
-                                        "₦${(splitCashAmount + splitTransferAmount).formatPrice()}",
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
-                Spacer(modifier = Modifier.height(24.dp))
+            state.error?.let { error ->
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ErrorOutline, null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Confirm Button
                 ZenithButton(
@@ -359,13 +450,21 @@ fun PaymentDialog(
                                 showSplitDialog = true
                             }
                             PaymentMethod.DEBT -> {
-                                if (state.selectedCustomer != null) {
-                                    onConfirm(selectedMethod)
-                                } else {
+                                if (state.selectedCustomer == null){
                                     showCustomerSelector = true
+                                    return@ZenithButton
                                 }
+                                if (needsBranchSelection){
+                                    viewModel.onShowBranchPicker()
+                                    return@ZenithButton
+                                }
+                                onConfirm(selectedMethod)
                             }
                             else -> {
+                                if (needsBranchSelection) {
+                                    viewModel.onShowBranchPicker()
+                                    return@ZenithButton
+                                }
                                 onConfirm(selectedMethod)
                             }
                         }
@@ -399,6 +498,23 @@ fun PaymentDialog(
                 viewModel.setCustomer(customer.id, customer)
                 showCustomerSelector = false
             },
+        )
+    }
+
+    if (state.showBranchPicker) {
+        BranchPickerSheet(
+            branches   = state.availableBranches,
+            selectedId = state.selectedBranchId,
+            onSelect   = { branch ->
+                viewModel.onBranchSelected(branch)
+                // After selecting branch, auto-confirm if method was already chosen
+                if (selectedMethod != PaymentMethod.SPLIT &&
+                    (selectedMethod != PaymentMethod.DEBT ||
+                            state.selectedCustomer != null)) {
+                    onConfirm(selectedMethod)
+                }
+            },
+            onDismiss  = { viewModel.onDismissBranchPicker() }
         )
     }
 }
@@ -975,6 +1091,70 @@ fun PaymentOption(
                 color = if (selected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun BranchSelectorRow(
+    selectedBranchName: String?,
+    isRequired: Boolean,
+    canSelect: Boolean,
+    onSelect: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = canSelect, onClick = onSelect),
+        shape  = RoundedCornerShape(10.dp),
+        color  = when {
+            selectedBranchName != null -> Color(0xFF1976D2).copy(alpha = 0.08f)
+            isRequired  -> MaterialTheme.colorScheme.errorContainer
+                .copy(alpha = 0.5f)
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        border = BorderStroke(
+            width = 1.dp,
+            color = when {
+                selectedBranchName != null -> Color(0xFF1976D2).copy(alpha = 0.3f)
+                isRequired -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Store,
+                contentDescription = null,
+                tint = when {
+                    selectedBranchName != null -> Color(0xFF1976D2)
+                    isRequired -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                selectedBranchName ?: if (isRequired) "Select branch (required)" else "Select branch",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (selectedBranchName != null) FontWeight.SemiBold
+                else FontWeight.Normal,
+                color = when {
+                    selectedBranchName != null -> Color(0xFF1976D2)
+                    isRequired -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.weight(1f)
+            )
+            if (canSelect) {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
