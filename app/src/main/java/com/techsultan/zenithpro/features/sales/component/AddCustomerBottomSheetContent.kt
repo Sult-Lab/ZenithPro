@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.techsultan.zenithpro.features.customer.presentation.CustomerTextField
+import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.AddEditCustomerViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -119,48 +119,54 @@ fun AddCustomerBottomSheetContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.firstName,
                 onValueChange = viewModel::onFirstNameChanged,
-                label = "First name *",
+                label = "First name",
                 error = state.firstNameError,
-                keyboardType = KeyboardType.Text
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter First name"
             )
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.lastName,
                 onValueChange = viewModel::onLastNameChanged,
                 label = "Last name",
-                keyboardType = KeyboardType.Text
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter Last name"
             )
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.phone,
                 onValueChange = viewModel::onPhoneChanged,
                 label = "Phone number",
-                keyboardType = KeyboardType.Phone
+                keyboardType = KeyboardType.Phone,
+                placeholder = "Enter phone number"
             )
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.email,
                 onValueChange = viewModel::onEmailChanged,
                 label = "Email",
-                keyboardType = KeyboardType.Email
+                keyboardType = KeyboardType.Email,
+                placeholder = "Enter email"
             )
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.address,
                 onValueChange = viewModel::onAddressChanged,
-                label = "Address",
-                keyboardType = KeyboardType.Text
+                label = "Physical Address",
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter address"
             )
 
-            CustomerTextField(
+            CustomTextField(
                 value = state.notes,
                 onValueChange = viewModel::onNotesChanged,
                 label = "Notes",
                 keyboardType = KeyboardType.Text,
-                minLines = 3
+                minLines = 3,
+                placeholder = "Note"
             )
 
             Spacer(modifier = Modifier.height(12.dp))

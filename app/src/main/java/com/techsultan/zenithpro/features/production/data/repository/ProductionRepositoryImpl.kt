@@ -52,19 +52,7 @@ class ProductionRepositoryImpl(
             productionOrderDao.insertOrder(entity)
 
             if (networkMonitor.isConnected()) {
-                postgrest.from("production_orders").insert(
-                    mapOf(
-                        "id"          to orderId,
-                        "business_id" to businessId,
-                        "branch_id"   to branchId,
-                        "variant_id"  to variantId,
-                        "quantity"    to quantity,
-                        "status"      to "DRAFT",
-                        "notes"       to notes,
-                        "created_by"  to staffId
-                    )
-                )
-                productionOrderDao.markSynced(orderId, now)
+                pushOrder(entity)
             }
             Resource.Success(entity)
         } catch (e: Exception) {
@@ -72,16 +60,47 @@ class ProductionRepositoryImpl(
         }
     }
 
+    internal suspend fun pushOrder(entity: ProductionOrderEntity) {
+        try {
+            postgrest.from("production_orders").upsert(
+                mapOf(
+                    "id"          to entity.id,
+                    "business_id" to entity.businessId,
+                    "branch_id"   to entity.branchId,
+                    "variant_id"  to entity.variantId,
+                    "quantity"    to entity.quantity,
+                    "status"      to entity.status,
+                    "notes"       to entity.notes,
+                    "created_by"  to entity.createdBy,
+                    "started_at"  to entity.startedAt,
+                    "completed_at" to entity.completedAt,
+                    "updated_at"  to Instant.now().toString()
+                )
+            ) { onConflict = "id" }
+            productionOrderDao.markSynced(entity.id, Instant.now().toString())
+            Log.d("ProductionRepo", "pushOrder: synced ${entity.id}")
+        } catch (e: Exception) {
+            Log.w("ProductionRepo", "pushOrder failed for ${entity.id}: ${e.message}")
+        }
+    }
+
     override suspend fun startOrder(orderId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 val now = Instant.now().toString()
-                productionOrderDao.updateStatus(orderId, "IN_PROGRESS", now)
+                val existing = productionOrderDao.getOrderById(orderId)
+                    ?: return@withContext Resource.Error("Order not found")
+                
+                val updated = existing.copy(
+                    status = "IN_PROGRESS",
+                    startedAt = now,
+                    updatedAt = now,
+                    syncStatus = Util.SyncStatus.DIRTY
+                )
+                productionOrderDao.insertOrder(updated)
+                
                 if (networkMonitor.isConnected()) {
-                    postgrest.from("production_orders")
-                        .update(mapOf("status" to "IN_PROGRESS", "started_at" to now)) {
-                            filter { eq("id", orderId) }
-                        }
+                    pushOrder(updated)
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
@@ -119,12 +138,18 @@ class ProductionRepositoryImpl(
         withContext(Dispatchers.IO) {
             try {
                 val now = Instant.now().toString()
-                productionOrderDao.updateStatus(orderId, "CANCELLED", now)
+                val existing = productionOrderDao.getOrderById(orderId)
+                    ?: return@withContext Resource.Error("Order not found")
+                
+                val updated = existing.copy(
+                    status = "CANCELLED",
+                    updatedAt = now,
+                    syncStatus = Util.SyncStatus.DIRTY
+                )
+                productionOrderDao.insertOrder(updated)
+
                 if (networkMonitor.isConnected()) {
-                    postgrest.from("production_orders")
-                        .update(mapOf("status" to "CANCELLED")) {
-                            filter { eq("id", orderId) }
-                        }
+                    pushOrder(updated)
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {

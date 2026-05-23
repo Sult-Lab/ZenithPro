@@ -34,8 +34,6 @@ class CustomerRepositoryImpl(
     private val networkMonitor: NetworkMonitor,
 ) : CustomerRepository {
 
-    // ── Observe ────────────────────────────────────────────────────
-
     override fun getCustomers(businessId: String) =
         customerDao.getAllCustomers(businessId)
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,6 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.CustomTextField
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.AddEditCustomerViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -62,6 +65,7 @@ fun AddEditCustomerScreen(
             when (event) {
                 is AddEditCustomerViewModel.AddEditCustomerEvent.Saved ->
                     onSaved(event.customerId)
+
                 is AddEditCustomerViewModel.AddEditCustomerEvent.ShowError ->
                     snackbarHost.showSnackbar(event.message)
             }
@@ -71,14 +75,15 @@ fun AddEditCustomerScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(if (state.isEditMode) "Edit customer" else "New customer")
-                },
+            ZenithTopAppBar(
+                title = if (state.isEditMode) "Edit customer" else "New customer",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "back")
                     }
+                },
+                actions = {
+
                 }
             )
         }
@@ -91,60 +96,73 @@ fun AddEditCustomerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            CustomerTextField(
-                value         = state.firstName,
+            CustomTextField(
+                value = state.firstName,
                 onValueChange = viewModel::onFirstNameChanged,
-                label         = "First name *",
-                error         = state.firstNameError,
-                keyboardType  = KeyboardType.Text
+                label = "First name",
+                error = state.firstNameError,
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter first name"
             )
-            CustomerTextField(
-                value         = state.lastName,
+            CustomTextField(
+                value = state.lastName,
                 onValueChange = viewModel::onLastNameChanged,
-                label         = "Last name",
-                keyboardType  = KeyboardType.Text
+                label = "Last name",
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter last name"
             )
-            CustomerTextField(
-                value         = state.phone,
+            CustomTextField(
+                value = state.phone,
                 onValueChange = viewModel::onPhoneChanged,
-                label         = "Phone number",
-                keyboardType  = KeyboardType.Phone
+                label = "Phone number",
+                keyboardType = KeyboardType.Phone,
+                placeholder = "Enter phone number"
             )
-            CustomerTextField(
-                value         = state.email,
+            CustomTextField(
+                value = state.email,
                 onValueChange = viewModel::onEmailChanged,
-                label         = "Email",
-                keyboardType  = KeyboardType.Email
+                label = "Email Address",
+                keyboardType = KeyboardType.Email,
+                placeholder = "Enter email address"
             )
-            CustomerTextField(
-                value         = state.address,
+            CustomTextField(
+                value = state.address,
                 onValueChange = viewModel::onAddressChanged,
-                label         = "Address",
-                keyboardType  = KeyboardType.Text
+                label = "Physical Address",
+                keyboardType = KeyboardType.Text,
+                placeholder = "Enter physical address"
             )
-            CustomerTextField(
-                value         = state.notes,
+//            CustomTextField(
+//                value = state.address,
+//                onValueChange = viewModel::onAddressChanged,
+//                label = "Initial debt",
+//                keyboardType = KeyboardType.Number,
+//                placeholder = "Enter customer initial debt"
+//            )
+            CustomTextField(
+                value = state.notes,
                 onValueChange = viewModel::onNotesChanged,
-                label         = "Notes",
-                keyboardType  = KeyboardType.Text,
-                minLines      = 3
+                label = "Notes",
+                keyboardType = KeyboardType.Text,
+                minLines = 3,
+                placeholder = "Note"
             )
 
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick  = { viewModel.save() },
+                onClick = { viewModel.save() },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled  = !state.isLoading,
-                shape    = RoundedCornerShape(10.dp),
-                colors   = ButtonDefaults.buttonColors(
+                enabled = !state.isLoading,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF00C853)
                 )
             ) {
                 if (state.isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color    = Color.White,
+                        color = Color.White,
                         strokeWidth = 2.dp
                     )
                 } else {
@@ -157,26 +175,4 @@ fun AddEditCustomerScreen(
             }
         }
     }
-}
-
-@Composable
-fun CustomerTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    error: String? = null,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    minLines: Int = 1,
-) {
-    OutlinedTextField(
-        value         = value,
-        onValueChange = onValueChange,
-        label         = { Text(label) },
-        modifier      = Modifier.fillMaxWidth(),
-        isError       = error != null,
-        supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        minLines      = minLines,
-        shape         = RoundedCornerShape(10.dp)
-    )
 }

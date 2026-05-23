@@ -34,6 +34,12 @@ val customerModule = module {
 
     viewModel { CustomerListViewModel(get(), get(), get(), get()) }
     viewModel { AddEditCustomerViewModel(get(), get()) }
-    viewModel { CustomerDetailViewModel(get(), get(), get()) }
+    viewModel { CustomerDetailViewModel(
+        getCustomerDetailUseCase = get(),
+        recordDebtPaymentUseCase = get(),
+        sessionManager = get(),
+        debtPaymentDao = get(),
+        saleDao = get()
+    ) }
     viewModel { CustomerReportsViewModel(get(), get(), get(), get()) }
 }

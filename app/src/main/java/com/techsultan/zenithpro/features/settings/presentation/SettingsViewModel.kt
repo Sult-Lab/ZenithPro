@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.settings.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
@@ -45,14 +46,18 @@ class SettingsViewModel(
 
     init {
         viewModelScope.launch {
-            val session = sessionManager.loadSession()
-            businessId = session?.businessId
-            currentUserId = session?.userId
-            isAdmin = session?.isAdmin ?: false
+            sessionManager.sessionFlow.collect { session ->
+                businessId = session?.businessId
+                currentUserId = session?.userId
+                isAdmin = session?.isAdmin ?: false
+                _state.update { it.copy(session = session) }
 
-            observeSettings()
-            pullFromServer()
-            loadStaff()
+                if (businessId != null) {
+                    observeSettings()
+                    pullFromServer()
+                    loadStaff()
+                }
+            }
         }
     }
 
@@ -133,5 +138,6 @@ data class SettingsUiState(
     val settings: BusinessSettingsEntity? = null,
     val staffList: List<StaffMember> = emptyList(),
     val isSaving: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val session: UserSession? = null
 )

@@ -61,14 +61,9 @@ class CategoryRepositoryImpl(
             categoryDao.insertCategory(entity)
 
             if (networkMonitor.isConnected()) {
-                Log.d("CategoryRepo", "Upserting category to server")
-                postgrest.from("categories").upsert(entity.toDto()) {
-                    onConflict = "id"
-                }
-                Log.d("CategoryRepo", "Upserting category to server")
-                categoryDao.markSynced(categoryId, now)
+                pushCategory(entity)
             }
-            Log.d("CategoryRepo", "Upserting category to server: $entity")
+            Log.d("CategoryRepo", "Upserting category to local db: $entity")
             Resource.Success(entity)
         } catch (e: Exception) {
             if (e.message?.contains("unique") == true ||
@@ -85,11 +80,7 @@ class CategoryRepositoryImpl(
             try {
                 categoryDao.softDelete(categoryId, Instant.now().toString())
                 if (networkMonitor.isConnected()) {
-                    postgrest.from("categories")
-                        .update(mapOf("deleted_at" to Instant.now().toString())) {
-                            filter { eq("id", categoryId) }
-                        }
-                    categoryDao.hardDelete(categoryId)
+                    pushDelete(categoryId)
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
@@ -124,4 +115,31 @@ class CategoryRepositoryImpl(
                 Resource.Error(e.message ?: "Pull failed")
             }
         }
+
+    internal suspend fun pushCategory(entity: CategoryEntity) {
+        try {
+            Log.d("CategoryRepo", "pushCategory: ${entity.id}")
+            postgrest.from("categories").upsert(entity.toDto()) {
+                onConflict = "id"
+            }
+            categoryDao.markSynced(entity.id, Instant.now().toString())
+            Log.d("CategoryRepo", "pushCategory: synced ${entity.id}")
+        } catch (e: Exception) {
+            Log.w("CategoryRepo", "pushCategory failed for ${entity.id}: ${e.message}")
+        }
+    }
+
+    internal suspend fun pushDelete(categoryId: String) {
+        try {
+            Log.d("CategoryRepo", "pushDelete: $categoryId")
+            postgrest.from("categories")
+                .update(mapOf("deleted_at" to Instant.now().toString())) {
+                    filter { eq("id", categoryId) }
+                }
+            categoryDao.hardDelete(categoryId)
+            Log.d("CategoryRepo", "pushDelete: success for $categoryId")
+        } catch (e: Exception) {
+            Log.w("CategoryRepo", "pushDelete failed for $categoryId: ${e.message}")
+        }
+    }
 }

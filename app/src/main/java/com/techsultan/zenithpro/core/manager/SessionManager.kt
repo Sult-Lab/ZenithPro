@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.data.remote.UserProfileDto
 import com.techsultan.zenithpro.features.branch.data.remote.BranchDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
+import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
@@ -106,8 +107,13 @@ class SessionManager(
                 currencySymbol = settings?.currencySymbol ?: "₦",
                 branchId = if (profile.role == "ADMIN") null else profile.branchId,
                 branchName = if (profile.role == "ADMIN") null else branchName,
+                businessType    = business.type,
+                businessEmail   = business.email,
+                businessLogoUrl = business.logoUrl,
+                currencyCode    = business.currencyCode
+                    .ifBlank { settings?.currencyCode ?: "NGN" },
             )
-
+            Log.d("SessionManager", "Session initialized: $session")
             sessionDataStore.saveSession(session)
             _currentSession = session
             Log.d("SessionManager", "Session initialized and saved for: ${session.fullName}")
@@ -117,6 +123,22 @@ class SessionManager(
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)
             Result.failure(e)
         }
+    }
+
+    suspend fun updateBusinessInSession(response: UpdateBusinessResponse) {
+        val current = _currentSession ?: return
+        val updated = current.copy(
+            businessName    = response.name,
+            businessType    = response.type,
+            businessPhone   = response.phone,
+            businessAddress = response.address,
+            businessEmail   = response.email,
+            businessLogoUrl = response.logoUrl,
+            currencySymbol  = response.currencySymbol,
+            currencyCode    = response.currencyCode
+        )
+        sessionDataStore.saveSession(updated)
+        _currentSession = updated
     }
 
     suspend fun signOut() {

@@ -32,6 +32,8 @@ fun CustomTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     readOnly: Boolean = false,
+    error: String? = null,
+    minLines: Int = 1
 ) {
     Column(
         modifier = modifier,
@@ -64,7 +66,10 @@ fun CustomTextField(
             singleLine = true,
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
-            readOnly = readOnly
+            readOnly = readOnly,
+            supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+            isError = error != null,
+            minLines = minLines,
         )
     }
 }

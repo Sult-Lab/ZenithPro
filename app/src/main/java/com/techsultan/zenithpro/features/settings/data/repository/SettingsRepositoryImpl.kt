@@ -10,6 +10,8 @@ import com.techsultan.zenithpro.features.settings.data.mapper.toEntity
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffResponse
+import com.techsultan.zenithpro.features.settings.data.remote.EditStaffRequest
+import com.techsultan.zenithpro.features.settings.data.remote.EditStaffResponse
 import com.techsultan.zenithpro.features.settings.data.remote.StaffMember
 import com.techsultan.zenithpro.features.settings.domain.repository.SettingsRepository
 import io.github.jan.supabase.functions.Functions
@@ -94,6 +96,7 @@ class SettingsRepositoryImpl(
                         }
                     }
                     .decodeList<StaffMember>()
+                Log.d("SettingsRepo", "Staff list: $staff")
                 Resource.Success(staff)
             } catch (e: Exception) {
                 Log.e("SettingsRepo", "getStaffList error: ${e.message}", e)
@@ -190,6 +193,29 @@ class SettingsRepositoryImpl(
                 Resource.Error(e.message ?: "Failed to remove staff")
             }
         }
+
+    override suspend fun editStaff(
+        request: EditStaffRequest
+    ): Resource<EditStaffResponse> = withContext(Dispatchers.IO) {
+        try {
+            val response = functions.invoke(
+                function = "edit_staff",
+                body     = request
+            )
+            Resource.Success(response.body<EditStaffResponse>())
+        } catch (e: Exception) {
+            Log.e("SettingsRepo", "editStaff: ${e.message}", e)
+            Resource.Error(
+                when {
+                    e.message?.contains("admin role") == true ->
+                        "Managers cannot assign admin role"
+                    e.message?.contains("another business") == true ->
+                        "Cannot edit staff from another business"
+                    else -> e.message ?: "Failed to update staff"
+                }
+            )
+        }
+    }
 
     fun defaultBusinessSettings(businessId: String) = BusinessSettingsEntity(
         businessId          = businessId,

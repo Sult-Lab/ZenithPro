@@ -19,7 +19,9 @@ val salesModule = module {
             functions = get(),
             postgrest = get(),
             networkMonitor = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            debtPaymentDao = get(),
+            branchDao = get()
         )
     }
 

@@ -5,6 +5,11 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
+import com.techsultan.zenithpro.features.customer.data.mapper.toEntity
+import com.techsultan.zenithpro.features.customer.data.remote.DebtPaymentDto
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
@@ -19,6 +24,8 @@ import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleRequest
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleResponse
 import com.techsultan.zenithpro.features.sales.data.remote.SaleDto
 import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
+import com.techsultan.zenithpro.features.sales.data.remote.SaleItemDto
+import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
@@ -29,6 +36,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -39,7 +47,9 @@ class SaleRepositoryImpl(
     private val functions: Functions,
     private val postgrest: Postgrest,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val debtPaymentDao: DebtPaymentDao,
+    private val branchDao: BranchDao
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -70,7 +80,17 @@ class SaleRepositoryImpl(
             val saleId = UUID.randomUUID().toString()
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
+            val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
 
+            if (request.branchId == null) {
+                val branchCount = branchDao.getActiveBranchCount(businessId)
+                if (branchCount > 0) {
+                    return@withContext Resource.Error(
+                        "A branch must be selected for this sale"
+                    )
+                }
+            }
+            Log.d("SaleRepo", "processSale: branchId=${request.branchId} saleId=$saleId")
             saleDao.insertSale(
                 SaleEntity(
                     id = saleId,
@@ -85,7 +105,7 @@ class SaleRepositoryImpl(
                     totalAmount = request.totalAmount,
                     amountPaid = request.amountPaid,
                     changeAmount = request.changeAmount,
-                    debtAmount = maxOf(0L, request.totalAmount - request.amountPaid),
+                    debtAmount = debtAmount,
                     paymentMethod = PaymentMethod.valueOf(request.paymentMethod),
                     status = if (request.amountPaid >= request.totalAmount)
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
@@ -94,6 +114,7 @@ class SaleRepositoryImpl(
                     syncStatus = Util.SyncStatus.PENDING
                 )
             )
+            
             saleDao.insertSaleItems(
                 cart.map { item ->
                     SaleItemEntity(
@@ -111,26 +132,83 @@ class SaleRepositoryImpl(
                     )
                 }
             )
-
+            
             if (!networkMonitor.isConnected()) {
-                return@withContext Resource.Error(
-                    "No internet connection. Please connect and try again."
+                return@withContext Resource.Success(
+                    ProcessSaleResponse(
+                        saleId = saleId,
+                        status = "Saved locally. Sync pending.",
+                        debtAmount = debtAmount,
+                        idempotent = false
+                    )
                 )
             }
+
+            val remoteResult = pushSale(saleId)
+            
+            if (remoteResult != null) {
+                Resource.Success(remoteResult)
+            } else {
+                Resource.Success(
+                    ProcessSaleResponse(
+                        saleId = saleId,
+                        status = "Saved locally. Sync failed.",
+                        debtAmount = debtAmount,
+                        idempotent = false
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("SaleRepo", "processSale failed: ${e.message}", e)
+            Resource.Error(e.message ?: "Sale failed")
+        }
+    }
+
+    internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
+        try {
+            val saleWithItems = saleDao.getSaleById(saleId) ?: return null
+            Log.d("SaleRepo", "pushSale: branchId=${saleWithItems.sale.branchId} saleId=$saleId")
+
+            if (saleWithItems.sale.branchId == null) return null
+            val request = ProcessSaleRequest(
+                clientTransactionId = saleWithItems.sale.clientTransactionId,
+                branchId = saleWithItems.sale.branchId,
+                customerId = saleWithItems.sale.customerId,
+                subtotal = saleWithItems.sale.subtotal,
+                discountAmount = saleWithItems.sale.discountAmount,
+                taxAmount = saleWithItems.sale.taxAmount,
+                totalAmount = saleWithItems.sale.totalAmount,
+                amountPaid = saleWithItems.sale.amountPaid,
+                changeAmount = saleWithItems.sale.changeAmount,
+                paymentMethod = saleWithItems.sale.paymentMethod.name,
+                notes = saleWithItems.sale.notes,
+                staffId = saleWithItems.sale.staffId,
+                items = saleWithItems.items.map {
+                    SaleItemRequest(
+                        variantId = it.variantId,
+                        productId = it.productId,
+                        productName = it.productName,
+                        variantSku = it.variantSku,
+                        unitPrice = it.unitPrice,
+                        costPrice = it.costPrice,
+                        quantity = it.quantity,
+                        discount = it.discount
+                    )
+                }
+            )
 
             val response = functions.invoke(
                 function = "process_sale",
                 body = request
             )
+            
             val result = response.body<ProcessSaleResponse>()
-            Log.d("SaleRepo", "processSale: $result")
-            // 3. Update local record with server-confirmed ID and SYNCED status
             saleDao.markSynced(saleId)
-            Log.d("SaleRepo", "processSale: $result")
-            Resource.Success(result)
+            Log.d("SaleRepo", "pushSale: Synced $saleId")
+            return result
         } catch (e: Exception) {
-            Log.e("SaleRepo", "processSale failed: ${e.message}", e)
-            Resource.Error(e.message ?: "Sale failed")
+            Log.e("SaleRepo", "pushSale failed for $saleId: ${e.message}")
+            return null
         }
     }
 
@@ -138,9 +216,49 @@ class SaleRepositoryImpl(
         request: DebtPaymentRequest
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
-            functions.invoke(function = "record-debt-payment", body = request)
+            val response = functions.invoke(
+                function = "record_debt_payment",
+                body     = request
+            )
+
+            val result = response.body<DebtPaymentResponse>()
+
+            // Save payment locally so it appears in the timeline immediately
+            debtPaymentDao.insertPayment(
+                DebtPaymentEntity(
+                    id = result.paymentId,
+                    businessId = sessionManager.businessId,
+                    saleId = request.saleId,
+                    customerId = request.customerId,
+                    staffId = sessionManager.userId,
+                    amount = request.amount,
+                    paymentMethod = request.paymentMethod,
+                    notes = request.notes,
+                    paidAt = Instant.now().toString(),
+                    syncStatus = Util.SyncStatus.SYNCED
+                )
+            )
+
+            val existingSale = saleDao.getSaleById(request.saleId)
+            existingSale?.let { saleWithItems ->
+                val sale = saleWithItems.sale
+                val newAmountPaid = sale.amountPaid + request.amount
+                val newDebt = maxOf(0L, sale.totalAmount - newAmountPaid)
+                val newStatus = if (newDebt <= 0L) SaleStatus.COMPLETED else SaleStatus.PARTIAL
+
+                saleDao.insertSale(
+                    sale.copy(
+                        amountPaid  = newAmountPaid,
+                        debtAmount  = newDebt,
+                        status      = newStatus,
+                        syncStatus  = Util.SyncStatus.SYNCED
+                    )
+                )
+            }
+
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e("SaleRepo", "recordDebtPayment failed: ${e.message}", e)
             Resource.Error(e.message ?: "Payment failed")
         }
     }
@@ -158,7 +276,14 @@ class SaleRepositoryImpl(
                 }
                 .decodeList<SaleDto>()
 
+            if (remoteSales.isEmpty()) return@withContext Resource.Success(Unit)
+
             val unsyncedIds = saleDao.getUnsyncedSales().map { it.clientTransactionId }.toSet()
+
+            remoteSales
+                .filter { it.clientTransactionId !in unsyncedIds }
+                .map { it.toEntity() }
+                .let { if (it.isNotEmpty()) saleDao.insertSales(it) }
 
             val toUpsert = remoteSales
                 .filter { it.clientTransactionId !in unsyncedIds }
@@ -168,8 +293,37 @@ class SaleRepositoryImpl(
                 saleDao.insertSales(toUpsert)
             }
 
+            val saleIds = remoteSales.map { it.id }
+
+            val remoteItems = postgrest
+                .from("sale_items")
+                .select {
+                    filter { isIn("sale_id", saleIds) }
+                }
+                .decodeList<SaleItemDto>()
+
+            postgrest
+                .from("debt_payments")
+                .select {
+                    filter {
+                        eq("business_id", businessId)
+                        isIn("sale_id", saleIds)
+                    }
+                    order("paid_at", Order.DESCENDING)
+                }
+                .decodeList<DebtPaymentDto>()
+                .map { it.toEntity() }
+                .let { if (it.isNotEmpty()) debtPaymentDao.insertPayments(it) }
+
+            Log.d("SaleRepo", "pullSalesFromServer: ${remoteSales.size} sales, ${remoteItems.size} items")
+
+            if (remoteItems.isNotEmpty()) {
+                saleDao.insertSaleItems(remoteItems.map { it.toEntity() })
+            }
+
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e("SaleRepo", "pullSalesFromServer error: ${e.message}", e)
             Resource.Error(e.message ?: "Pull failed")
         }
     }
@@ -187,3 +341,10 @@ class SaleRepositoryImpl(
             }
         }
 }
+
+@Serializable
+data class DebtPaymentResponse(
+    val paymentId: String,
+    val newStatus: String,
+    val remainingDebt: Long
+)

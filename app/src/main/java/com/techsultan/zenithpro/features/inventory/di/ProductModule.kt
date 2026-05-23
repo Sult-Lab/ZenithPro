@@ -1,6 +1,12 @@
 package com.techsultan.zenithpro.features.inventory.di
 
 import com.techsultan.zenithpro.core.manager.SyncManager
+import com.techsultan.zenithpro.features.branch.data.repository.BranchRepositoryImpl
+import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
+import com.techsultan.zenithpro.features.category.data.repository.CategoryRepositoryImpl
+import com.techsultan.zenithpro.features.category.domain.repository.CategoryRepository
+import com.techsultan.zenithpro.features.customer.data.repository.CustomerRepositoryImpl
+import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
 import com.techsultan.zenithpro.features.expenses.data.repository.ExpenseRepositoryImpl
 import com.techsultan.zenithpro.features.expenses.domain.repository.ExpenseRepository
 import com.techsultan.zenithpro.features.inventory.data.repository.ProductRepositoryImpl
@@ -15,6 +21,10 @@ import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewMo
 import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
+import com.techsultan.zenithpro.features.production.data.repository.ProductionRepositoryImpl
+import com.techsultan.zenithpro.features.production.domain.repository.ProductionRepository
+import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
+import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -33,10 +43,20 @@ val productModule = module {
 
     single {
         SyncManager(
-            repository = get<ProductRepository>() as ProductRepositoryImpl,
+            productRepository = get<ProductRepository>() as ProductRepositoryImpl,
             expenseRepository = get<ExpenseRepository>() as ExpenseRepositoryImpl,
-            expenseDao = get(),
+            categoryRepository = get<CategoryRepository>() as CategoryRepositoryImpl,
+            branchRepository = get<BranchRepository>() as BranchRepositoryImpl,
+            customerRepository = get<CustomerRepository>() as CustomerRepositoryImpl,
+            saleRepository = get<SaleRepository>() as SaleRepositoryImpl,
+            productionRepository = get<ProductionRepository>() as ProductionRepositoryImpl,
             productDao = get(),
+            expenseDao = get(),
+            categoryDao = get(),
+            branchDao = get(),
+            customerDao = get(),
+            saleDao = get(),
+            productionDao = get(),
             networkMonitor = get(),
         )
     }

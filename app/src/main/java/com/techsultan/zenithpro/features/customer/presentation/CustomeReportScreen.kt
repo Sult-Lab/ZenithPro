@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.data.remote.CustomerStats
 import com.techsultan.zenithpro.features.customer.presentation.viewmodel.CustomerReportsViewModel
@@ -51,20 +53,20 @@ fun CustomerReportsScreen(
     viewModel: CustomerReportsViewModel = koinViewModel(),
     onBack: () -> Unit,
 ) {
-    val session = viewModel.session
-    val businessId = session?.businessId
-    LaunchedEffect(businessId) { viewModel.load(businessId ?: "") }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Customer reports") },
+            ZenithTopAppBar(
+                title = "Customer reports",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Menu")
                     }
+                },
+                actions = {
+
                 }
             )
         }
