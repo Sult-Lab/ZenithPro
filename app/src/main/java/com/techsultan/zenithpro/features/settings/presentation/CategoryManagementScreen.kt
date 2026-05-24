@@ -60,6 +60,7 @@ import com.techsultan.zenithpro.features.category.presentation.CategoryViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import androidx.core.graphics.toColorInt
 import com.techsultan.zenithpro.core.components.SyncStatusBadge
+import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.category.presentation.categoryColors
 
@@ -90,11 +91,14 @@ fun CategoryManagementScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
-            TopAppBar(
-                title = { Text("Categories") },
+            ZenithTopAppBar(
+                title = "Categories",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 },
                 actions = {

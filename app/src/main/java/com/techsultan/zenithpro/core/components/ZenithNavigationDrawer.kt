@@ -1,18 +1,27 @@
 package com.techsultan.zenithpro.core.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.techsultan.zenithpro.core.data.UserSession
 
 @Composable
 fun ZenithNavigationDrawer(
     drawerState: DrawerState,
+    session: UserSession?,
     gesturesEnabled: Boolean,
     onLogout: () -> Unit,
     onCustomersClick: () -> Unit,
@@ -31,7 +40,7 @@ fun ZenithNavigationDrawer(
                     modifier = Modifier.fillMaxHeight()
                 ) {
                     Spacer(Modifier.height(12.dp))
-                    DrawerHeader()
+                    DrawerHeader(session)
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     
                     NavigationDrawerItem(
@@ -97,22 +106,34 @@ fun ZenithNavigationDrawer(
 }
 
 @Composable
-private fun DrawerHeader() {
+private fun DrawerHeader(session: UserSession?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
     ) {
+        AsyncImage(
+            model = session?.businessLogoUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .border(1.dp, Color.LightGray, CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+
         Text(
-            text = "ZenithPro",
-            style = MaterialTheme.typography.headlineSmall,
+            text = session?.businessName ?: "Zenith Pro",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
         Text(
-            text = "Manage your business with ease",
-            style = MaterialTheme.typography.bodySmall,
+            text = session?.branchName ?: session?.businessAddress ?: "No address set",
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

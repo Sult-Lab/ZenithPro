@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -18,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
@@ -67,6 +69,8 @@ fun MainNavGraph(
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    val session by dataPersistentViewModel.session.collectAsStateWithLifecycle()
+
     // Gesture and Bottom Bar visibility logic
     val isBottomBarDestination = navigationState.topLevelRoute in TOP_LEVEL_DESTINATIONS.keys
     val currentStack = navigationState.backStacks[navigationState.topLevelRoute]
@@ -98,6 +102,7 @@ fun MainNavGraph(
 
     ZenithNavigationDrawer(
         drawerState = drawerState,
+        session = session,
         gesturesEnabled = gesturesEnabled,
         onLogout = {
             scope.launch {

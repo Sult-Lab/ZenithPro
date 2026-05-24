@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.settings.presentation
 
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -243,6 +244,7 @@ private fun LogoSection(
                     contentDescription = null,
                     modifier = Modifier
                         .size(100.dp)
+                        .clip(CircleShape)
                         .border(
                             2.dp,
                             MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
@@ -253,17 +255,17 @@ private fun LogoSection(
                 IconButton(
                     onClick  = onRemove,
                     modifier = Modifier
-                        .size(28.dp)
-                        .background(
-                            MaterialTheme.colorScheme.errorContainer,
-                            CircleShape
-                        )
-                        .offset(x = 4.dp, y = 4.dp)
+                        .size(24.dp),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 ){
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             } else {

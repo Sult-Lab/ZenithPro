@@ -28,7 +28,7 @@ class BusinessRepositoryImpl(
     private val imageUploadManager: ImageUploadManager,
     private val sessionManager: SessionManager,
     private val storage: Storage,
-    private val context: Context
+    private val context: Context,
 ) : BusinessRepository {
 
     override suspend fun updateBusiness(
@@ -65,7 +65,7 @@ class BusinessRepositoryImpl(
         val fileName = "logo_${businessId}.jpg"
         val path = "business-logos/$businessId/$fileName"
 
-        storage.from("business-assets").upload(
+        storage.from(BUSINESS_BUCKET).upload(
             path = path,
             data = UploadData(
                 stream = ByteReadChannel(bytes),
@@ -77,7 +77,7 @@ class BusinessRepositoryImpl(
             }
         )
 
-        return storage.from("business-assets").publicUrl(path)
+        return storage.from(BUSINESS_BUCKET).publicUrl(path)
     }
 
     private fun compressLogo(uri: Uri): ByteArray {
@@ -99,3 +99,5 @@ class BusinessRepositoryImpl(
         }
     }
 }
+
+private const val BUSINESS_BUCKET = "business_assets"
