@@ -11,7 +11,8 @@ val sessionModule = module {
         SessionManager(
             sessionDataStore = get(),
             postgrest = get(),
-            auth = get()
+            auth = get(),
+            logoManager = get()
         )
     }
 }

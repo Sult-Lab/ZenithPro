@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatAsTime
 import com.techsultan.zenithpro.core.util.Util.toUtcLocalDate
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
@@ -96,7 +98,8 @@ fun SalesScreen(
     viewModel: SalesListViewModel = koinViewModel(),
     onSaleClick: (String) -> Unit,
     onNewSale: () -> Unit,
-    onMenuClick: () -> Unit = {}
+    onMenuClick: () -> Unit = {},
+    onReceiptPreview: (ReceiptData) -> Unit = {}
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -111,6 +114,9 @@ fun SalesScreen(
                     snackbarHost.showSnackbar(event.message)
                 is SalesListViewModel.SalesListEvent.PrintSuccess ->
                     snackbarHost.showSnackbar("Receipt reprinted successfully")
+                is SalesListViewModel.SalesListEvent.ReceiptReady -> {
+                    onReceiptPreview(event.receipt)
+                }
             }
         }
     }
@@ -248,10 +254,11 @@ fun SalesScreen(
                                 ) { saleWithItems ->
                                     SaleCard(
                                         saleWithItems = saleWithItems,
-                                        branches     = state.availableBranches,
-                                        onClick       = { onSaleClick(saleWithItems.sale.id) },
-                                        onReprint     = { viewModel.reprintReceipt(saleWithItems) },
-                                        modifier      = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
+                                        branches = state.availableBranches,
+                                        onClick = { onSaleClick(saleWithItems.sale.id) },
+                                        onReprint = { viewModel.reprintReceipt(saleWithItems) },
+                                        modifier  = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                        onShare = { viewModel.onShareSale(saleWithItems) }
                                     )
                                 }
                             }
@@ -567,7 +574,6 @@ private fun SalesFilterRow(
     }
 }
 
-// ── Summary hero card ─────────────────────────────────────────────
 
 @Composable
 private fun SalesSummaryHeroCard(
@@ -777,6 +783,7 @@ private fun SaleCard(
     onClick: () -> Unit,
     onReprint: () -> Unit,
     modifier: Modifier = Modifier,
+    onShare: () -> Unit
 ) {
     val sale = saleWithItems.sale
     val branchName = remember(sale.branchId, branches) {
@@ -802,7 +809,7 @@ private fun SaleCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(vertical = 16.dp, horizontal = 10.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier          = Modifier.fillMaxWidth().padding(end = 32.dp)
@@ -953,7 +960,12 @@ private fun SaleCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Reprint Receipt") },
+                        text = {
+                            Text(
+                                text = "Reprint Receipt",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                               },
                         onClick = {
                             showMenu = false
                             onReprint()
@@ -961,6 +973,24 @@ private fun SaleCard(
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Print,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "Share Receipt",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                               },
+                        onClick = {
+                            showMenu = false
+                            onShare()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Share,
                                 contentDescription = null
                             )
                         }

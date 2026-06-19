@@ -5,6 +5,7 @@ import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.SessionDataStore
 import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.data.remote.UserProfileDto
+import com.techsultan.zenithpro.core.util.BusinessLogoManager
 import com.techsultan.zenithpro.features.branch.data.remote.BranchDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
 import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
@@ -21,6 +22,7 @@ class SessionManager(
     private val sessionDataStore: SessionDataStore,
     private val postgrest: Postgrest,
     private val auth: Auth,
+    private val logoManager: BusinessLogoManager
 ) {
 
     @Volatile
@@ -40,6 +42,7 @@ class SessionManager(
         Log.d("SessionManager", "Loaded session from DataStore: $stored")
         if (stored != null) {
             _currentSession = stored
+            logoManager.loadLogo(stored.businessLogoUrl)
             return stored
         }
 
@@ -114,6 +117,7 @@ class SessionManager(
                     .ifBlank { settings?.currencyCode ?: "NGN" },
             )
             Log.d("SessionManager", "Session initialized: $session")
+            logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
             Log.d("SessionManager", "Session initialized and saved for: ${session.fullName}")
@@ -139,6 +143,7 @@ class SessionManager(
         )
         sessionDataStore.saveSession(updated)
         _currentSession = updated
+        logoManager.loadLogo(updated.businessLogoUrl)
     }
 
     suspend fun signOut() {
@@ -149,10 +154,9 @@ class SessionManager(
         } finally {
             sessionDataStore.clearSession()
             _currentSession = null
+            logoManager.clear()
         }
     }
-
-    // ── Convenience getters — crash early if called before login ──
 
     val userId: String
         get() = _currentSession?.userId

@@ -3,6 +3,7 @@ package com.techsultan.zenithpro
 import android.app.Application
 import com.techsultan.zenithpro.core.di.commonModule
 import com.techsultan.zenithpro.core.di.databaseModule
+import com.techsultan.zenithpro.core.di.receiptModule
 import com.techsultan.zenithpro.core.di.sessionModule
 import com.techsultan.zenithpro.core.di.supabaseModule
 import com.techsultan.zenithpro.features.analytics.di.reportsModule
@@ -60,7 +61,8 @@ class ZenithApplication : Application(), KoinComponent {
                 productionModule,
                 materialModule,
                 categoryModule,
-                businessModule
+                businessModule,
+                receiptModule
             )
         }
 

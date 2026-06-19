@@ -3,15 +3,11 @@ package com.techsultan.zenithpro.features.sales.presentation
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.techsultan.zenithpro.core.data.local.PrinterDataStore
-import com.techsultan.zenithpro.core.data.local.PrinterDevice
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.data.local.SplitPayment
-import com.techsultan.zenithpro.core.domain.repository.PrinterRepository
 import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
@@ -44,17 +40,13 @@ private const val TAG = "CheckoutViewModel"
 class CheckoutViewModel(
     private val getProductsUseCase: GetProductsUseCase,
     private val processSaleUseCase: ProcessSaleUseCase,
-    private val getSaleUseCase: GetSalesUseCase,
-    private val getDailySummaryUseCase: GetDailySummaryUseCase,
     private val sessionManager: SessionManager,
     private val customerRepository: CustomerRepository,
     private val getCustomerDetailUseCase: GetCustomerDetailUseCase,
     private val generateReceiptUseCase: GenerateReceiptUseCase,
-    private val printerRepository: PrinterRepository,
-    private val printerDataStore: PrinterDataStore,
     private val receiptNumberGenerator: ReceiptNumberGenerator,
     private val getSettingsUseCase: GetSettingsUseCase,
-    private val getBranchesUseCase: GetBranchesUseCase
+    private val getBranchesUseCase: GetBranchesUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -113,9 +105,7 @@ class CheckoutViewModel(
     }
 
     private fun initBranch() {
-        Log.d(TAG, "initBranch: called")
         val session = currentSession ?: return
-        Log.d(TAG, "initBranch: $session")
         if (session.hasBranch) {
             // Staff has a fixed branch — set it automatically, no selection needed
             _state.update {
@@ -127,22 +117,18 @@ class CheckoutViewModel(
                 )
             }
         } else if (session.isAdmin || session.isManager) {
-            Log.d(TAG, "Loading branches...")
             loadBranches()
         }
     }
 
     private fun loadBranches() {
         viewModelScope.launch {
-            Log.d(TAG, "loadBranches: called")
-            Log.d(TAG, "loadBranches: ${sessionManager.businessId}")
             getBranchesUseCase.invoke(sessionManager.businessId).collect { result ->
                 when(result){
                     is Resource.Success -> {
 
                         val activeBranches = result.data?.filter { it.isActive } ?: emptyList()
                         val session = sessionManager.currentSession
-                        Log.d(TAG, "loadBranches: $activeBranches")
                         val resolvedBranchId: String?
                         val resolvedBranchName: String?
 
@@ -539,25 +525,8 @@ class CheckoutViewModel(
 
         val receipt = generateReceiptUseCase(completedSale)
 
-        _events.emit(CheckoutEvent.PaymentCompleted(receipt))
+        _events.emit(CheckoutEvent.ReceiptReady(receipt))
 
-        val printer = printerDataStore.savedPrinter.first()
-            ?: if (Util.isSunmiDevice()) {
-                PrinterDevice(
-                    id = "embedded",
-                    name = "Sunmi Embedded Printer",
-                    type = Util.PrinterType.EMBEDDED
-                )
-            } else null
-
-        if (printer != null) {
-            val printResult = printerRepository.printReceipt(receipt, printer)
-            if (printResult.isFailure) {
-                _events.emit(CheckoutEvent.PrintFailed(printResult.exceptionOrNull()?.message ?: "Printing failed"))
-            }
-        } else {
-             _events.emit(CheckoutEvent.PrintFailed("No printer configured. Please go to Settings > Printer settings."))
-        }
     }
 
     private fun buildSplitPayments(): List<SplitPayment> {
@@ -575,19 +544,16 @@ class CheckoutViewModel(
 
     sealed class CheckoutEvent {
         data class ShowError(val message: String) : CheckoutEvent()
+
+        data class ReceiptReady(
+            val receipt: ReceiptData
+        ) : CheckoutEvent()
+
         data class SaleCompleted(
             val saleId: String,
             val change: Long,
             val debtAmount: Long,
             val customer: String
-        ) : CheckoutEvent()
-
-        data class PaymentCompleted(
-            val receipt: ReceiptData
-        ) : CheckoutEvent()
-
-        data class PrintFailed(
-            val message: String
         ) : CheckoutEvent()
 
         data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()
