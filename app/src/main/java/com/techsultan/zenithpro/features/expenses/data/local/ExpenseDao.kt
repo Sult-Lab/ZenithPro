@@ -100,4 +100,41 @@ interface ExpenseDao {
 
     @Query("SELECT id FROM expenses WHERE businessId = :businessId")
     suspend fun getAllExpenseIds(businessId: String): List<String>
+
+    @Query("""
+    SELECT
+        COALESCE(SUM(amount), 0) AS totalAmount,
+        COUNT(*)                 AS totalCount
+    FROM expenses
+    WHERE businessId  = :businessId
+      AND deletedAt   IS NULL
+      AND expenseDate BETWEEN :from AND :to
+      AND (:branchId  IS NULL OR branchId = :branchId)
+""")
+    suspend fun getSummaryFiltered(
+        businessId: String,
+        from: String,
+        to: String,
+        branchId: String?
+    ): ExpenseSummary
+
+    @Query("""
+    SELECT
+        category,
+        SUM(amount)  AS totalAmount,
+        COUNT(*)     AS count
+    FROM expenses
+    WHERE businessId  = :businessId
+      AND deletedAt   IS NULL
+      AND expenseDate BETWEEN :from AND :to
+      AND (:branchId  IS NULL OR branchId = :branchId)
+    GROUP BY category
+    ORDER BY totalAmount DESC
+""")
+    suspend fun getCategoryBreakdownFiltered(
+        businessId: String,
+        from: String,
+        to: String,
+        branchId: String?
+    ): List<CategoryBreakdown>
 }

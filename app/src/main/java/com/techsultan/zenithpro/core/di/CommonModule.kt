@@ -9,10 +9,13 @@ import com.techsultan.zenithpro.core.manager.PrinterManager
 import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.BarcodeLabelFormatter
+import com.techsultan.zenithpro.core.util.BusinessLogoManager
+import com.techsultan.zenithpro.core.util.FileShareManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.ReceiptFormatter
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
+import coil.ImageLoader
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -21,13 +24,14 @@ val commonModule = module {
     single { ImageUploadManager(get(), androidContext()) }
     single { NetworkMonitor(androidContext()) }
     single { ImageCacheManager(androidContext()) }
+    single { FileShareManager(androidContext()) }
     viewModel { DataPersistentViewModel(get(), get(), get(), get()) }
-    single { ReceiptFormatter() }
     single { BarcodeLabelFormatter() }
+    single { ImageLoader(androidContext()) }
+    single { BusinessLogoManager(androidContext(), get()) }
 
     // Manager/DataStore
     single { AppDataStore(androidContext()) }
-    single { ReceiptNumberGenerator(get()) }
 
     // Printer related
     single { PrinterDataStore(androidContext()) }

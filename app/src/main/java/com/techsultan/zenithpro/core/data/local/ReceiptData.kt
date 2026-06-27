@@ -20,7 +20,8 @@ data class ReceiptData(
     val businessAddress: String,
     val businessNumber: String,
     val taxRate: Double = 0.0,
-    val footerMessage: String? = null
+    val footerMessage: String? = null,
+    val businessLogo: String?,
 )
 
 data class ReceiptItem(

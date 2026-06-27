@@ -36,7 +36,8 @@ class GenerateReceiptUseCase {
             businessAddress = sale.businessAddress,
             businessNumber = sale.businessNumber,
             taxRate = sale.taxRate,
-            footerMessage = sale.footerMessage
+            footerMessage = sale.footerMessage,
+            businessLogo = sale.businessLogo
         )
     }
 }

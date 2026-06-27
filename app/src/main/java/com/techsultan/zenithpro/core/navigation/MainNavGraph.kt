@@ -25,7 +25,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
-import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
+import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerDetailScreen
@@ -45,6 +45,8 @@ import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailVie
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
+import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
+import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
@@ -156,6 +158,7 @@ fun MainNavGraph(
             val addProductViewModel: AddProductViewModel = koinViewModel()
             val productDetailViewModel: ProductDetailViewModel = koinViewModel()
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
+            val receiptViewModel: ReceiptViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -189,12 +192,16 @@ fun MainNavGraph(
                             SalesScreen(
                                 onSaleClick = {},
                                 onNewSale = {},
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                                onMenuClick = { scope.launch { drawerState.open() } },
+                                onReceiptPreview = { receipt ->
+                                    receiptViewModel.setReceipt(receipt)
+                                    navigator.navigate(Route.Home.ReceiptPreview)
+                                }
                             )
                         }
                         entry<Route.Home.Reports> {
-                            ReportScreen(
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                            ReportsScreen(
+                                onMenuClick = { scope.launch { drawerState.open() } },
                             )
                         }
                         entry<Route.Home.Settings> {
@@ -243,7 +250,11 @@ fun MainNavGraph(
                                 onBack = { navigator.goBack() },
                                 onScanBarcode = { navigator.navigate(Route.Home.BarcodeScanner(Route.ScannerCaller.CHECKOUT)) },
                                 viewModel = checkoutViewModel,
-                                onSaleCompleted = { navigator.goBack() }
+                                onSaleCompleted = { navigator.goBack() },
+                                onReceiptPreview = { receipt ->
+                                    receiptViewModel.setReceipt(receipt)
+                                    navigator.navigate(Route.Home.ReceiptPreview)
+                                }
                             )
                         }
                         entry<Route.Home.AddProduct> {
@@ -358,6 +369,12 @@ fun MainNavGraph(
                         entry<Route.Home.CategoryManagementScreen> {
                             CategoryManagementScreen(
                                 onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.ReceiptPreview> {
+                            ReceiptPreviewScreen(
+                                onBack = { navigator.goBack() },
+                                viewModel = receiptViewModel
                             )
                         }
                     }

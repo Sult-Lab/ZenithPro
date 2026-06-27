@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
@@ -81,6 +82,7 @@ fun CheckoutScreen(
     onScanBarcode: () -> Unit = {},
     viewModel: CheckoutViewModel,
     onSaleCompleted: (saleId: String) -> Unit,
+    onReceiptPreview: (ReceiptData) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
@@ -102,15 +104,13 @@ fun CheckoutScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is CheckoutViewModel.CheckoutEvent.SaleCompleted -> {
-                    onSaleCompleted(event.saleId)
+
                 }
-                is CheckoutViewModel.CheckoutEvent.PaymentCompleted -> {
+                is CheckoutViewModel.CheckoutEvent.ReceiptReady-> {
+                    onReceiptPreview(event.receipt)
                     snackbarHost.showSnackbar("Payment successful")
                 }
                 is CheckoutViewModel.CheckoutEvent.ShowError -> {
-                    snackbarHost.showSnackbar(event.message)
-                }
-                is CheckoutViewModel.CheckoutEvent.PrintFailed -> {
                     snackbarHost.showSnackbar(event.message)
                 }
                 is CheckoutViewModel.CheckoutEvent.ProductAddedByBarcode -> {

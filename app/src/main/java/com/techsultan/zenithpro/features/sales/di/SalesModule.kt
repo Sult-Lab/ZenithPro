@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUs
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
+import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesListViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -28,17 +29,13 @@ val salesModule = module {
     viewModel { CheckoutViewModel(
         getProductsUseCase = get(),
         processSaleUseCase = get(),
-        getSaleUseCase = get(),
-        getDailySummaryUseCase = get(),
         sessionManager = get(),
         customerRepository = get(),
         getCustomerDetailUseCase = get(),
         generateReceiptUseCase = get(),
-        printerRepository = get(),
-        printerDataStore = get(),
         receiptNumberGenerator = get(),
         getSettingsUseCase = get(),
-        getBranchesUseCase = get()
+        getBranchesUseCase = get(),
     ) }
 
     viewModel {
@@ -47,13 +44,22 @@ val salesModule = module {
             saleRepository = get(),
             networkMonitor = get(),
             sessionManager = get(),
-            printerRepository = get(),
-            printerDataStore = get(),
             generateReceiptUseCase = get(),
             receiptNumberGenerator = get(),
             getSettingsUseCase = get(),
             getBranchesUseCase = get(),
-            getStaffListUseCase = get()
+            getStaffListUseCase = get(),
+        )
+    }
+
+    viewModel {
+        ReceiptViewModel(
+            printerRepository = get(),
+            printerDataStore = get(),
+            receiptPdfGenerator = get(),
+            receiptImageGenerator = get(),
+            fileShareManager = get(),
+            logoManager = get()
         )
     }
 
