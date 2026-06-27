@@ -25,7 +25,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
-import com.techsultan.zenithpro.features.analytics.presentation.ReportScreen
+import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerDetailScreen
@@ -200,8 +200,8 @@ fun MainNavGraph(
                             )
                         }
                         entry<Route.Home.Reports> {
-                            ReportScreen(
-                                onMenuClick = { scope.launch { drawerState.open() } }
+                            ReportsScreen(
+                                onMenuClick = { scope.launch { drawerState.open() } },
                             )
                         }
                         entry<Route.Home.Settings> {

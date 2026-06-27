@@ -561,7 +561,7 @@ private fun SalesFilterRow(
         // ── Clear all (only visible when any filter is active) ────
         if (hasAnyFilter) {
             TextButton(
-                onClick      = onClearFilters,
+                onClick = onClearFilters,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp)
             ) {
                 Text(
@@ -582,17 +582,17 @@ private fun SalesSummaryHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
-        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
-                modifier              = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text  = "TOTAL REVENUE",
@@ -614,16 +614,16 @@ private fun SalesSummaryHeroCard(
             }
 
             Text(
-                text       = "₦${summary.totalRevenue.formatAmount()}",
-                style      = MaterialTheme.typography.headlineLarge,
+                text = "₦${summary.totalRevenue.formatAmount()}",
+                style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color      = Color.White
+                color = Color.White
             )
 
             HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
 
             Row(
-                modifier              = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 HeroStatItem(
@@ -742,12 +742,12 @@ private fun SecondaryStatChip(
 
 @Composable
 private fun DateGroupHeader(date: LocalDate, totalSales: Long) {
-    val today     = LocalDate.now()
+    val today = LocalDate.now()
     val yesterday = today.minusDays(1)
-    val label     = when (date) {
-        today     -> "Today"
+    val label = when (date) {
+        today -> "Today"
         yesterday -> "Yesterday"
-        else      -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
+        else -> date.format(DateTimeFormatter.ofPattern("EEE, MMM d"))
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -802,10 +802,10 @@ private fun SaleCard(
     }
 
     Card(
-        modifier  = modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape     = RoundedCornerShape(12.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
