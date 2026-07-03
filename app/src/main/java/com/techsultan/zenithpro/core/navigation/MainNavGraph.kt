@@ -43,15 +43,18 @@ import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScre
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
+import com.techsultan.zenithpro.features.sales.presentation.AwaitingTransferScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
+import com.techsultan.zenithpro.features.sales.presentation.SaleDetailScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
 import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
+import com.techsultan.zenithpro.features.settings.presentation.PaymentSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
@@ -172,8 +175,8 @@ fun MainNavGraph(
                             DashboardScreen(
                                 onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onAddProduct = { navigator.navigate(Route.Home.AddProduct) },
-                                onViewReports = {},
-                                onViewSales = {},
+                                onViewReports = { navigator.navigate(Route.Home.Reports) },
+                                onViewSales = { navigator.navigate(Route.Home.Sales) },
                                 onViewDebts = {},
                                 onViewLowStock = {},
                                 onViewPurchaseOrders = {},
@@ -190,8 +193,8 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.Sales> {
                             SalesScreen(
-                                onSaleClick = {},
-                                onNewSale = {},
+                                onSaleClick = { navigator.navigate(Route.Home.SaleDetail(it)) },
+                                onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onReceiptPreview = { receipt ->
                                     receiptViewModel.setReceipt(receipt)
@@ -215,7 +218,8 @@ fun MainNavGraph(
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
                                 onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) },
                                 onBusinessProfile = { navigator.navigate(Route.Home.BusinessProfileScreen) },
-                                onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) }
+                                onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) },
+                                onPaymentSettings = { navigator.navigate(Route.Home.PaymentSettings) }
                             )
                         }
 
@@ -254,6 +258,18 @@ fun MainNavGraph(
                                 onReceiptPreview = { receipt ->
                                     receiptViewModel.setReceipt(receipt)
                                     navigator.navigate(Route.Home.ReceiptPreview)
+                                },
+                                onAwaitingTransfer = { event ->
+                                    navigator.navigate(
+                                        Route.Home.AwaitingTransfer(
+                                            saleId = event.saleId,
+                                            totalAmount = event.totalAmount,
+                                            paymentReference = event.paymentReference,
+                                            virtualAccountNumber = event.virtualAccountNumber,
+                                            virtualAccountBank = event.virtualAccountBank,
+                                            virtualAccountName = event.virtualAccountName
+                                        )
+                                    )
                                 }
                             )
                         }
@@ -371,10 +387,37 @@ fun MainNavGraph(
                                 onBack = { navigator.goBack() }
                             )
                         }
+                        entry<Route.Home.PaymentSettings> {
+                            PaymentSettingsScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
                         entry<Route.Home.ReceiptPreview> {
                             ReceiptPreviewScreen(
                                 onBack = { navigator.goBack() },
                                 viewModel = receiptViewModel
+                            )
+                        }
+                        entry<Route.Home.SaleDetail> { key ->
+                            SaleDetailScreen(
+                                saleId = key.saleId,
+                                businessId = session?.businessId ?: "",
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.AwaitingTransfer> { key ->
+                            AwaitingTransferScreen(
+                                saleId = key.saleId,
+                                totalAmount = key.totalAmount,
+                                paymentReference = key.paymentReference,
+                                virtualAccountNumber = key.virtualAccountNumber,
+                                virtualAccountBank = key.virtualAccountBank,
+                                virtualAccountName = key.virtualAccountName,
+                                businessId = session?.businessId ?: "",
+                                onConfirmed = {
+                                    navigator.navigate(Route.Home.SaleDetail(key.saleId))
+                                },
+                                onCancel = { navigator.goBack() }
                             )
                         }
                     }

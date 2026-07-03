@@ -17,4 +17,5 @@ interface SaleRepository {
     suspend fun recordDebtPayment(request: DebtPaymentRequest): Resource<Unit>
     suspend fun pullSalesFromServer(businessId: String): Resource<Unit>
     suspend fun getDailySummary(businessId: String): Resource<DailySummary>
+    suspend fun getNextSaleCounter(businessId: String): Int
 }

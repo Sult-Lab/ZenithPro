@@ -30,6 +30,8 @@ import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsDao
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEntity
+import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
+import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 
 @Database(
     entities = [
@@ -47,9 +49,10 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         RecipeEntity::class,
         ProductionOrderEntity::class,
         CategoryEntity::class,
-        DebtPaymentEntity::class
+        DebtPaymentEntity::class,
+        TerminalEntity::class
                ],
-    version = 8,
+    version = 10,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -66,6 +69,7 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val productionOrderDao: ProductionOrderDao
     abstract val categoryDao: CategoryDao
     abstract val debtPaymentDao: DebtPaymentDao
+    abstract val terminalDao: TerminalDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"

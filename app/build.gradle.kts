@@ -104,6 +104,7 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.navigation)
     implementation(libs.koin.compose)
+    implementation(libs.koin.workmanager)
 
     //ktor
     implementation(project.dependencies.platform(libs.ktor.bom))
@@ -144,4 +145,8 @@ dependencies {
 
     // ZXing for Barcode generation
     implementation(libs.zxing.core)
+
+    // work manager
+    implementation(libs.androidx.work.runtime.ktx)
+    androidTestImplementation(libs.androidx.work.testing)
 }

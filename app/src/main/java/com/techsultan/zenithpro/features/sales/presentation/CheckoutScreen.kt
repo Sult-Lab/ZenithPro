@@ -70,10 +70,12 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.payment.TransferPaymentViewModel
 import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
 import com.techsultan.zenithpro.features.sales.component.BranchSelectorChip
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +83,10 @@ fun CheckoutScreen(
     onBack: () -> Unit = {},
     onScanBarcode: () -> Unit = {},
     viewModel: CheckoutViewModel,
+    transferPaymentViewModel: TransferPaymentViewModel = koinViewModel(),
     onSaleCompleted: (saleId: String) -> Unit,
-    onReceiptPreview: (ReceiptData) -> Unit = {}
+    onReceiptPreview: (ReceiptData) -> Unit = {},
+    onAwaitingTransfer: (CheckoutViewModel.CheckoutEvent.AwaitingTransfer) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
@@ -90,6 +94,8 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
+
+    val transferState by transferPaymentViewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
 
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -98,6 +104,10 @@ fun CheckoutScreen(
 
     val vatAmount = (cartTotal * (state.taxRate / 100)).toLong()
     val grandTotal = cartTotal + vatAmount
+
+    LaunchedEffect(Unit) {
+        viewModel.loadTerminalForCurrentBranch()
+    }
 
     // Handle events
     LaunchedEffect(Unit) {
@@ -115,6 +125,10 @@ fun CheckoutScreen(
                 }
                 is CheckoutViewModel.CheckoutEvent.ProductAddedByBarcode -> {
                     snackbarHost.showSnackbar("Added ${event.productName} to cart")
+                }
+
+                is CheckoutViewModel.CheckoutEvent.AwaitingTransfer -> {
+                    onAwaitingTransfer(event)
                 }
             }
         }

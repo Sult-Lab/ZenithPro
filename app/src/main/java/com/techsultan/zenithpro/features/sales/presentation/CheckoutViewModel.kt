@@ -1,6 +1,5 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.ReceiptData
@@ -16,12 +15,15 @@ import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepo
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
+import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
+import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,7 +38,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private const val TAG = "CheckoutViewModel"
 class CheckoutViewModel(
     private val getProductsUseCase: GetProductsUseCase,
     private val processSaleUseCase: ProcessSaleUseCase,
@@ -47,6 +48,7 @@ class CheckoutViewModel(
     private val receiptNumberGenerator: ReceiptNumberGenerator,
     private val getSettingsUseCase: GetSettingsUseCase,
     private val getBranchesUseCase: GetBranchesUseCase,
+    private val terminalDao: TerminalDao,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -69,6 +71,9 @@ class CheckoutViewModel(
 
     private val _newlyCreatedCustomer = MutableStateFlow<CustomerEntity?>(null)
     val newlyCreatedCustomer = _newlyCreatedCustomer.asStateFlow()
+
+    private val _currentTerminal = MutableStateFlow<TerminalEntity?>(null)
+    val currentTerminal = _currentTerminal.asStateFlow()
 
     val cartTotal: StateFlow<Long> = _cart.map { it.values.sumOf { item -> item.totalPrice } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
@@ -101,6 +106,21 @@ class CheckoutViewModel(
                     taxRate = settings?.taxRate ?: 0.0
                 ) }
             }
+        }
+    }
+
+    fun loadTerminalForCurrentBranch() {
+        viewModelScope.launch {
+            val branchId = sessionManager.currentSession?.branchId ?: return@launch
+            _currentTerminal.value = terminalDao.getTerminalByBranchId(branchId)
+        }
+    }
+
+    fun resolveTransferType(): TransferType {
+        return if (_currentTerminal.value?.nombaVirtualAccountNumber != null) {
+            TransferType.NOMBA
+        } else {
+            TransferType.MANUAL
         }
     }
 
@@ -235,6 +255,7 @@ class CheckoutViewModel(
     fun refresh() {
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
+            loadProducts()
             _state.update { it.copy(isRefreshing = false) }
         }
     }
@@ -445,17 +466,32 @@ class CheckoutViewModel(
             when (result) {
                 is Resource.Success -> {
                     _state.update { it.copy(isLoading = false) }
-                    val saleId = result.data?.saleId ?: ""
+                    val response = result.data
+                    val saleId = response?.saleId ?: ""
                     val change = maxOf(0L, effectivePaid - total)
-                    _events.emit(CheckoutEvent.SaleCompleted(
-                        saleId = saleId,
-                        change = change,
-                        debtAmount = result.data?.debtAmount ?: 0L,
-                        customer = s.selectedCustomer?.firstName ?: ""
-                    ))
-                    
-                    completePayment(saleId, effectivePaid, change)
-                    clearCart()
+
+                    if (response?.paymentStatus == "AWAITING_PAYMENT"){
+                        _events.emit(
+                            CheckoutEvent.AwaitingTransfer(
+                                saleId  = response.saleId,
+                                totalAmount = _state.value.amountPaid,
+                                paymentReference  = response.paymentReference ?: "",
+                                virtualAccountNumber = response.virtualAccountNumber ?: "",
+                                virtualAccountBank = response.virtualAccountBank ?: "",
+                                virtualAccountName   = response.virtualAccountName ?: ""
+                            )
+                        )
+                    } else {
+                        _events.emit(CheckoutEvent.SaleCompleted(
+                            saleId = saleId,
+                            change = change,
+                            debtAmount = result.data?.debtAmount ?: 0L,
+                            customer = s.selectedCustomer?.firstName ?: ""
+                        ))
+
+                        completePayment(saleId, effectivePaid, change)
+                        clearCart()
+                    }
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
@@ -554,6 +590,15 @@ class CheckoutViewModel(
             val change: Long,
             val debtAmount: Long,
             val customer: String
+        ) : CheckoutEvent()
+
+        data class AwaitingTransfer(
+            val saleId: String,
+            val totalAmount: Long,
+            val paymentReference: String,
+            val virtualAccountNumber: String,
+            val virtualAccountBank: String,
+            val virtualAccountName: String
         ) : CheckoutEvent()
 
         data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()

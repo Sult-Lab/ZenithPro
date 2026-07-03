@@ -1,10 +1,12 @@
 package com.techsultan.zenithpro.features.sales.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.core.worker.SalePaymentPollerWorker
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
@@ -43,6 +45,7 @@ import java.time.ZoneId
 import java.util.UUID
 
 class SaleRepositoryImpl(
+    private val context: Context,
     private val saleDao: SaleDao,
     private val functions: Functions,
     private val postgrest: Postgrest,
@@ -111,7 +114,16 @@ class SaleRepositoryImpl(
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
                     notes = request.notes,
                     soldAt = now,
-                    syncStatus = Util.SyncStatus.PENDING
+                    syncStatus = Util.SyncStatus.PENDING,
+                    terminalId = request.terminalId,
+                    paymentStatus = if (request.paymentMethod == "TRANSFER")
+                        "AWAITING_PAYMENT" else "COMPLETED",
+                    paymentReference = request.paymentReference,
+                    nombaPaymentReference = null,
+                    paymentConfirmedAt = null,
+                    virtualAccountNumber = request.virtualAccountNumber,
+                    virtualAccountBank = request.virtualAccountBank,
+                    virtualAccountName = request.virtualAccountName
                 )
             )
             
@@ -139,7 +151,10 @@ class SaleRepositoryImpl(
                         saleId = saleId,
                         status = "Saved locally. Sync pending.",
                         debtAmount = debtAmount,
-                        idempotent = false
+                        idempotent = false,
+                        paymentReference = request.paymentReference,
+                        paymentStatus = if (request.paymentMethod == "TRANSFER")
+                            "AWAITING_PAYMENT" else "COMPLETED"
                     )
                 )
             }
@@ -147,14 +162,24 @@ class SaleRepositoryImpl(
             val remoteResult = pushSale(saleId)
             
             if (remoteResult != null) {
+                if (request.paymentMethod == "TRANSFER") {
+                    SalePaymentPollerWorker.schedule(
+                        context     = context,
+                        saleId      = remoteResult.saleId,
+                        businessId  = sessionManager.businessId
+                    )
+                }
                 Resource.Success(remoteResult)
             } else {
                 Resource.Success(
-                    ProcessSaleResponse(
-                        saleId = saleId,
-                        status = "Saved locally. Sync failed.",
-                        debtAmount = debtAmount,
-                        idempotent = false
+                    data = ProcessSaleResponse(
+                        saleId           = saleId,
+                        status           = "Saved locally. Sync pending.",
+                        debtAmount       = debtAmount,
+                        idempotent       = false,
+                        paymentReference = request.paymentReference,
+                        paymentStatus    = if (request.paymentMethod == "TRANSFER")
+                            "AWAITING_PAYMENT" else "COMPLETED"
                     )
                 )
             }
@@ -162,6 +187,10 @@ class SaleRepositoryImpl(
             Log.e("SaleRepo", "processSale failed: ${e.message}", e)
             Resource.Error(e.message ?: "Sale failed")
         }
+    }
+
+    fun cancelPoller(saleId: String) {
+        SalePaymentPollerWorker.cancel(context, saleId)
     }
 
     internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
@@ -183,6 +212,10 @@ class SaleRepositoryImpl(
                 paymentMethod = saleWithItems.sale.paymentMethod.name,
                 notes = saleWithItems.sale.notes,
                 staffId = saleWithItems.sale.staffId,
+                terminalId = saleWithItems.sale.terminalId,
+                virtualAccountNumber = saleWithItems.sale.virtualAccountNumber,
+                virtualAccountBank = saleWithItems.sale.virtualAccountBank,
+                virtualAccountName = saleWithItems.sale.virtualAccountName,
                 items = saleWithItems.items.map {
                     SaleItemRequest(
                         variantId = it.variantId,
@@ -194,7 +227,8 @@ class SaleRepositoryImpl(
                         quantity = it.quantity,
                         discount = it.discount
                     )
-                }
+                },
+                paymentReference = saleWithItems.sale.paymentReference
             )
 
             val response = functions.invoke(
@@ -280,17 +314,18 @@ class SaleRepositoryImpl(
 
             val unsyncedIds = saleDao.getUnsyncedSales().map { it.clientTransactionId }.toSet()
 
-            remoteSales
-                .filter { it.clientTransactionId !in unsyncedIds }
-                .map { it.toEntity() }
-                .let { if (it.isNotEmpty()) saleDao.insertSales(it) }
-
             val toUpsert = remoteSales
                 .filter { it.clientTransactionId !in unsyncedIds }
                 .map { it.toEntity() }
 
             if (toUpsert.isNotEmpty()) {
                 saleDao.insertSales(toUpsert)
+
+                toUpsert.forEach { sale ->
+                    if (sale.paymentStatus == "COMPLETED") {
+                        SalePaymentPollerWorker.cancel(context, sale.id)
+                    }
+                }
             }
 
             val saleIds = remoteSales.map { it.id }
@@ -340,6 +375,9 @@ class SaleRepositoryImpl(
                 Resource.Error(e.message ?: "Failed to load summary")
             }
         }
+
+    override suspend fun getNextSaleCounter(businessId: String): Int =
+        saleDao.getNextSaleCounter(businessId)
 }
 
 @Serializable

@@ -26,6 +26,7 @@ camerax = "1.4.1"
 dantSuPos = "3.3.0"
 cameraMlkitVision = "1.6.1"
 zxing = "3.5.4"
+work = "2.10.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ koin-core = { module = "io.insert-koin:koin-core" }
 koin-navigation = { group = "io.insert-koin", name = "koin-androidx-navigation" }
 koin-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
 koin-android = { group = "io.insert-koin", name = "koin-android" }
+koin-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager" }
 androidx-room = { group = "androidx.room", name = "room-runtime", version.ref = "room_version"}
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room_version" }
 androidx-room-coroutine = { group = "androidx.room", name= "room-ktx", version.ref = "room_version" }
@@ -78,6 +80,8 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 dantsu-eco-pos = {group = "com.github.DantSu", name = "ESCPOS-ThermalPrinter-Android",  version.ref = "dantSuPos"}
 camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

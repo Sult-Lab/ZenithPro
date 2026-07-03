@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.inventory.di
 
 import com.techsultan.zenithpro.core.manager.SyncManager
+import com.techsultan.zenithpro.core.worker.SyncWorker
 import com.techsultan.zenithpro.features.branch.data.repository.BranchRepositoryImpl
 import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
 import com.techsultan.zenithpro.features.category.data.repository.CategoryRepositoryImpl
@@ -25,6 +26,8 @@ import com.techsultan.zenithpro.features.production.data.repository.ProductionRe
 import com.techsultan.zenithpro.features.production.domain.repository.ProductionRepository
 import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
+import org.koin.android.ext.koin.androidContext
+import org.koin.androidx.workmanager.dsl.worker
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -41,8 +44,10 @@ val productModule = module {
         imageCacheManager = get()
     ) }
 
-    single {
-        SyncManager(
+    worker {
+        SyncWorker(
+            get(),
+            get(),
             productRepository = get<ProductRepository>() as ProductRepositoryImpl,
             expenseRepository = get<ExpenseRepository>() as ExpenseRepositoryImpl,
             categoryRepository = get<CategoryRepository>() as CategoryRepositoryImpl,
@@ -59,6 +64,10 @@ val productModule = module {
             productionDao = get(),
             networkMonitor = get(),
         )
+    }
+
+    single {
+        SyncManager(androidContext())
     }
 
     factory { AddProductUseCase(get()) }

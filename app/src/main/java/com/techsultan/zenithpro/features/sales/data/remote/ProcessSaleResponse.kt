@@ -7,5 +7,10 @@ data class ProcessSaleResponse(
     val saleId: String,
     val status: String,
     val debtAmount: Long,
-    val idempotent: Boolean
+    val idempotent: Boolean,
+    val paymentReference: String?,
+    val paymentStatus: String,
+    val virtualAccountNumber: String? = null,
+    val virtualAccountBank: String?   = null,
+    val virtualAccountName: String?   = null,
 )
