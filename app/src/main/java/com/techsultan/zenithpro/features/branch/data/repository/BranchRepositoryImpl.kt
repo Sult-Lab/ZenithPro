@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.branch.data.repository
 
 import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
@@ -23,6 +24,7 @@ import java.util.UUID
 class BranchRepositoryImpl(
     private val branchDao: BranchDao,
     private val postgrest: Postgrest,
+    private val sessionManager: SessionManager,
     private val networkMonitor: NetworkMonitor,
 ) : BranchRepository {
 
@@ -99,7 +101,10 @@ class BranchRepositoryImpl(
         withContext(Dispatchers.IO) {
             try {
                 val remote = postgrest.from("branches").select {
-                    filter { eq("business_id", businessId); isNull("deleted_at") }
+                    filter {
+                        eq("business_id", businessId)
+                        isNull("deleted_at")
+                    }
                 }.decodeList<BranchDto>()
 
                 val unsyncedIds = branchDao.getUnsyncedBranches().map { it.id }.toSet()
@@ -111,8 +116,27 @@ class BranchRepositoryImpl(
                     .filter { it !in remoteIds && it !in unsyncedIds }
                     .forEach { branchDao.hardDelete(it) }
 
+                // If session has no branch but only one branch exists,
+                // update session so checkout auto-resolves without waiting
+                val session = sessionManager.currentSession
+                if (session != null &&
+                    !session.isAdmin &&
+                    session.branchId == null &&
+                    remote.size == 1) {
+
+                    val onlyBranch = remote.first()
+                    sessionManager.saveSession(
+                        session.copy(
+                            branchId   = onlyBranch.id,
+                            branchName = onlyBranch.name
+                        )
+                    )
+                    Log.d("BranchRepo", "Auto-updated session branch to: ${onlyBranch.name}")
+                }
+
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("BranchRepo", "pullFromServer error: ${e.message}", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }

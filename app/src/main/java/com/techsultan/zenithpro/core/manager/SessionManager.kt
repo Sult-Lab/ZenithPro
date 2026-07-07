@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import java.util.Objects.isNull
 
 class SessionManager(
     private val sessionDataStore: SessionDataStore,
@@ -62,7 +63,7 @@ class SessionManager(
                     .select { filter { eq("id", userId) } }
                     .decodeSingle<UserProfileDto>()
             }
-            Log.d("SessionManager", "Loaded profile from Supabase: $profile")
+            Log.d("SessionManager", "Loaded profile: $profile")
 
             if (profile.status != "ACTIVE") {
                 auth.signOut()
@@ -76,17 +77,6 @@ class SessionManager(
                     .decodeSingle<BusinessDto>()
             }
 
-            val branchName: String? = profile.branchId?.let { branchId ->
-                runCatching {
-                    withContext(Dispatchers.IO) {
-                        postgrest.from("branches")
-                            .select { filter { eq("id", branchId) } }
-                            .decodeSingle<BranchDto>()
-                            .name
-                    }
-                }.getOrNull()
-            }
-
             val settings = runCatching {
                 withContext(Dispatchers.IO) {
                     postgrest
@@ -96,31 +86,77 @@ class SessionManager(
                 }
             }.getOrNull()
 
+            // Fetch all active branches for this business
+            val branches = withContext(Dispatchers.IO) {
+                postgrest
+                    .from("branches")
+                    .select {
+                        filter {
+                            eq("business_id", profile.businessId)
+                            isNull("deleted_at")
+                            eq("is_active", true)
+                        }
+                    }
+                    .decodeList<BranchDto>()
+            }
+            Log.d("SessionManager", "Fetched ${branches.size} branches")
+
+            // Branch resolution — only admins have null branchId
+            // For staff: use their assigned branch, or auto-resolve if only one branch exists
+            val resolvedBranchId: String?
+            val resolvedBranchName: String?
+
+            when {
+                profile.role == "ADMIN" -> {
+                    // Admin sees all branches — no fixed branch
+                    resolvedBranchId   = null
+                    resolvedBranchName = null
+                }
+                profile.branchId != null -> {
+                    // Staff explicitly assigned to a branch
+                    val branch = branches.firstOrNull { it.id == profile.branchId }
+                    resolvedBranchId   = branch?.id ?: profile.branchId
+                    resolvedBranchName = branch?.name
+                    Log.d("SessionManager", "Staff assigned to branch: $resolvedBranchName")
+                }
+                branches.size == 1 -> {
+                    // Staff not assigned but only one branch — auto-assign
+                    resolvedBranchId   = branches.first().id
+                    resolvedBranchName = branches.first().name
+                    Log.d("SessionManager", "Auto-resolved single branch: $resolvedBranchName")
+                }
+                else -> {
+                    // Multiple branches, staff not assigned — they'll pick at checkout
+                    resolvedBranchId   = null
+                    resolvedBranchName = null
+                    Log.w("SessionManager", "Staff has no branch and multiple branches exist")
+                }
+            }
+
             val session = UserSession(
-                userId = userId,
-                businessId = profile.businessId,
-                firstName = profile.firstName,
-                lastName = profile.lastName,
-                email = profile.email,
-                role = profile.role,
-                businessName = business.name,
-                businessPhone = business.phone,
+                userId          = userId,
+                businessId      = profile.businessId,
+                firstName       = profile.firstName,
+                lastName        = profile.lastName,
+                email           = profile.email,
+                role            = profile.role,
+                businessName    = business.name,
+                businessPhone   = business.phone,
                 businessAddress = business.address,
                 mustChangePassword = profile.mustChangePassword,
-                currencySymbol = settings?.currencySymbol ?: "₦",
-                branchId = if (profile.role == "ADMIN") null else profile.branchId,
-                branchName = if (profile.role == "ADMIN") null else branchName,
+                currencySymbol  = settings?.currencySymbol ?: "₦",
+                currencyCode    = business.currencyCode.ifBlank { settings?.currencyCode ?: "NGN" },
+                branchId        = resolvedBranchId,
+                branchName      = resolvedBranchName,
                 businessType    = business.type,
                 businessEmail   = business.email,
                 businessLogoUrl = business.logoUrl,
-                currencyCode    = business.currencyCode
-                    .ifBlank { settings?.currencyCode ?: "NGN" },
             )
-            Log.d("SessionManager", "Session initialized: $session")
+
             logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
-            Log.d("SessionManager", "Session initialized and saved for: ${session.fullName}")
+            Log.d("SessionManager", "Session initialized: ${session.fullName} branch=${session.branchName}")
             Result.success(session)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e

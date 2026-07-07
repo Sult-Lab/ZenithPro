@@ -14,6 +14,17 @@ enum class PaymentMethod {
 }
 enum class SaleStatus { COMPLETED, PARTIAL, REFUNDED, CANCELLED }
 
+enum class TransferType {
+    MANUAL,
+    NOMBA;
+
+    val isAutoConfirm: Boolean get() = this == NOMBA
+    val displayLabel: String get() = when (this) {
+        MANUAL -> "Manual Transfer"
+        NOMBA  -> "Nomba (Auto-confirm)"
+    }
+}
+
 enum class PaymentStep {
     CART,           // viewing cart
     SELECT_CUSTOMER, // searching/selecting customer

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
@@ -64,7 +65,8 @@ fun SettingsScreen(
     onBusinessProfile: () -> Unit = {},
     onAbout: () -> Unit = {},
     onLogout: () -> Unit = {},
-    onCategoryManagement: () -> Unit = {}
+    onCategoryManagement: () -> Unit = {},
+    onPaymentSettings: () -> Unit = {}
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -130,6 +132,11 @@ fun SettingsScreen(
                                 icon   = Icons.Default.Store,
                                 onClick = onBusinessInformation
                             ),
+                            SettingsNavItem(
+                                title  = "Payment Settings",
+                                icon   = Icons.Default.Payments,
+                                onClick = onPaymentSettings
+                            )
                         )
                     )
                 }

@@ -12,6 +12,7 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
 import com.techsultan.zenithpro.features.sales.data.remote.DailySummary
+import com.techsultan.zenithpro.features.sales.SaleStatus
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -270,4 +271,33 @@ interface SaleDao {
     WHERE businessId = :businessId
 """)
     suspend fun getDistinctStaffIds(businessId: String): List<String>
+
+    // New queries for awaiting sales
+    @Transaction
+    @Query("""
+    SELECT * FROM sales
+    WHERE businessId   = :businessId
+      AND paymentStatus = 'AWAITING_PAYMENT'
+    ORDER BY soldAt DESC
+""")
+    fun getAwaitingSales(businessId: String): Flow<List<SaleWithItems>>
+
+    @Query("UPDATE sales SET paymentStatus = :status WHERE id = :id")
+    suspend fun updatePaymentStatus(id: String, status: String)
+
+    @Query("UPDATE sales SET paymentStatus = :paymentStatus, status = :status WHERE id = :id")
+    suspend fun updateSaleAndPaymentStatus(id: String, paymentStatus: String, status: SaleStatus)
+
+    @Query("SELECT * FROM sales WHERE id = :saleId")
+    suspend fun getSaleByIdOnce(saleId: String): SaleEntity?
+
+    @Query("SELECT COUNT(*) + 1 FROM sales WHERE businessId = :businessId")
+    suspend fun getNextSaleCounter(businessId: String): Int
+
+    @Transaction
+    @Query("SELECT * FROM sales WHERE id = :saleId")
+    fun observeSaleById(saleId: String): Flow<SaleWithItems?>
+
+    @Query("SELECT * FROM sales")
+    suspend fun getAllSales(): List<SaleEntity>
 }

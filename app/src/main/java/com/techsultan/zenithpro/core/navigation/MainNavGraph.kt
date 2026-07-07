@@ -27,6 +27,7 @@ import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
+import com.techsultan.zenithpro.features.branch.presentation.BranchViewModel
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerDetailScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
@@ -47,11 +48,13 @@ import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
+import com.techsultan.zenithpro.features.sales.presentation.SaleDetailScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
 import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
 import com.techsultan.zenithpro.features.settings.presentation.CreateStaffScreen
+import com.techsultan.zenithpro.features.settings.presentation.PaymentSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.PrinterSettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
@@ -159,6 +162,7 @@ fun MainNavGraph(
             val productDetailViewModel: ProductDetailViewModel = koinViewModel()
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
             val receiptViewModel: ReceiptViewModel = koinViewModel()
+            val branchViewModel: BranchViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -172,8 +176,8 @@ fun MainNavGraph(
                             DashboardScreen(
                                 onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onAddProduct = { navigator.navigate(Route.Home.AddProduct) },
-                                onViewReports = {},
-                                onViewSales = {},
+                                onViewReports = { navigator.navigate(Route.Home.Reports) },
+                                onViewSales = { navigator.navigate(Route.Home.Sales) },
                                 onViewDebts = {},
                                 onViewLowStock = {},
                                 onViewPurchaseOrders = {},
@@ -190,8 +194,8 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.Sales> {
                             SalesScreen(
-                                onSaleClick = {},
-                                onNewSale = {},
+                                onSaleClick = { navigator.navigate(Route.Home.SaleDetail(it)) },
+                                onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
                                 onReceiptPreview = { receipt ->
                                     receiptViewModel.setReceipt(receipt)
@@ -215,13 +219,15 @@ fun MainNavGraph(
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
                                 onBusinessInformation = { navigator.navigate(Route.Home.BusinessInformationScreen) },
                                 onBusinessProfile = { navigator.navigate(Route.Home.BusinessProfileScreen) },
-                                onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) }
+                                onCategoryManagement = { navigator.navigate(Route.Home.CategoryManagementScreen) },
+                                onPaymentSettings = { navigator.navigate(Route.Home.PaymentSettings) }
                             )
                         }
 
                         entry<Route.Home.Branches> {
                             BranchScreen(
-                                onBack = { navigator.goBack() }
+                                onBack = { navigator.goBack() },
+                                viewModel = branchViewModel
                             )
                         }
                         entry<Route.Customer.CustomerListScreen> {
@@ -254,7 +260,11 @@ fun MainNavGraph(
                                 onReceiptPreview = { receipt ->
                                     receiptViewModel.setReceipt(receipt)
                                     navigator.navigate(Route.Home.ReceiptPreview)
-                                }
+                                },
+                                onAwaitingTransferConfirmed = { saleId ->
+                                    navigator.navigate(Route.Home.SaleDetail(saleId))
+                                },
+                                session = session
                             )
                         }
                         entry<Route.Home.AddProduct> {
@@ -371,10 +381,22 @@ fun MainNavGraph(
                                 onBack = { navigator.goBack() }
                             )
                         }
+                        entry<Route.Home.PaymentSettings> {
+                            PaymentSettingsScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
                         entry<Route.Home.ReceiptPreview> {
                             ReceiptPreviewScreen(
                                 onBack = { navigator.goBack() },
                                 viewModel = receiptViewModel
+                            )
+                        }
+                        entry<Route.Home.SaleDetail> { key ->
+                            SaleDetailScreen(
+                                saleId = key.saleId,
+                                businessId = session?.businessId ?: "",
+                                onBack = { navigator.goBack() }
                             )
                         }
                     }

@@ -65,6 +65,22 @@ sealed interface Route: NavKey {
 
         @Serializable
         data object ReceiptPreview : Route, NavKey
+
+        @Serializable
+        data object PaymentSettings : Route, NavKey
+
+        @Serializable
+        data class SaleDetail(val saleId: String) : Route, NavKey
+
+        @Serializable
+        data class AwaitingTransfer(
+            val saleId: String,
+            val totalAmount: Long,
+            val paymentReference: String,
+            val virtualAccountNumber: String,
+            val virtualAccountBank: String,
+            val virtualAccountName: String
+        ) : Route, NavKey
     }
 
     @Serializable

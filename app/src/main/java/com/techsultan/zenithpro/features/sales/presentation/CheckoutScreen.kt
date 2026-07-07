@@ -67,13 +67,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.payment.presentation.TransferPaymentViewModel
+import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
 import com.techsultan.zenithpro.features.sales.component.BranchSelectorChip
+import com.techsultan.zenithpro.features.sales.component.ManualTransferConfirmScreen
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
+import com.techsultan.zenithpro.features.sales.component.TransferTypePickerSheet
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
+import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +88,11 @@ fun CheckoutScreen(
     onBack: () -> Unit = {},
     onScanBarcode: () -> Unit = {},
     viewModel: CheckoutViewModel,
+    session: UserSession? = null,
+    transferPaymentViewModel: TransferPaymentViewModel = koinViewModel(),
     onSaleCompleted: (saleId: String) -> Unit,
-    onReceiptPreview: (ReceiptData) -> Unit = {}
+    onReceiptPreview: (ReceiptData) -> Unit = {},
+    onAwaitingTransferConfirmed: (String) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filteredProducts by viewModel.filteredProducts.collectAsStateWithLifecycle()
@@ -90,14 +100,25 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
+    val currentTerminal by viewModel.currentTerminal.collectAsStateWithLifecycle()
+    var showTransferPicker by remember { mutableStateOf(false) }
+    val transferState by transferPaymentViewModel.uiState.collectAsStateWithLifecycle()
+    var selectedTransferType by remember { mutableStateOf<TransferType?>(null) }
     val snackbarHost = remember { SnackbarHostState() }
 
+    var showManualTransferScreen by remember { mutableStateOf(false) }
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
+    var awaitingTransferEvent by remember { mutableStateOf<CheckoutViewModel.CheckoutEvent.AwaitingTransfer?>(null) }
+    var pendingSaleId by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     val vatAmount = (cartTotal * (state.taxRate / 100)).toLong()
     val grandTotal = cartTotal + vatAmount
+
+    LaunchedEffect(Unit) {
+        viewModel.loadTerminalForCurrentBranch()
+    }
 
     // Handle events
     LaunchedEffect(Unit) {
@@ -115,6 +136,10 @@ fun CheckoutScreen(
                 }
                 is CheckoutViewModel.CheckoutEvent.ProductAddedByBarcode -> {
                     snackbarHost.showSnackbar("Added ${event.productName} to cart")
+                }
+
+                is CheckoutViewModel.CheckoutEvent.AwaitingTransfer -> {
+                    awaitingTransferEvent = event
                 }
             }
         }
@@ -352,10 +377,75 @@ fun CheckoutScreen(
                 showPaymentDialog = false
                 viewModel.clearCustomer()
             },
-            onConfirm = {
-                viewModel.checkout()
-                showPaymentDialog = false
+            onConfirm = { selectedMethod, transferType ->
+                when {
+                    selectedMethod == PaymentMethod.TRANSFER -> {
+                        showPaymentDialog = false
+                        showTransferPicker = true
+                    }
+                    else -> {
+                        viewModel.checkout()
+                        showPaymentDialog = false
+                    }
+                }
             }
+        )
+    }
+
+    if (showTransferPicker) {
+        TransferTypePickerSheet(
+            hasNombaAccount = currentTerminal?.nombaVirtualAccountNumber != null,
+            onSelectManual = {
+                selectedTransferType = TransferType.MANUAL
+                showTransferPicker = false
+                viewModel.checkout(transferType = TransferType.MANUAL)
+            },
+            onSelectNomba = {
+                selectedTransferType = TransferType.NOMBA
+                showTransferPicker = false
+                viewModel.checkout(transferType = TransferType.NOMBA)
+            },
+            onDismiss = {
+                showTransferPicker = false
+                showPaymentDialog = true
+            }
+        )
+    }
+
+    if (showManualTransferScreen) {
+        ManualTransferConfirmScreen(
+            totalAmount = cartTotal,
+            businessBankName = "",
+            businessAccountNumber = "",
+            businessAccountName = "",
+            onConfirmReceived = {
+                // Sale already processed — just mark payment as received
+                showManualTransferScreen = false
+
+            },
+            onCancel = {
+                showManualTransferScreen = false
+                // Sale is already saved as AWAITING_PAYMENT — it stays that way
+                // Cashier can reconcile later
+
+            }
+        )
+    }
+
+    awaitingTransferEvent?.let { event ->
+        AwaitingTransferSheet(
+            saleId = event.saleId,
+            totalAmount = event.totalAmount,
+            paymentReference = event.paymentReference,
+            virtualAccountNumber = event.virtualAccountNumber,
+            virtualAccountBank = event.virtualAccountBank,
+            virtualAccountName = event.virtualAccountName,
+            businessId = session?.businessId ?: "",
+            onConfirmed = {
+                awaitingTransferEvent = null
+                onAwaitingTransferConfirmed(event.saleId)
+            },
+            onDismiss = { awaitingTransferEvent = null }
         )
     }
 }

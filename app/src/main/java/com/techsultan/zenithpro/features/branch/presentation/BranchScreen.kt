@@ -64,7 +64,7 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BranchScreen(
-    viewModel: BranchViewModel = koinViewModel(),
+    viewModel: BranchViewModel,
     onBack: () -> Unit,
 ) {
 

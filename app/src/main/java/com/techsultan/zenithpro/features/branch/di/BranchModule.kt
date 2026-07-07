@@ -12,7 +12,7 @@ import org.koin.dsl.module
 val branchModule = module {
 
     single<BranchRepository> {
-        BranchRepositoryImpl(get(), get(), get())
+        BranchRepositoryImpl(get(), get(), get(), get())
     }
     factory { GetBranchesUseCase(get()) }
     factory { UpsertBranchUseCase(get()) }

@@ -51,6 +51,12 @@ class DataPersistentViewModel(
 
                     if (localSession != null) {
                         _authState.value = AuthState.Authenticated
+                        
+                        // Background refresh to ensure session data is up to date
+                        val supabaseSession = auth.currentSessionOrNull()
+                        if (supabaseSession != null) {
+                            sessionManager.initSessionFromServer(supabaseSession.user?.id ?: "")
+                        }
                     } else {
                         val supabaseSession = auth.currentSessionOrNull()
 

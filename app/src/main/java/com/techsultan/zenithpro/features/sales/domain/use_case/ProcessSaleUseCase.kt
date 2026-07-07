@@ -1,8 +1,11 @@
 package com.techsultan.zenithpro.features.sales.domain.use_case
 
 import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.PaymentReferenceGenerator
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleRequest
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleResponse
@@ -10,7 +13,10 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import java.util.UUID
 
-class ProcessSaleUseCase(private val repository: SaleRepository) {
+class ProcessSaleUseCase(
+    private val repository: SaleRepository,
+    private val sessionManager: SessionManager
+) {
     suspend operator fun invoke(
         cart: List<CartItem>,
         customerId: String?,
@@ -20,7 +26,8 @@ class ProcessSaleUseCase(private val repository: SaleRepository) {
         paymentMethod: PaymentMethod,
         discountAmount: Long = 0L,
         taxAmount: Long = 0L,
-        notes: String? = null
+        notes: String? = null,
+        transferType: TransferType? = null
     ): Resource<ProcessSaleResponse> {
         if (cart.isEmpty()) return Resource.Error("Cart is empty")
         if (amountPaid < 0) return Resource.Error("Invalid payment amount")
@@ -45,6 +52,11 @@ class ProcessSaleUseCase(private val repository: SaleRepository) {
 
         val change = maxOf(0L, effectiveAmountPaid - total)
 
+        val paymentReference = if (paymentMethod == PaymentMethod.TRANSFER) {
+            val counter = repository.getNextSaleCounter(sessionManager.businessId)
+            PaymentReferenceGenerator.generate(counter)
+        } else null
+
         Log.d("ProcessSaleUseCase",
             "total=$total effectiveAmountPaid=$effectiveAmountPaid " +
                     "change=$change method=${paymentMethod.name}"
@@ -52,29 +64,31 @@ class ProcessSaleUseCase(private val repository: SaleRepository) {
 
         val request = ProcessSaleRequest(
             clientTransactionId = UUID.randomUUID().toString(),
-            branchId            = branchId,
-            customerId          = customerId,
-            staffId             = staffId,
-            items               = cart.map { item ->
+            branchId = branchId,
+            customerId = customerId,
+            staffId = staffId,
+            items = cart.map { item ->
                 SaleItemRequest(
-                    variantId   = item.variantId,
-                    productId   = item.productId,
+                    variantId = item.variantId,
+                    productId = item.productId,
                     productName = item.productName,
-                    variantSku  = item.variantSku,
-                    unitPrice   = item.unitPrice,
-                    costPrice   = item.costPrice,
-                    quantity    = item.quantity,
-                    discount    = item.discount
+                    variantSku = item.variantSku,
+                    unitPrice = item.unitPrice,
+                    costPrice = item.costPrice,
+                    quantity = item.quantity,
+                    discount = item.discount
                 )
             },
-            subtotal            = subtotal,
-            discountAmount      = discountAmount,
-            taxAmount           = taxAmount,
-            totalAmount         = total,
-            amountPaid          = effectiveAmountPaid,
-            changeAmount        = change,
-            paymentMethod       = paymentMethod.name,
-            notes               = notes
+            subtotal = subtotal,
+            discountAmount = discountAmount,
+            taxAmount = taxAmount,
+            totalAmount = total,
+            amountPaid = effectiveAmountPaid,
+            changeAmount = change,
+            paymentMethod = paymentMethod.name,
+            notes = notes,
+            paymentReference = paymentReference,
+            transferType = transferType?.name
         )
         Log.d("ProcessSaleUseCase", request.toString())
         return repository.processSale(request, cart)

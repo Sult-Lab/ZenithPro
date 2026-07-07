@@ -1,10 +1,12 @@
 package com.techsultan.zenithpro.features.sales.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.core.worker.SalePaymentPollerWorker
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
@@ -43,6 +45,7 @@ import java.time.ZoneId
 import java.util.UUID
 
 class SaleRepositoryImpl(
+    private val context: Context,
     private val saleDao: SaleDao,
     private val functions: Functions,
     private val postgrest: Postgrest,
@@ -54,9 +57,15 @@ class SaleRepositoryImpl(
 
     override fun getSales(businessId: String) =
         saleDao.getSales(businessId)
-            .map<List<SaleWithItems>, Resource<List<SaleWithItems>>> { Resource.Success(it) }
+            .map<List<SaleWithItems>, Resource<List<SaleWithItems>>> {
+                Log.d("SaleRepo", "GetSales: returned ${it.size} items for businessId=$businessId")
+                Resource.Success(it)
+            }
             .catch { emit(Resource.Error(it.message ?: "Failed to load sales")) }
-            .onStart { emit(Resource.Loading()) }
+            .onStart {
+                Log.d("SaleRepo", "getSales: starting for businessId=$businessId")
+                emit(Resource.Loading())
+            }
 
     override fun getSalesFiltered(businessId: String, filter: SaleFilter) =
         saleDao.getSalesFiltered(
@@ -67,9 +76,15 @@ class SaleRepositoryImpl(
             paymentMethod = filter.paymentMethod,
             branchId = filter.branchId
         )
-            .map<List<SaleWithItems>, Resource<List<SaleWithItems>>> { Resource.Success(it) }
+            .map<List<SaleWithItems>, Resource<List<SaleWithItems>>> {
+                Log.d("SaleRepo", "getSalesFiltered: returned ${it.size} items for businessId=$businessId, filter=$filter")
+                Resource.Success(it)
+            }
             .catch { emit(Resource.Error(it.message ?: "Failed to load sales")) }
-            .onStart { emit(Resource.Loading()) }
+            .onStart {
+                Log.d("SaleRepo", "getSalesFiltered: starting for businessId=$businessId, filter=$filter")
+                emit(Resource.Loading())
+            }
 
     override suspend fun processSale(
         request: ProcessSaleRequest,
@@ -80,7 +95,11 @@ class SaleRepositoryImpl(
             val saleId = UUID.randomUUID().toString()
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
-            val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
+
+            // Convert amounts to kobo
+            val koboTotalAmount = request.totalAmount * 100
+            val koboAmountPaid = request.amountPaid * 100
+            val koboDebtAmount = maxOf(0L, koboTotalAmount - koboAmountPaid)
 
             if (request.branchId == null) {
                 val branchCount = branchDao.getActiveBranchCount(businessId)
@@ -90,7 +109,6 @@ class SaleRepositoryImpl(
                     )
                 }
             }
-            Log.d("SaleRepo", "processSale: branchId=${request.branchId} saleId=$saleId")
             saleDao.insertSale(
                 SaleEntity(
                     id = saleId,
@@ -99,19 +117,35 @@ class SaleRepositoryImpl(
                     branchId = request.branchId,
                     customerId = request.customerId,
                     staffId = request.staffId,
-                    subtotal = request.subtotal,
-                    discountAmount = request.discountAmount,
-                    taxAmount = request.taxAmount,
-                    totalAmount = request.totalAmount,
-                    amountPaid = request.amountPaid,
-                    changeAmount = request.changeAmount,
-                    debtAmount = debtAmount,
+                    subtotal = request.subtotal * 100,
+                    discountAmount = request.discountAmount * 100,
+                    taxAmount = request.taxAmount * 100,
+                    totalAmount = koboTotalAmount,
+                    amountPaid = koboAmountPaid,
+                    changeAmount = request.changeAmount * 100,
+                    debtAmount = koboDebtAmount,
                     paymentMethod = PaymentMethod.valueOf(request.paymentMethod),
-                    status = if (request.amountPaid >= request.totalAmount)
+                    transferType = request.transferType,
+                    status = if (koboAmountPaid >= koboTotalAmount)
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
                     notes = request.notes,
                     soldAt = now,
-                    syncStatus = Util.SyncStatus.PENDING
+                    syncStatus = Util.SyncStatus.PENDING,
+                    terminalId = request.terminalId,
+                    paymentStatus = when (request.paymentMethod) {
+                        "TRANSFER" -> {
+                            if (request.transferType == "NOMBA" || request.transferType == "MANUAL") {
+                                "AWAITING_PAYMENT"
+                            } else "COMPLETED"
+                        }
+                        else -> "COMPLETED"
+                    },
+                    paymentReference = request.paymentReference,
+                    nombaPaymentReference = null,
+                    paymentConfirmedAt = null,
+                    virtualAccountNumber = request.virtualAccountNumber,
+                    virtualAccountBank = request.virtualAccountBank,
+                    virtualAccountName = request.virtualAccountName
                 )
             )
             
@@ -124,11 +158,11 @@ class SaleRepositoryImpl(
                         productId = item.productId,
                         productName = item.productName,
                         variantSku = item.variantSku,
-                        unitPrice = item.unitPrice,
-                        costPrice = item.costPrice,
+                        unitPrice = item.unitPrice * 100,
+                        costPrice = item.costPrice * 100,
                         quantity = item.quantity,
-                        discount = item.discount,
-                        totalPrice = item.totalPrice
+                        discount = item.discount * 100,
+                        totalPrice = item.totalPrice * 100
                     )
                 }
             )
@@ -138,23 +172,38 @@ class SaleRepositoryImpl(
                     ProcessSaleResponse(
                         saleId = saleId,
                         status = "Saved locally. Sync pending.",
-                        debtAmount = debtAmount,
-                        idempotent = false
+                        debtAmount = koboDebtAmount,
+                        idempotent = false,
+                        paymentReference = request.paymentReference,
+                        paymentStatus = if (request.paymentMethod == "TRANSFER")
+                            "AWAITING_PAYMENT" else "COMPLETED"
                     )
                 )
             }
 
             val remoteResult = pushSale(saleId)
-            
+            Log.d("SaleRepo", "processSale: remoteResult=$remoteResult")
             if (remoteResult != null) {
+                if (request.paymentMethod == "TRANSFER" &&
+                    request.transferType == "NOMBA") {
+                    Log.d("SaleRepo", "Scheduling poller for saleId=${remoteResult.saleId}")
+                    SalePaymentPollerWorker.schedule(
+                        context = context,
+                        saleId = remoteResult.saleId,
+                        businessId = sessionManager.businessId
+                    )
+                }
                 Resource.Success(remoteResult)
             } else {
                 Resource.Success(
-                    ProcessSaleResponse(
-                        saleId = saleId,
-                        status = "Saved locally. Sync failed.",
-                        debtAmount = debtAmount,
-                        idempotent = false
+                    data = ProcessSaleResponse(
+                        saleId           = saleId,
+                        status           = "Saved locally. Sync pending.",
+                        debtAmount       = koboDebtAmount,
+                        idempotent       = false,
+                        paymentReference = request.paymentReference,
+                        paymentStatus    = if (request.paymentMethod == "TRANSFER")
+                            "AWAITING_PAYMENT" else "COMPLETED"
                     )
                 )
             }
@@ -164,12 +213,15 @@ class SaleRepositoryImpl(
         }
     }
 
+    fun cancelPoller(saleId: String) {
+        SalePaymentPollerWorker.cancel(context, saleId)
+    }
+
     internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
         try {
             val saleWithItems = saleDao.getSaleById(saleId) ?: return null
             Log.d("SaleRepo", "pushSale: branchId=${saleWithItems.sale.branchId} saleId=$saleId")
 
-            if (saleWithItems.sale.branchId == null) return null
             val request = ProcessSaleRequest(
                 clientTransactionId = saleWithItems.sale.clientTransactionId,
                 branchId = saleWithItems.sale.branchId,
@@ -183,6 +235,10 @@ class SaleRepositoryImpl(
                 paymentMethod = saleWithItems.sale.paymentMethod.name,
                 notes = saleWithItems.sale.notes,
                 staffId = saleWithItems.sale.staffId,
+                terminalId = saleWithItems.sale.terminalId,
+                virtualAccountNumber = saleWithItems.sale.virtualAccountNumber,
+                virtualAccountBank = saleWithItems.sale.virtualAccountBank,
+                virtualAccountName = saleWithItems.sale.virtualAccountName,
                 items = saleWithItems.items.map {
                     SaleItemRequest(
                         variantId = it.variantId,
@@ -194,15 +250,17 @@ class SaleRepositoryImpl(
                         quantity = it.quantity,
                         discount = it.discount
                     )
-                }
+                },
+                paymentReference = saleWithItems.sale.paymentReference
             )
-
+            Log.d("SaleRepo", "pushSale: request=$request")
             val response = functions.invoke(
                 function = "process_sale",
                 body = request
             )
             
             val result = response.body<ProcessSaleResponse>()
+            Log.d("SaleRepo", "pushSale: result=$result")
             saleDao.markSynced(saleId)
             Log.d("SaleRepo", "pushSale: Synced $saleId")
             return result
@@ -216,9 +274,10 @@ class SaleRepositoryImpl(
         request: DebtPaymentRequest
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
+            val amountKobo = request.amount * 100
             val response = functions.invoke(
                 function = "record_debt_payment",
-                body     = request
+                body     = request.copy(amount = amountKobo)
             )
 
             val result = response.body<DebtPaymentResponse>()
@@ -231,7 +290,7 @@ class SaleRepositoryImpl(
                     saleId = request.saleId,
                     customerId = request.customerId,
                     staffId = sessionManager.userId,
-                    amount = request.amount,
+                    amount = amountKobo,
                     paymentMethod = request.paymentMethod,
                     notes = request.notes,
                     paidAt = Instant.now().toString(),
@@ -242,7 +301,7 @@ class SaleRepositoryImpl(
             val existingSale = saleDao.getSaleById(request.saleId)
             existingSale?.let { saleWithItems ->
                 val sale = saleWithItems.sale
-                val newAmountPaid = sale.amountPaid + request.amount
+                val newAmountPaid = sale.amountPaid + amountKobo
                 val newDebt = maxOf(0L, sale.totalAmount - newAmountPaid)
                 val newStatus = if (newDebt <= 0L) SaleStatus.COMPLETED else SaleStatus.PARTIAL
 
@@ -280,17 +339,18 @@ class SaleRepositoryImpl(
 
             val unsyncedIds = saleDao.getUnsyncedSales().map { it.clientTransactionId }.toSet()
 
-            remoteSales
-                .filter { it.clientTransactionId !in unsyncedIds }
-                .map { it.toEntity() }
-                .let { if (it.isNotEmpty()) saleDao.insertSales(it) }
-
             val toUpsert = remoteSales
                 .filter { it.clientTransactionId !in unsyncedIds }
                 .map { it.toEntity() }
 
             if (toUpsert.isNotEmpty()) {
                 saleDao.insertSales(toUpsert)
+
+                toUpsert.forEach { sale ->
+                    if (sale.paymentStatus == "COMPLETED") {
+                        SalePaymentPollerWorker.cancel(context, sale.id)
+                    }
+                }
             }
 
             val saleIds = remoteSales.map { it.id }
@@ -301,6 +361,7 @@ class SaleRepositoryImpl(
                     filter { isIn("sale_id", saleIds) }
                 }
                 .decodeList<SaleItemDto>()
+            Log.d("SaleRepo", "pullSalesFromServer: ${remoteItems} items")
 
             postgrest
                 .from("debt_payments")
@@ -319,6 +380,12 @@ class SaleRepositoryImpl(
 
             if (remoteItems.isNotEmpty()) {
                 saleDao.insertSaleItems(remoteItems.map { it.toEntity() })
+            }
+
+            val totalLocalSales = saleDao.getAllSales()
+            Log.d("SaleRepo", "pullSalesFromServer: COMPLETED. Total sales in local DB: ${totalLocalSales.size}")
+            totalLocalSales.forEach { 
+                Log.d("SaleRepo", "Local Sale: id=${it.id}, businessId=${it.businessId}, branchId=${it.branchId}, soldAt=${it.soldAt}")
             }
 
             Resource.Success(Unit)
@@ -340,6 +407,9 @@ class SaleRepositoryImpl(
                 Resource.Error(e.message ?: "Failed to load summary")
             }
         }
+
+    override suspend fun getNextSaleCounter(businessId: String): Int =
+        saleDao.getNextSaleCounter(businessId)
 }
 
 @Serializable

@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data class StaffMember(
     val id: String,
     @SerialName("first_name") val firstName: String,
-    @SerialName("last_name") val lastName: String?,
+    @SerialName("last_name") val lastName: String? = null,
     val email: String? = null,
     val role: String,
     val status: String,

@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro
 
 import android.app.Application
+import androidx.work.Configuration
 import com.techsultan.zenithpro.core.di.commonModule
 import com.techsultan.zenithpro.core.di.databaseModule
 import com.techsultan.zenithpro.core.di.receiptModule
@@ -18,19 +19,25 @@ import com.techsultan.zenithpro.features.inventory.di.productModule
 import com.techsultan.zenithpro.features.production.di.productionModule
 import com.techsultan.zenithpro.features.sales.di.salesModule
 import com.techsultan.zenithpro.features.settings.di.businessModule
+import com.techsultan.zenithpro.features.settings.di.paymentModule
+import com.techsultan.zenithpro.features.payment.di.paymentProcessingModule
 import com.techsultan.zenithpro.features.settings.di.settingsModule
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
+import org.koin.androidx.workmanager.koin.workManagerFactory
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.koin.core.context.startKoin
+import org.koin.androidx.workmanager.factory.KoinWorkerFactory
+import com.techsultan.zenithpro.core.worker.SyncWorker
 
-class ZenithApplication : Application(), KoinComponent {
+class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
 
     private val auth: Auth by inject()
 
@@ -38,12 +45,18 @@ class ZenithApplication : Application(), KoinComponent {
         SupervisorJob() + Dispatchers.Default
     )
 
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(getKoin().get<KoinWorkerFactory>())
+            .build()
+
     override fun onCreate() {
         super.onCreate()
 
         startKoin {
             androidLogger()
             androidContext(this@ZenithApplication)
+            workManagerFactory()
             modules(
                 supabaseModule, 
                 authModule, 
@@ -62,12 +75,16 @@ class ZenithApplication : Application(), KoinComponent {
                 materialModule,
                 categoryModule,
                 businessModule,
-                receiptModule
+                receiptModule,
+                paymentModule,
+                paymentProcessingModule
             )
         }
 
         applicationScope.launch {
             auth.awaitInitialization()
         }
+
+        SyncWorker.schedule(this)
     }
 }

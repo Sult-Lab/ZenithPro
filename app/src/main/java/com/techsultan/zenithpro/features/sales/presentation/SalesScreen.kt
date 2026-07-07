@@ -1,5 +1,10 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -790,6 +795,7 @@ private fun SaleCard(
         branches.firstOrNull { it.id == sale.branchId }?.name
     }
     var showMenu by remember { mutableStateOf(false) }
+    val isAwaiting = sale.paymentStatus == "AWAITING_PAYMENT"
 
     val (typeIcon, iconBg, iconTint) = when (sale.paymentMethod) {
         PaymentMethod.CASH     -> Triple(Icons.Default.Money,       Color(0xFFE8F5E9), Color(0xFF2E7D32))
@@ -804,7 +810,7 @@ private fun SaleCard(
     Card(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = if (isAwaiting) CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -919,8 +925,56 @@ private fun SaleCard(
                     }
                 }
 
+                if (isAwaiting) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape  = RoundedCornerShape(8.dp),
+                        color  = Color(0xFFFFB300).copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            modifier          = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Pulsing dot
+                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                            val alpha by infiniteTransition.animateFloat(
+                                initialValue  = 0.3f,
+                                targetValue   = 1f,
+                                animationSpec = infiniteRepeatable(
+                                    tween(700), RepeatMode.Reverse
+                                ),
+                                label = "alpha"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(
+                                        Color(0xFFFFB300).copy(alpha = alpha),
+                                        CircleShape
+                                    )
+                            )
+                            Text("Awaiting transfer",
+                                style  = MaterialTheme.typography.labelSmall,
+                                color  = Color(0xFFFFB300),
+                                fontWeight = FontWeight.Medium,
+                                modifier   = Modifier.weight(1f))
+                            sale.paymentReference?.let { ref ->
+                                Text(ref,
+                                    style      = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = Color(0xFFFFB300))
+                            }
+                        }
+                    }
+                }
+
+
                 // Debt row
-                if (sale.debtAmount > 0) {
+                if (!isAwaiting && sale.debtAmount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier

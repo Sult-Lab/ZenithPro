@@ -13,5 +13,8 @@ data class BusinessDto(
     val address: String?,
     @SerialName("logo_url") val logoUrl: String?,
     @SerialName("currency_code")  val currencyCode: String  = "NGN",
-    @SerialName("currency_symbol") val currencySymbol: String = "₦"
+    @SerialName("currency_symbol") val currencySymbol: String = "₦",
+    @SerialName("account_number") val accountNumber: String? = null,
+    @SerialName("bank_name") val bankName: String? = null,
+    @SerialName("account_name") val accountName: String? = null
 )
