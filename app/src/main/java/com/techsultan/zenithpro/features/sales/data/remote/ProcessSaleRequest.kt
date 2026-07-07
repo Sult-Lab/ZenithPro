@@ -14,6 +14,7 @@ data class ProcessSaleRequest(
     val totalAmount: Long,
     val amountPaid: Long,
     val changeAmount: Long,
+    val transferType: String? = null,
     val paymentMethod: String,
     val paymentReference: String?,
     val notes: String?,

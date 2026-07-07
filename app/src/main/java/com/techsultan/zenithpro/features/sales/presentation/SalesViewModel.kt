@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.ReceiptData
@@ -92,6 +93,7 @@ class SalesListViewModel(
                         it.copy(isLoading = it.sales.isEmpty())
                     }
                     is Resource.Success -> _state.update {
+                        Log.d("SalesListViewModel", "Sales Result: ${result.data?.size}")
                         it.copy(
                             isLoading = false,
                             sales     = result.data ?: emptyList(),
@@ -207,6 +209,8 @@ class SalesListViewModel(
         }
 
         val session = currentSession
+        val branch = state.value.availableBranches.find { it.id == sale.branchId }
+
         val completedSale = CompletedSale(
             saleId = sale.id,
             receiptNumber = receiptNumber,
@@ -225,9 +229,9 @@ class SalesListViewModel(
             } catch (e: Exception) {
                 System.currentTimeMillis()
             },
-            businessName = session?.businessName ?: "",
-            businessAddress = session?.businessAddress ?: "",
-            businessNumber = session?.businessName ?: "",
+            businessName = branch?.name ?: session?.businessName ?: "",
+            businessAddress = branch?.address ?: session?.businessAddress ?: "",
+            businessNumber = branch?.phone ?: session?.businessPhone ?: "",
             taxRate = taxRate,
             footerMessage = footerMessage
         )
@@ -237,6 +241,7 @@ class SalesListViewModel(
 
     val filteredSales: StateFlow<List<SaleWithItems>> = state
         .map { s ->
+            Log.d("SalesListViewModel", "Filtered sales: ${s.sales.size}")
             if (s.searchQuery.isBlank()) s.sales
             else s.sales.filter { saleWithItems ->
                 val sale = saleWithItems.sale

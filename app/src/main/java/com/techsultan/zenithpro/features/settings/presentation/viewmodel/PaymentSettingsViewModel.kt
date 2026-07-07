@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
-import com.techsultan.zenithpro.features.settings.domain.repository.PaymentSettingsRepository
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetTerminalsUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.SyncTerminalsUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.UpdateSweepAccountUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +17,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class PaymentSettingsViewModel(
-    private val repository: PaymentSettingsRepository,
+    private val getTerminalsUseCase: GetTerminalsUseCase,
+    private val syncTerminalsUseCase: SyncTerminalsUseCase,
+    private val updateSweepAccountUseCase: UpdateSweepAccountUseCase,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
 
@@ -32,7 +36,7 @@ class PaymentSettingsViewModel(
 
     private fun observe() {
         viewModelScope.launch {
-            repository.getTerminals(sessionManager.businessId).collect { result ->
+            getTerminalsUseCase(sessionManager.businessId).collect { result ->
                 when (result) {
                     is Resource.Success -> _state.update {
                         it.copy(isLoading = false, terminals = result.data ?: emptyList())
@@ -48,7 +52,7 @@ class PaymentSettingsViewModel(
 
     private fun sync() {
         viewModelScope.launch {
-            repository.pullFromServer(sessionManager.businessId)
+            syncTerminalsUseCase(sessionManager.businessId)
         }
     }
 
@@ -72,7 +76,7 @@ class PaymentSettingsViewModel(
         }
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true, sweepError = null) }
-            when (val result = repository.updateSweepAccount(
+            when (val result = updateSweepAccountUseCase(
                 terminalId, bankCode, accountNumber, accountName
             )) {
                 is Resource.Success -> {

@@ -87,6 +87,7 @@ import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -97,11 +98,12 @@ fun PaymentDialog(
     totalAmount: String,
     viewModel: CheckoutViewModel,
     onDismiss: () -> Unit,
-    onConfirm: (PaymentMethod) -> Unit
+    onConfirm: (PaymentMethod, TransferType?) -> Unit
 ) {
     var selectedMethod by remember { mutableStateOf(PaymentMethod.CASH) }
     var showSplitDialog by remember { mutableStateOf(false) }
     var showCustomerSelector by remember { mutableStateOf(false) }
+    var awaitingSaleId by remember { mutableStateOf<String?>(null) }
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     val splitCashAmount by viewModel.splitCashAmount.collectAsStateWithLifecycle()
@@ -447,6 +449,13 @@ fun PaymentDialog(
                     text = if (selectedMethod == PaymentMethod.SPLIT) "Continue to Split Payment" else "Confirm Payment",
                     onClick = {
                         when (selectedMethod) {
+                            PaymentMethod.TRANSFER -> {
+                                if (needsBranchSelection) {
+                                    viewModel.onShowBranchPicker()
+                                    return@ZenithButton
+                                }
+                                onConfirm(selectedMethod, null)
+                            }
                             PaymentMethod.SPLIT -> {
                                 showSplitDialog = true
                             }
@@ -459,14 +468,14 @@ fun PaymentDialog(
                                     viewModel.onShowBranchPicker()
                                     return@ZenithButton
                                 }
-                                onConfirm(selectedMethod)
+                                onConfirm(selectedMethod, null)
                             }
                             else -> {
                                 if (needsBranchSelection) {
                                     viewModel.onShowBranchPicker()
                                     return@ZenithButton
                                 }
-                                onConfirm(selectedMethod)
+                                onConfirm(selectedMethod, null)
                             }
                         }
                     },
@@ -485,7 +494,7 @@ fun PaymentDialog(
             onConfirm = {
                 showSplitDialog = false
                 if (selectedMethod == PaymentMethod.SPLIT) {
-                    onConfirm(PaymentMethod.SPLIT)
+                    onConfirm(PaymentMethod.SPLIT, null)
                 }
             }
         )
@@ -512,7 +521,7 @@ fun PaymentDialog(
                 if (selectedMethod != PaymentMethod.SPLIT &&
                     (selectedMethod != PaymentMethod.DEBT ||
                             state.selectedCustomer != null)) {
-                    onConfirm(selectedMethod)
+                    onConfirm(selectedMethod, null)
                 }
             },
             onDismiss  = { viewModel.onDismissBranchPicker() }

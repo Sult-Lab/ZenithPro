@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.ReceiptData
@@ -19,12 +20,10 @@ import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
-import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
-import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
-import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
 import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetTerminalsUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,7 +47,7 @@ class CheckoutViewModel(
     private val receiptNumberGenerator: ReceiptNumberGenerator,
     private val getSettingsUseCase: GetSettingsUseCase,
     private val getBranchesUseCase: GetBranchesUseCase,
-    private val terminalDao: TerminalDao,
+    private val getTerminalsUseCase: GetTerminalsUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -111,8 +110,27 @@ class CheckoutViewModel(
 
     fun loadTerminalForCurrentBranch() {
         viewModelScope.launch {
-            val branchId = sessionManager.currentSession?.branchId ?: return@launch
-            _currentTerminal.value = terminalDao.getTerminalByBranchId(branchId)
+            val session = sessionManager.currentSession ?: return@launch
+            val branchId = session.branchId
+
+            getTerminalsUseCase(sessionManager.businessId).collect { result ->
+                if (result is Resource.Success) {
+                    val terminals = result.data ?: emptyList()
+                    _currentTerminal.value = when {
+                        // ADMIN — no branch assigned, take first active terminal
+                        branchId == null -> terminals.firstOrNull { it.isActive }
+                        // Staff/Manager — match their branch exactly
+                        else -> terminals.firstOrNull {
+                            it.branchId == branchId && it.isActive
+                        }
+                    }
+                    Log.d(
+                        "CheckoutVM",
+                        "Terminal resolved: ${_currentTerminal.value?.id} " +
+                                "for branchId=$branchId"
+                    )
+                }
+            }
         }
     }
 
@@ -124,11 +142,22 @@ class CheckoutViewModel(
         }
     }
 
+    fun getTransferDetails(): TransferDetails? {
+        val terminal = _currentTerminal.value ?: return null
+        val accountNumber = terminal.nombaVirtualAccountNumber ?: return null
+        return TransferDetails(
+            accountNumber = accountNumber,
+            bankName = terminal.nombaVirtualAccountBank ?: "",
+            accountName = terminal.nombaVirtualAccountName ?: "",
+            transferType = TransferType.NOMBA,
+        )
+    }
+
     private fun initBranch() {
         val session = currentSession ?: return
         if (session.hasBranch) {
-            // Staff has a fixed branch — set it automatically, no selection needed
-            _state.update {
+            Log.d("CheckoutVM", "Branch resolved: ${session.branchName}")
+                _state.update {
                 it.copy(
                     selectedBranchId   = session.branchId,
                     selectedBranchName = session.branchName,
@@ -136,6 +165,7 @@ class CheckoutViewModel(
                     canSelectBranch    = false
                 )
             }
+            loadTerminalForCurrentBranch()
         } else if (session.isAdmin || session.isManager) {
             loadBranches()
         }
@@ -144,47 +174,60 @@ class CheckoutViewModel(
     private fun loadBranches() {
         viewModelScope.launch {
             getBranchesUseCase.invoke(sessionManager.businessId).collect { result ->
-                when(result){
+                when (result) {
+                    is Resource.Loading -> _state.update { it.copy(isLoading = true) }
                     is Resource.Success -> {
-
                         val activeBranches = result.data?.filter { it.isActive } ?: emptyList()
                         val session = sessionManager.currentSession
+
                         val resolvedBranchId: String?
                         val resolvedBranchName: String?
 
                         when {
-                            session?.hasBranch == true && !session.isAdmin -> {
-                                resolvedBranchId   = session.branchId
-                                resolvedBranchName = session.branchName
-                            }
-
-                            activeBranches.size == 1 -> {
-                                resolvedBranchId   = activeBranches.first().id
+                            // Admin with single branch — auto-select, no picker needed
+                            session?.isAdmin == true && activeBranches.size == 1 -> {
+                                resolvedBranchId = activeBranches.first().id
                                 resolvedBranchName = activeBranches.first().name
+                                Log.d("CheckoutVM", "Admin with single branch: $resolvedBranchName")
                             }
-
-                            activeBranches.isEmpty() -> {
-                                resolvedBranchId   = null
+                            // Admin with multiple branches — must pick at checkout
+                            session?.isAdmin == true && activeBranches.size > 1 -> {
+                                resolvedBranchId = null
                                 resolvedBranchName = null
+                                Log.d("CheckoutVM", "Admin with multiple branches: $resolvedBranchName")
                             }
-
+                            // Staff/Manager — use their session branch (already resolved)
                             else -> {
-                                resolvedBranchId   = null
-                                resolvedBranchName = null
+                                resolvedBranchId = session?.branchId
+                                resolvedBranchName = session?.branchName
+                                Log.d("CheckoutVM", "Staff branch: $resolvedBranchName")
                             }
                         }
-                        _state.update { s ->
-                            s.copy(
+
+                        Log.d(
+                            "CheckoutVM",
+                            "Branch resolved: $resolvedBranchName (${activeBranches.size} total)"
+                        )
+
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
                                 availableBranches = activeBranches,
-                                // If only one branch exists, auto-select it
-                                selectedBranchId   = resolvedBranchId,
+                                selectedBranchId = resolvedBranchId,
                                 selectedBranchName = resolvedBranchName,
-                                canSelectBranch = (session?.isAdmin == true || session?.isManager == true) && activeBranches.size > 1
+                                // Only admin with multiple branches can change the branch
+                                canSelectBranch = session?.isAdmin == true && activeBranches.size > 1,
+                                error = null
                             )
+                        }
+                        if (resolvedBranchId != null) {
+                            loadTerminalForCurrentBranch()
                         }
                     }
 
-                    else -> {}
+                    is Resource.Error -> {
+                        _state.update { it.copy(isLoading = false, error = result.message) }
+                    }
                 }
             }
         }
@@ -199,6 +242,7 @@ class CheckoutViewModel(
                 error              = null
             )
         }
+        loadTerminalForCurrentBranch()
     }
 
     fun onShowBranchPicker() {
@@ -256,6 +300,9 @@ class CheckoutViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
             loadProducts()
+            if (currentSession?.isAdmin == true || currentSession?.isManager == true) {
+                loadBranches()
+            }
             _state.update { it.copy(isRefreshing = false) }
         }
     }
@@ -292,7 +339,7 @@ class CheckoutViewModel(
                     productName = product.product.name,
                     unitPrice = product.product.baseSalesPrice,
                     costPrice = product.product.baseCostPrice,
-                    variantSku = variant.variant.sku ?: "",
+                    variantSku = variant.variant.sku,
                     quantity = 1
                 )
             }
@@ -394,7 +441,7 @@ class CheckoutViewModel(
         _customerSearchQuery.value = ""
     }
 
-    fun checkout(notes: String? = null) {
+    fun checkout(notes: String? = null, transferType: TransferType? = null) {
         val currentCartMap = _cart.value
         if (currentCartMap.isEmpty()) return
 
@@ -451,6 +498,10 @@ class CheckoutViewModel(
                 PaymentMethod.USSD -> if (s.amountPaid <= 0L) total else s.amountPaid
             }
 
+            Log.d("CheckoutVM", "SeletedBranchId: ${s.selectedBranchId}")
+            Log.d("CheckoutVM", "Payment Method: ${s.paymentMethod}")
+
+            if (s.selectedBranchId == null) return@launch
             val result = processSaleUseCase(
                 cart = cartItemsList,
                 customerId = s.selectedCustomerId,
@@ -460,7 +511,8 @@ class CheckoutViewModel(
                 discountAmount = s.discountAmount,
                 notes = notes,
                 staffId = sessionManager.userId,
-                taxAmount = taxAmount
+                taxAmount = taxAmount,
+                transferType = transferType
             )
 
             when (result) {
@@ -470,15 +522,16 @@ class CheckoutViewModel(
                     val saleId = response?.saleId ?: ""
                     val change = maxOf(0L, effectivePaid - total)
 
-                    if (response?.paymentStatus == "AWAITING_PAYMENT"){
+                    if (response?.paymentStatus == "AWAITING_PAYMENT") {
+                        val terminal = _currentTerminal.value
                         _events.emit(
                             CheckoutEvent.AwaitingTransfer(
-                                saleId  = response.saleId,
-                                totalAmount = _state.value.amountPaid,
-                                paymentReference  = response.paymentReference ?: "",
-                                virtualAccountNumber = response.virtualAccountNumber ?: "",
-                                virtualAccountBank = response.virtualAccountBank ?: "",
-                                virtualAccountName   = response.virtualAccountName ?: ""
+                                saleId = response.saleId,
+                                totalAmount = if (_state.value.amountPaid > 0) _state.value.amountPaid else total,
+                                paymentReference = response.paymentReference ?: "",
+                                virtualAccountNumber = terminal?.nombaVirtualAccountNumber ?: "",
+                                virtualAccountBank = terminal?.nombaVirtualAccountBank ?: "",
+                                virtualAccountName = terminal?.nombaVirtualAccountName ?: ""
                             )
                         )
                     } else {
@@ -606,6 +659,13 @@ class CheckoutViewModel(
 
 
 }
+
+data class TransferDetails(
+    val accountNumber: String,
+    val bankName: String,
+    val accountName: String,
+    val transferType: TransferType,
+)
 
 data class NewSaleUiState(
     val isLoading: Boolean = false,

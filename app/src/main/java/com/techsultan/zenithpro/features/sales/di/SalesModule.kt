@@ -43,7 +43,7 @@ val salesModule = module {
         receiptNumberGenerator = get(),
         getSettingsUseCase = get(),
         getBranchesUseCase = get(),
-        terminalDao = get(),
+        getTerminalsUseCase = get(),
     ) }
 
     viewModel {

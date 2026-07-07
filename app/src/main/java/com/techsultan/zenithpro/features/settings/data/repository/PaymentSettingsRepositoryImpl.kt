@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.settings.data.repository
 
+import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
@@ -38,15 +39,17 @@ class PaymentSettingsRepositoryImpl(
             val now = Instant.now().toString()
             terminalDao.updateSweepDetails(terminalId, bankCode, accountNumber, accountName, now)
             if (networkMonitor.isConnected()) {
-                postgrest.from("terminals")
+             val update = postgrest.from("terminals")
                     .update(mapOf(
-                        "nomba_sweep_bank_code"       to bankCode,
-                        "nomba_sweep_account_number"  to accountNumber,
-                        "nomba_sweep_account_name"    to accountName
+                        "nomba_sweep_bank_code" to bankCode,
+                        "nomba_sweep_account_number" to accountNumber,
+                        "nomba_sweep_account_name" to accountName
                     )) { filter { eq("id", terminalId) } }
+                Log.d("PaymentSettingsRepo", "Update bank account: $update")
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e("PaymentSettingsRepo", "Failed to update bank account", e)
             Resource.Error(e.message ?: "Failed to update bank account")
         }
     }
@@ -54,12 +57,15 @@ class PaymentSettingsRepositoryImpl(
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
             try {
+                Log.d("PaymentSettingsRepo", "Pull from server")
                 val remote = postgrest.from("terminals").select {
                     filter { eq("business_id", businessId) }
                 }.decodeList<TerminalDto>()
+                Log.d("PaymentSettingsRepo", "Pull from server: $remote")
                 if (remote.isNotEmpty()) terminalDao.insertTerminals(remote.map { it.toEntity() })
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("PaymentSettingsRepo", "Pull from server failed", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }

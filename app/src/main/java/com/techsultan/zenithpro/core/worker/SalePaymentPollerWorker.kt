@@ -25,7 +25,7 @@ class SalePaymentPollerWorker(
     override suspend fun doWork(): Result {
         val saleId     = inputData.getString(KEY_SALE_ID)     ?: return Result.failure()
         val businessId = inputData.getString(KEY_BUSINESS_ID) ?: return Result.failure()
-
+        Log.d("PaymentPoller", "Polling for saleId=$saleId")
         return try {
             val sale = postgrest
                 .from("sales")

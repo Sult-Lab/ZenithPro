@@ -27,6 +27,7 @@ import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
+import com.techsultan.zenithpro.features.branch.presentation.BranchViewModel
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerDetailScreen
 import com.techsultan.zenithpro.features.customer.presentation.CustomerListScreen
@@ -43,7 +44,6 @@ import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScre
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
-import com.techsultan.zenithpro.features.sales.presentation.AwaitingTransferScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
@@ -162,6 +162,7 @@ fun MainNavGraph(
             val productDetailViewModel: ProductDetailViewModel = koinViewModel()
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
             val receiptViewModel: ReceiptViewModel = koinViewModel()
+            val branchViewModel: BranchViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -225,7 +226,8 @@ fun MainNavGraph(
 
                         entry<Route.Home.Branches> {
                             BranchScreen(
-                                onBack = { navigator.goBack() }
+                                onBack = { navigator.goBack() },
+                                viewModel = branchViewModel
                             )
                         }
                         entry<Route.Customer.CustomerListScreen> {
@@ -259,18 +261,10 @@ fun MainNavGraph(
                                     receiptViewModel.setReceipt(receipt)
                                     navigator.navigate(Route.Home.ReceiptPreview)
                                 },
-                                onAwaitingTransfer = { event ->
-                                    navigator.navigate(
-                                        Route.Home.AwaitingTransfer(
-                                            saleId = event.saleId,
-                                            totalAmount = event.totalAmount,
-                                            paymentReference = event.paymentReference,
-                                            virtualAccountNumber = event.virtualAccountNumber,
-                                            virtualAccountBank = event.virtualAccountBank,
-                                            virtualAccountName = event.virtualAccountName
-                                        )
-                                    )
-                                }
+                                onAwaitingTransferConfirmed = { saleId ->
+                                    navigator.navigate(Route.Home.SaleDetail(saleId))
+                                },
+                                session = session
                             )
                         }
                         entry<Route.Home.AddProduct> {
@@ -403,21 +397,6 @@ fun MainNavGraph(
                                 saleId = key.saleId,
                                 businessId = session?.businessId ?: "",
                                 onBack = { navigator.goBack() }
-                            )
-                        }
-                        entry<Route.Home.AwaitingTransfer> { key ->
-                            AwaitingTransferScreen(
-                                saleId = key.saleId,
-                                totalAmount = key.totalAmount,
-                                paymentReference = key.paymentReference,
-                                virtualAccountNumber = key.virtualAccountNumber,
-                                virtualAccountBank = key.virtualAccountBank,
-                                virtualAccountName = key.virtualAccountName,
-                                businessId = session?.businessId ?: "",
-                                onConfirmed = {
-                                    navigator.navigate(Route.Home.SaleDetail(key.saleId))
-                                },
-                                onCancel = { navigator.goBack() }
                             )
                         }
                     }

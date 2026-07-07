@@ -20,6 +20,7 @@ import com.techsultan.zenithpro.features.production.di.productionModule
 import com.techsultan.zenithpro.features.sales.di.salesModule
 import com.techsultan.zenithpro.features.settings.di.businessModule
 import com.techsultan.zenithpro.features.settings.di.paymentModule
+import com.techsultan.zenithpro.features.payment.di.paymentProcessingModule
 import com.techsultan.zenithpro.features.settings.di.settingsModule
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
@@ -75,7 +76,8 @@ class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
                 categoryModule,
                 businessModule,
                 receiptModule,
-                paymentModule
+                paymentModule,
+                paymentProcessingModule
             )
         }
 
