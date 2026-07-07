@@ -1,4 +1,3 @@
-import org.gradle.kotlin.dsl.libs
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -50,6 +49,7 @@ android {
         schemaDirectory(file("$projectDir/schemas").absolutePath)
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
@@ -79,6 +79,8 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+
     //icon
     implementation(libs.material.icons)
 
@@ -102,6 +104,7 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.koin.navigation)
     implementation(libs.koin.compose)
+    implementation(libs.koin.workmanager)
 
     //ktor
     implementation(project.dependencies.platform(libs.ktor.bom))
@@ -127,4 +130,23 @@ dependencies {
 
     //data-store
     implementation(libs.data.store)
+
+    //thermal printer
+    implementation(libs.dantsu.eco.pos)
+
+    // ML Kit Barcode Scanning
+    implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.camera.mlkit.vision)
+
+    // CameraX
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
+    // ZXing for Barcode generation
+    implementation(libs.zxing.core)
+
+    // work manager
+    implementation(libs.androidx.work.runtime.ktx)
+    androidTestImplementation(libs.androidx.work.testing)
 }

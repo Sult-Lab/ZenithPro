@@ -39,4 +39,12 @@ interface BranchDao {
 
     @Query("SELECT id FROM branches WHERE businessId = :businessId")
     suspend fun getAllBranchIds(businessId: String): List<String>
+
+    @Query("""
+    SELECT COUNT(*) FROM branches
+    WHERE businessId = :businessId
+      AND isActive   = 1
+      AND deletedAt  IS NULL
+""")
+    suspend fun getActiveBranchCount(businessId: String): Int
 }

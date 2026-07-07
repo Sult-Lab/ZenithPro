@@ -12,6 +12,8 @@ sealed interface Route: NavKey {
         data object SignIn : Route, NavKey
         @Serializable
         data object SignUp : Route, NavKey
+        @Serializable
+        data class ChangePassword(val isForced: Boolean) : Route, NavKey
     }
 
     @Serializable
@@ -29,6 +31,8 @@ sealed interface Route: NavKey {
         @Serializable
         data object AddProduct : Route, NavKey
         @Serializable
+        data class ProductDetail(val productId: String) : Route, NavKey
+        @Serializable
         data object NewSale : Route, NavKey
         @Serializable
         data object Branches : Route, NavKey
@@ -36,6 +40,47 @@ sealed interface Route: NavKey {
         data object Production : Route, NavKey
         @Serializable
         data object Material : Route, NavKey
+
+        @Serializable
+        data object CreateStaff : Route, NavKey
+
+        @Serializable
+        data object BusinessInformationScreen : Route, NavKey
+        @Serializable
+        data object BusinessProfileScreen : Route, NavKey
+        @Serializable
+        data object StaffManagementScreen : Route, NavKey
+
+        @Serializable
+        data object PrinterSettings : Route, NavKey
+
+        @Serializable
+        data class BarcodeScanner(val caller: ScannerCaller) : Route, NavKey
+
+        @Serializable
+        data object PrintBarcode : Route, NavKey
+
+        @Serializable
+        data object CategoryManagementScreen : Route, NavKey
+
+        @Serializable
+        data object ReceiptPreview : Route, NavKey
+
+        @Serializable
+        data object PaymentSettings : Route, NavKey
+
+        @Serializable
+        data class SaleDetail(val saleId: String) : Route, NavKey
+
+        @Serializable
+        data class AwaitingTransfer(
+            val saleId: String,
+            val totalAmount: Long,
+            val paymentReference: String,
+            val virtualAccountNumber: String,
+            val virtualAccountBank: String,
+            val virtualAccountName: String
+        ) : Route, NavKey
     }
 
     @Serializable
@@ -53,9 +98,14 @@ sealed interface Route: NavKey {
         @Serializable
         data object CustomerReportScreen : Route, NavKey
         @Serializable
-        data object CustomerDetailScreen : Route, NavKey
+        data class CustomerDetailScreen(val customerId: String) : Route, NavKey
         @Serializable
         data object AddEditCustomerScreen : Route, NavKey
+    }
+
+    @Serializable
+    enum class ScannerCaller {
+        ADD_PRODUCT, CHECKOUT, PRODUCT_DETAIL
     }
 
 }

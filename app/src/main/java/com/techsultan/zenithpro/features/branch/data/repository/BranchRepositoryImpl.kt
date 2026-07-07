@@ -1,5 +1,7 @@
 package com.techsultan.zenithpro.features.branch.data.repository
 
+import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
@@ -22,6 +24,7 @@ import java.util.UUID
 class BranchRepositoryImpl(
     private val branchDao: BranchDao,
     private val postgrest: Postgrest,
+    private val sessionManager: SessionManager,
     private val networkMonitor: NetworkMonitor,
 ) : BranchRepository {
 
@@ -51,8 +54,7 @@ class BranchRepositoryImpl(
             branchDao.insertBranch(entity)
 
             if (networkMonitor.isConnected()) {
-                postgrest.from("branches").upsert(entity.toDto()) { onConflict = "id" }
-                branchDao.markSynced(branchId, now)
+                pushBranch(entity)
             }
             Resource.Success(entity)
         } catch (e: Exception) {
@@ -73,11 +75,7 @@ class BranchRepositoryImpl(
             )
             branchDao.insertBranch(updated)
             if (networkMonitor.isConnected()) {
-                postgrest.from("branches")
-                    .update(mapOf("is_active" to isActive)) {
-                        filter { eq("id", branchId) }
-                    }
-                branchDao.markSynced(branchId, updated.updatedAt)
+                pushBranch(updated)
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
@@ -91,11 +89,7 @@ class BranchRepositoryImpl(
                 val now = Instant.now().toString()
                 branchDao.softDelete(branchId, now)
                 if (networkMonitor.isConnected()) {
-                    postgrest.from("branches")
-                        .update(mapOf("deleted_at" to now)) {
-                            filter { eq("id", branchId) }
-                        }
-                    branchDao.hardDelete(branchId)
+                    pushDelete(branchId)
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
@@ -107,7 +101,10 @@ class BranchRepositoryImpl(
         withContext(Dispatchers.IO) {
             try {
                 val remote = postgrest.from("branches").select {
-                    filter { eq("business_id", businessId); isNull("deleted_at") }
+                    filter {
+                        eq("business_id", businessId)
+                        isNull("deleted_at")
+                    }
                 }.decodeList<BranchDto>()
 
                 val unsyncedIds = branchDao.getUnsyncedBranches().map { it.id }.toSet()
@@ -119,9 +116,53 @@ class BranchRepositoryImpl(
                     .filter { it !in remoteIds && it !in unsyncedIds }
                     .forEach { branchDao.hardDelete(it) }
 
+                // If session has no branch but only one branch exists,
+                // update session so checkout auto-resolves without waiting
+                val session = sessionManager.currentSession
+                if (session != null &&
+                    !session.isAdmin &&
+                    session.branchId == null &&
+                    remote.size == 1) {
+
+                    val onlyBranch = remote.first()
+                    sessionManager.saveSession(
+                        session.copy(
+                            branchId   = onlyBranch.id,
+                            branchName = onlyBranch.name
+                        )
+                    )
+                    Log.d("BranchRepo", "Auto-updated session branch to: ${onlyBranch.name}")
+                }
+
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("BranchRepo", "pullFromServer error: ${e.message}", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }
+
+    internal suspend fun pushBranch(entity: BranchEntity) {
+        try {
+            Log.d("BranchRepo", "pushBranch: ${entity.id}")
+            postgrest.from("branches").upsert(entity.toDto()) { onConflict = "id" }
+            branchDao.markSynced(entity.id, Instant.now().toString())
+            Log.d("BranchRepo", "pushBranch: synced ${entity.id}")
+        } catch (e: Exception) {
+            Log.w("BranchRepo", "pushBranch failed for ${entity.id}: ${e.message}")
+        }
+    }
+
+    internal suspend fun pushDelete(branchId: String) {
+        try {
+            Log.d("BranchRepo", "pushDelete: $branchId")
+            postgrest.from("branches")
+                .update(mapOf("deleted_at" to Instant.now().toString())) {
+                    filter { eq("id", branchId) }
+                }
+            branchDao.hardDelete(branchId)
+            Log.d("BranchRepo", "pushDelete: success for $branchId")
+        } catch (e: Exception) {
+            Log.w("BranchRepo", "pushDelete failed for $branchId: ${e.message}")
+        }
+    }
 }

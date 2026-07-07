@@ -1,38 +1,22 @@
 package com.techsultan.zenithpro.core.manager
 
-import com.techsultan.zenithpro.core.network.NetworkMonitor
-import com.techsultan.zenithpro.core.util.Util
-import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
-import com.techsultan.zenithpro.features.expenses.data.repository.ExpenseRepositoryImpl
-import com.techsultan.zenithpro.features.product.data.local.ProductDao
-import com.techsultan.zenithpro.features.product.data.repository.ProductRepositoryImpl
+import android.content.Context
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.techsultan.zenithpro.core.worker.SyncWorker
 
-class SyncManager(
-    private val repository: ProductRepositoryImpl,
-    private val expenseRepository: ExpenseRepositoryImpl,
-    private val productDao: ProductDao,
-    private val expenseDao: ExpenseDao,
-    private val networkMonitor: NetworkMonitor,
-) {
-    suspend fun syncAll() {
-        if (!networkMonitor.isConnected()) return
+class SyncManager(private val context: Context) {
+    fun syncAll() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        
+        val syncRequest = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setConstraints(constraints)
+            .build()
 
-        productDao.getUnsyncedProducts().forEach { product ->
-            when (product.syncStatus) {
-                Util.SyncStatus.PENDING -> repository.pushNewProduct(product.id)
-                Util.SyncStatus.DIRTY   -> repository.pushUpdate(product)
-                Util.SyncStatus.DELETED -> repository.pushDelete(product.id)
-                Util.SyncStatus.SYNCED  -> Unit
-            }
-        }
-
-        expenseDao.getUnsyncedExpenses().forEach { expense ->
-            when (expense.syncStatus) {
-                Util.SyncStatus.PENDING,
-                Util.SyncStatus.DIRTY   -> expenseRepository.pushExpense(expense)
-                Util.SyncStatus.DELETED -> expenseRepository.pushDelete(expense.id)
-                Util.SyncStatus.SYNCED  -> Unit
-            }
-        }
+        WorkManager.getInstance(context).enqueue(syncRequest)
     }
 }

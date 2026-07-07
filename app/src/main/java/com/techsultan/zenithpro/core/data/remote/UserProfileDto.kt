@@ -12,5 +12,6 @@ data class UserProfileDto(
     @SerialName("email") val email: String? = null,
     val role: String,
     val status: String,
+    @SerialName("must_change_password") val mustChangePassword: Boolean = false,
     @SerialName("branch_id") val branchId: String? = null
 )

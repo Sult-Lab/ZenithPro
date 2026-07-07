@@ -1,3 +1,35 @@
 <resources>
     <string name="app_name">ZenithPro</string>
+    <string name="your_store_logo">Your Store Logo</string>
+    <string name="logo_subtext">Appears on receipts and invoices</string>
+    <string name="change_logo">Change Logo</string>
+    <string name="general_details">General Details</string>
+    <string name="business_name">Business Name</string>
+    <string name="business_type">Business Type</string>
+    <string name="contact_location">Contact &amp; Location</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="email_address">Email Address</string>
+    <string name="physical_address">Physical Address</string>
+    <string name="localization">Localization</string>
+    <string name="currency">Currency</string>
+    <string name="currency_locked_msg">Currency is locked to your regional registration.</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="placeholder_business_name">Mainland Provisions</string>
+    <string name="placeholder_business_type">Pharmacy</string>
+    <string name="placeholder_phone_number">8030000000</string>
+    <string name="placeholder_email">owner@mainland.ng</string>
+    <string name="placeholder_address">12, Herbert Macaulay Way, Yaba, Lagos</string>
+    <string name="placeholder_currency">Nigerian Naira (NGN)</string>
+
+    <!-- Receipt Preview -->
+    <string name="receipt_preview">Receipt Preview</string>
+    <string name="share_receipt">Share Receipt</string>
+    <string name="print_receipt">Print Receipt</string>
+    <string name="date_time">DATE/TIME</string>
+    <string name="receipt_id">RECEIPT ID</string>
+    <string name="subtotal">Subtotal</string>
+    <string name="vat_label">VAT (7.5%)</string>
+    <string name="total_label">Total</string>
+    <string name="thank_you_shopping">Thank you for shopping with us!</string>
+    <string name="return_policy">Please keep this receipt for returns within 7 days.</string>
 </resources>

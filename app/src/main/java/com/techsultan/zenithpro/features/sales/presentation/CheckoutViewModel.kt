@@ -1,0 +1,694 @@
+package com.techsultan.zenithpro.features.sales.presentation
+
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.data.local.SplitPayment
+import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
+import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
+import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
+import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
+import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
+import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
+import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
+import com.techsultan.zenithpro.features.sales.data.remote.CartItem
+import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
+import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
+import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
+import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetSettingsUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.GetTerminalsUseCase
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+class CheckoutViewModel(
+    private val getProductsUseCase: GetProductsUseCase,
+    private val processSaleUseCase: ProcessSaleUseCase,
+    private val sessionManager: SessionManager,
+    private val customerRepository: CustomerRepository,
+    private val getCustomerDetailUseCase: GetCustomerDetailUseCase,
+    private val generateReceiptUseCase: GenerateReceiptUseCase,
+    private val receiptNumberGenerator: ReceiptNumberGenerator,
+    private val getSettingsUseCase: GetSettingsUseCase,
+    private val getBranchesUseCase: GetBranchesUseCase,
+    private val getTerminalsUseCase: GetTerminalsUseCase,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(NewSaleUiState())
+    val state: StateFlow<NewSaleUiState> = _state.asStateFlow()
+
+    private val _cart = MutableStateFlow<Map<String, CartItem>>(emptyMap())
+    val cart: StateFlow<Map<String, CartItem>> = _cart.asStateFlow()
+
+    private val _events = MutableSharedFlow<CheckoutEvent>()
+    val events = _events.asSharedFlow()
+
+    private val _customerSearchQuery = MutableStateFlow("")
+    val customerSearchQuery = _customerSearchQuery.asStateFlow()
+
+    private val _splitCashAmount = MutableStateFlow(0L)
+    val splitCashAmount = _splitCashAmount.asStateFlow()
+
+    private val _splitTransferAmount = MutableStateFlow(0L)
+    val splitTransferAmount = _splitTransferAmount.asStateFlow()
+
+    private val _newlyCreatedCustomer = MutableStateFlow<CustomerEntity?>(null)
+    val newlyCreatedCustomer = _newlyCreatedCustomer.asStateFlow()
+
+    private val _currentTerminal = MutableStateFlow<TerminalEntity?>(null)
+    val currentTerminal = _currentTerminal.asStateFlow()
+
+    val cartTotal: StateFlow<Long> = _cart.map { it.values.sumOf { item -> item.totalPrice } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    val cartItemCount: StateFlow<Int> = _cart.map { it.values.sumOf { item -> item.quantity } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val customerSearchResults: StateFlow<List<CustomerEntity>> = combine(
+        _customerSearchQuery,
+        sessionManager.sessionFlow
+    ) { query, session ->
+        if (query.isBlank() || session == null) emptyList()
+        else {
+            customerRepository.searchCustomers(session.businessId, query)
+                .map { it.data ?: emptyList() }
+                .first()
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val currentSession get() = sessionManager.currentSession
+
+    init {
+        viewModelScope.launch {
+            sessionManager.loadSession()
+            loadProducts()
+            initBranch()
+            getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
+                _state.update { it.copy(
+                    footerMessage = settings?.receiptFooter ?: "",
+                    taxRate = settings?.taxRate ?: 0.0
+                ) }
+            }
+        }
+    }
+
+    fun loadTerminalForCurrentBranch() {
+        viewModelScope.launch {
+            val session = sessionManager.currentSession ?: return@launch
+            val branchId = session.branchId
+
+            getTerminalsUseCase(sessionManager.businessId).collect { result ->
+                if (result is Resource.Success) {
+                    val terminals = result.data ?: emptyList()
+                    _currentTerminal.value = when {
+                        // ADMIN — no branch assigned, take first active terminal
+                        branchId == null -> terminals.firstOrNull { it.isActive }
+                        // Staff/Manager — match their branch exactly
+                        else -> terminals.firstOrNull {
+                            it.branchId == branchId && it.isActive
+                        }
+                    }
+                    Log.d(
+                        "CheckoutVM",
+                        "Terminal resolved: ${_currentTerminal.value?.id} " +
+                                "for branchId=$branchId"
+                    )
+                }
+            }
+        }
+    }
+
+    fun resolveTransferType(): TransferType {
+        return if (_currentTerminal.value?.nombaVirtualAccountNumber != null) {
+            TransferType.NOMBA
+        } else {
+            TransferType.MANUAL
+        }
+    }
+
+    fun getTransferDetails(): TransferDetails? {
+        val terminal = _currentTerminal.value ?: return null
+        val accountNumber = terminal.nombaVirtualAccountNumber ?: return null
+        return TransferDetails(
+            accountNumber = accountNumber,
+            bankName = terminal.nombaVirtualAccountBank ?: "",
+            accountName = terminal.nombaVirtualAccountName ?: "",
+            transferType = TransferType.NOMBA,
+        )
+    }
+
+    private fun initBranch() {
+        val session = currentSession ?: return
+        if (session.hasBranch) {
+            Log.d("CheckoutVM", "Branch resolved: ${session.branchName}")
+                _state.update {
+                it.copy(
+                    selectedBranchId   = session.branchId,
+                    selectedBranchName = session.branchName,
+                    branchRequired     = false,
+                    canSelectBranch    = false
+                )
+            }
+            loadTerminalForCurrentBranch()
+        } else if (session.isAdmin || session.isManager) {
+            loadBranches()
+        }
+    }
+
+    private fun loadBranches() {
+        viewModelScope.launch {
+            getBranchesUseCase.invoke(sessionManager.businessId).collect { result ->
+                when (result) {
+                    is Resource.Loading -> _state.update { it.copy(isLoading = true) }
+                    is Resource.Success -> {
+                        val activeBranches = result.data?.filter { it.isActive } ?: emptyList()
+                        val session = sessionManager.currentSession
+
+                        val resolvedBranchId: String?
+                        val resolvedBranchName: String?
+
+                        when {
+                            // Admin with single branch — auto-select, no picker needed
+                            session?.isAdmin == true && activeBranches.size == 1 -> {
+                                resolvedBranchId = activeBranches.first().id
+                                resolvedBranchName = activeBranches.first().name
+                                Log.d("CheckoutVM", "Admin with single branch: $resolvedBranchName")
+                            }
+                            // Admin with multiple branches — must pick at checkout
+                            session?.isAdmin == true && activeBranches.size > 1 -> {
+                                resolvedBranchId = null
+                                resolvedBranchName = null
+                                Log.d("CheckoutVM", "Admin with multiple branches: $resolvedBranchName")
+                            }
+                            // Staff/Manager — use their session branch (already resolved)
+                            else -> {
+                                resolvedBranchId = session?.branchId
+                                resolvedBranchName = session?.branchName
+                                Log.d("CheckoutVM", "Staff branch: $resolvedBranchName")
+                            }
+                        }
+
+                        Log.d(
+                            "CheckoutVM",
+                            "Branch resolved: $resolvedBranchName (${activeBranches.size} total)"
+                        )
+
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                availableBranches = activeBranches,
+                                selectedBranchId = resolvedBranchId,
+                                selectedBranchName = resolvedBranchName,
+                                // Only admin with multiple branches can change the branch
+                                canSelectBranch = session?.isAdmin == true && activeBranches.size > 1,
+                                error = null
+                            )
+                        }
+                        if (resolvedBranchId != null) {
+                            loadTerminalForCurrentBranch()
+                        }
+                    }
+
+                    is Resource.Error -> {
+                        _state.update { it.copy(isLoading = false, error = result.message) }
+                    }
+                }
+            }
+        }
+    }
+
+    fun onBranchSelected(branch: BranchEntity) {
+        _state.update {
+            it.copy(
+                selectedBranchId   = branch.id,
+                selectedBranchName = branch.name,
+                showBranchPicker   = false,
+                error              = null
+            )
+        }
+        loadTerminalForCurrentBranch()
+    }
+
+    fun onShowBranchPicker() {
+        if (_state.value.canSelectBranch) {
+            _state.update { it.copy(showBranchPicker = true) }
+        }
+    }
+
+    fun onDismissBranchPicker() {
+        _state.update { it.copy(showBranchPicker = false) }
+    }
+
+    fun validateBranch(): Boolean {
+        val s = _state.value
+        if (s.availableBranches.isNotEmpty() && s.selectedBranchId == null) {
+            _state.update { it.copy(error = "Please select a branch for this sale") }
+            return false
+        }
+        return true
+    }
+
+    private fun loadProducts() {
+        viewModelScope.launch {
+            val businessId = currentSession?.businessId
+            businessId?.let { getProductsUseCase(it) }?.collect { result ->
+                when (result) {
+                    is Resource.Loading -> _state.update { it.copy(isLoading = true) }
+                    is Resource.Success -> {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                products = result.data ?: emptyList(),
+                                error = null
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        _state.update { it.copy(isLoading = false, error = result.message) }
+                        _events.emit(CheckoutEvent.ShowError(result.message ?: "An error occurred"))
+                    }
+                }
+            }
+        }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+    }
+
+    fun onCategoryFilterChanged(category: String?) {
+        _state.update { it.copy(selectedCategory = category) }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+            loadProducts()
+            if (currentSession?.isAdmin == true || currentSession?.isManager == true) {
+                loadBranches()
+            }
+            _state.update { it.copy(isRefreshing = false) }
+        }
+    }
+
+    val filteredProducts: StateFlow<List<ProductWithVariants>> =
+        state.map { s ->
+            s.products.filter { p ->
+                val matchesSearch = s.searchQuery.isBlank() ||
+                        p.product.name.contains(s.searchQuery, ignoreCase = true) ||
+                        p.product.category?.contains(s.searchQuery, ignoreCase = true) == true
+
+                val matchesCategory = s.selectedCategory == null || s.selectedCategory == "All" ||
+                        p.product.category == s.selectedCategory
+
+                matchesSearch && matchesCategory
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val categories: StateFlow<List<String>> = state.map { s ->
+        listOf("All") + s.products.mapNotNull { it.product.category }.distinct().sorted()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf("All"))
+
+    fun addToCart(product: ProductWithVariants) {
+        _cart.update { currentCart ->
+            val existingItem = currentCart[product.product.id]
+            val updatedCart = currentCart.toMutableMap()
+            if (existingItem != null) {
+                updatedCart[product.product.id] = existingItem.copy(quantity = existingItem.quantity + 1)
+            } else {
+                val variant = product.variants.firstOrNull() ?: return@update currentCart
+                updatedCart[product.product.id] = CartItem(
+                    productId = product.product.id,
+                    variantId = variant.variant.id,
+                    productName = product.product.name,
+                    unitPrice = product.product.baseSalesPrice,
+                    costPrice = product.product.baseCostPrice,
+                    variantSku = variant.variant.sku,
+                    quantity = 1
+                )
+            }
+            updatedCart
+        }
+    }
+
+    fun onBarcodeScanned(barcode: String): Boolean {
+        val product = state.value.products.find { p ->
+            p.variants.any { v -> v.variant.barcode == barcode }
+        }
+        return if (product != null) {
+            addToCart(product)
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ProductAddedByBarcode(product.product.name))
+            }
+            true
+        } else {
+            viewModelScope.launch {
+                _events.emit(CheckoutEvent.ShowError("Product not found for barcode: $barcode"))
+            }
+            false
+        }
+    }
+
+    fun removeFromCart(productId: String) {
+        _cart.update { currentCart ->
+            val existingItem = currentCart[productId] ?: return@update currentCart
+            val updatedCart = currentCart.toMutableMap()
+            if (existingItem.quantity > 1) {
+                updatedCart[productId] = existingItem.copy(quantity = existingItem.quantity - 1)
+            } else {
+                updatedCart.remove(productId)
+            }
+            updatedCart
+        }
+    }
+
+    fun setDiscount(amount: Long) {
+        _state.update { it.copy(discountAmount = amount) }
+    }
+
+    fun setCustomer(customerId: String?, customer: CustomerEntity? = null) {
+        _state.update { it.copy(selectedCustomerId = customerId, selectedCustomer = customer) }
+    }
+
+    fun setPaymentMethod(method: PaymentMethod) {
+        _state.update {
+            it.copy(
+                paymentMethod = method,
+                amountPaid = 0L,
+                showCustomerSelector = method in listOf(PaymentMethod.DEBT, PaymentMethod.SPLIT)
+            )
+        }
+        // Reset split amounts when switching methods
+        if (method != PaymentMethod.SPLIT) {
+            _splitCashAmount.value = 0L
+            _splitTransferAmount.value = 0L
+        }
+    }
+
+    fun setAmountPaid(amount: Long) {
+        _state.update { it.copy(amountPaid = amount) }
+    }
+
+    fun setSplitAmounts(cashAmount: Long, transferAmount: Long) {
+        _splitCashAmount.value = cashAmount
+        _splitTransferAmount.value = transferAmount
+        _state.update { it.copy(amountPaid = cashAmount + transferAmount) }
+    }
+
+    fun onCustomerSearchChanged(query: String) {
+        _customerSearchQuery.value = query
+    }
+
+    fun clearCustomer() {
+        _state.update {
+            it.copy(selectedCustomerId = null, selectedCustomer = null, showCustomerSelector = false)
+        }
+        _customerSearchQuery.value = ""
+    }
+
+    fun confirmCustomerSelection() {
+        _state.update { it.copy(showCustomerSelector = false) }
+    }
+
+    fun clearCart() {
+        _cart.value = emptyMap()
+        _state.update { it.copy(
+            discountAmount = 0L,
+            amountPaid = 0L,
+            selectedCustomerId = null,
+            selectedCustomer = null,
+            paymentMethod = PaymentMethod.CASH,
+            showCustomerSelector = false
+        ) }
+        _splitCashAmount.value = 0L
+        _splitTransferAmount.value = 0L
+        _customerSearchQuery.value = ""
+    }
+
+    fun checkout(notes: String? = null, transferType: TransferType? = null) {
+        val currentCartMap = _cart.value
+        if (currentCartMap.isEmpty()) return
+
+        val s = _state.value
+        if (s.isLoading) return
+
+        if (!validateBranch()) return
+
+        // Validate based on payment method
+        when (s.paymentMethod) {
+            PaymentMethod.DEBT -> {
+                if (s.selectedCustomerId == null) {
+                    viewModelScope.launch {
+                        _events.emit(CheckoutEvent.ShowError("Customer required for debt payment"))
+                    }
+                    return
+                }
+            }
+            PaymentMethod.SPLIT -> {
+                if (s.selectedCustomerId == null) {
+                    viewModelScope.launch {
+                        _events.emit(CheckoutEvent.ShowError("Customer required for split payment"))
+                    }
+                    return
+                }
+                val totalPaid = _splitCashAmount.value + _splitTransferAmount.value
+                val totalAmount = cartTotal.value - s.discountAmount
+                if (totalPaid < totalAmount) {
+                    viewModelScope.launch {
+                        _events.emit(CheckoutEvent.ShowError("Split amounts must cover the total"))
+                    }
+                    return
+                }
+            }
+            else -> {}
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+
+            val cartItemsList = currentCartMap.values.toList()
+
+            val subtotal = cartItemsList.sumOf { it.totalPrice }
+            val total = maxOf(0L, subtotal - s.discountAmount)
+            val taxAmount = (total * (s.taxRate / 100)).toLong()
+            // Calculate effective paid amount based on payment method
+            val effectivePaid = when (s.paymentMethod) {
+                PaymentMethod.CASH,
+                PaymentMethod.CARD,
+                PaymentMethod.TRANSFER -> if (s.amountPaid <= 0L) total else s.amountPaid
+                PaymentMethod.DEBT -> 0L
+                PaymentMethod.SPLIT -> _splitCashAmount.value + _splitTransferAmount.value
+                PaymentMethod.POS,
+                PaymentMethod.USSD -> if (s.amountPaid <= 0L) total else s.amountPaid
+            }
+
+            Log.d("CheckoutVM", "SeletedBranchId: ${s.selectedBranchId}")
+            Log.d("CheckoutVM", "Payment Method: ${s.paymentMethod}")
+
+            if (s.selectedBranchId == null) return@launch
+            val result = processSaleUseCase(
+                cart = cartItemsList,
+                customerId = s.selectedCustomerId,
+                branchId = s.selectedBranchId,
+                amountPaid = effectivePaid,
+                paymentMethod = s.paymentMethod,
+                discountAmount = s.discountAmount,
+                notes = notes,
+                staffId = sessionManager.userId,
+                taxAmount = taxAmount,
+                transferType = transferType
+            )
+
+            when (result) {
+                is Resource.Success -> {
+                    _state.update { it.copy(isLoading = false) }
+                    val response = result.data
+                    val saleId = response?.saleId ?: ""
+                    val change = maxOf(0L, effectivePaid - total)
+
+                    if (response?.paymentStatus == "AWAITING_PAYMENT") {
+                        val terminal = _currentTerminal.value
+                        _events.emit(
+                            CheckoutEvent.AwaitingTransfer(
+                                saleId = response.saleId,
+                                totalAmount = if (_state.value.amountPaid > 0) _state.value.amountPaid else total,
+                                paymentReference = response.paymentReference ?: "",
+                                virtualAccountNumber = terminal?.nombaVirtualAccountNumber ?: "",
+                                virtualAccountBank = terminal?.nombaVirtualAccountBank ?: "",
+                                virtualAccountName = terminal?.nombaVirtualAccountName ?: ""
+                            )
+                        )
+                    } else {
+                        _events.emit(CheckoutEvent.SaleCompleted(
+                            saleId = saleId,
+                            change = change,
+                            debtAmount = result.data?.debtAmount ?: 0L,
+                            customer = s.selectedCustomer?.firstName ?: ""
+                        ))
+
+                        completePayment(saleId, effectivePaid, change)
+                        clearCart()
+                    }
+                }
+                is Resource.Error -> {
+                    _state.update { it.copy(isLoading = false, error = result.message) }
+                    _events.emit(CheckoutEvent.ShowError(result.message ?: "Sale failed"))
+                }
+                else -> {
+                    _state.update { it.copy(isLoading = false) }
+                }
+            }
+        }
+    }
+
+    fun onCustomerCreated(customerId: String) {
+        viewModelScope.launch {
+            getCustomerDetailUseCase(customerId).collect { result ->
+                when (result) {
+                    is Resource.Success -> {
+                        result.data?.let { customer ->
+                            _newlyCreatedCustomer.value = customer
+                            setCustomer(customer.id, customer)
+                        }
+                    }
+                    is Resource.Error -> {
+                        _events.emit(CheckoutEvent.ShowError("Failed to load customer: ${result.message}"))
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    fun clearNewlyCreatedCustomer() {
+        _newlyCreatedCustomer.value = null
+    }
+
+    private suspend fun completePayment(
+        saleId: String,
+        amountPaid: Long,
+        change: Long
+    ) {
+        val s = state.value
+        val currentCartList = _cart.value.values.toList()
+        val subtotal = currentCartList.sumOf { it.unitPrice * it.quantity }
+        val total = maxOf(0L, subtotal - s.discountAmount)
+        val receiptNumber = receiptNumberGenerator.generate()
+
+        val completedSale = CompletedSale(
+            saleId = saleId,
+            receiptNumber = receiptNumber,
+            salesPerson = currentSession?.fullName ?: "Staff",
+            paymentMethod = s.paymentMethod.name,
+            subtotal = subtotal,
+            discount = s.discountAmount,
+            total = total,
+            amountPaid = amountPaid,
+            change = change,
+            cartItems = currentCartList,
+            customer = s.selectedCustomer,
+            splitPayments = buildSplitPayments(),
+            createdAt = System.currentTimeMillis(),
+            businessName = currentSession?.businessName ?: "",
+            businessAddress = currentSession?.businessAddress ?: "",
+            businessNumber = currentSession?.businessName ?: "",
+            taxRate = s.taxRate,
+            footerMessage = s.footerMessage
+        )
+
+        val receipt = generateReceiptUseCase(completedSale)
+
+        _events.emit(CheckoutEvent.ReceiptReady(receipt))
+
+    }
+
+    private fun buildSplitPayments(): List<SplitPayment> {
+        return if (state.value.paymentMethod == PaymentMethod.SPLIT) {
+            val list = mutableListOf<SplitPayment>()
+            if (_splitCashAmount.value > 0) {
+                list.add(SplitPayment("CASH", _splitCashAmount.value))
+            }
+            if (_splitTransferAmount.value > 0) {
+                list.add(SplitPayment("TRANSFER", _splitTransferAmount.value))
+            }
+            list
+        } else emptyList()
+    }
+
+    sealed class CheckoutEvent {
+        data class ShowError(val message: String) : CheckoutEvent()
+
+        data class ReceiptReady(
+            val receipt: ReceiptData
+        ) : CheckoutEvent()
+
+        data class SaleCompleted(
+            val saleId: String,
+            val change: Long,
+            val debtAmount: Long,
+            val customer: String
+        ) : CheckoutEvent()
+
+        data class AwaitingTransfer(
+            val saleId: String,
+            val totalAmount: Long,
+            val paymentReference: String,
+            val virtualAccountNumber: String,
+            val virtualAccountBank: String,
+            val virtualAccountName: String
+        ) : CheckoutEvent()
+
+        data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()
+    }
+
+
+}
+
+data class TransferDetails(
+    val accountNumber: String,
+    val bankName: String,
+    val accountName: String,
+    val transferType: TransferType,
+)
+
+data class NewSaleUiState(
+    val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val products: List<ProductWithVariants> = emptyList(),
+    val searchQuery: String = "",
+    val selectedCategory: String? = "All",
+    val error: String? = null,
+
+    // Checkout related
+    val discountAmount: Long = 0L,
+    val amountPaid: Long = 0L,
+    val selectedCustomerId: String? = null,
+    val selectedCustomer: CustomerEntity? = null,
+    val paymentMethod: PaymentMethod = PaymentMethod.CASH,
+    val showCustomerSelector: Boolean = false,
+    val footerMessage: String? = null,
+    val taxRate: Double = 0.0,
+
+    val selectedBranchId: String?         = null,
+    val selectedBranchName: String?       = null,
+    val availableBranches: List<BranchEntity> = emptyList(),
+    val canSelectBranch: Boolean          = false,
+    val showBranchPicker: Boolean         = false,
+    val branchRequired: Boolean           = false,
+)

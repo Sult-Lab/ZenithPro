@@ -34,8 +34,6 @@ class CustomerRepositoryImpl(
     private val networkMonitor: NetworkMonitor,
 ) : CustomerRepository {
 
-    // ── Observe ────────────────────────────────────────────────────
-
     override fun getCustomers(businessId: String) =
         customerDao.getAllCustomers(businessId)
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }
@@ -160,6 +158,10 @@ class CustomerRepositoryImpl(
 
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
+            if (businessId.isBlank()) {
+                Log.e("CustomerRepo", "pullFromServer: businessId is blank")
+                return@withContext Resource.Error("Business ID is missing")
+            }
             try {
                 val remote = postgrest
                     .from("customers")
@@ -191,6 +193,7 @@ class CustomerRepositoryImpl(
 
                 Resource.Success(Unit)
             } catch (e: Exception) {
+                Log.e("CustomerRepo", "pullFromServer error: ${e.message}", e)
                 Resource.Error(e.message ?: "Pull failed")
             }
         }
@@ -215,6 +218,7 @@ class CustomerRepositoryImpl(
             data class UpsertResponse(val customerId: String, val updatedAt: String)
 
             val result = response.body<UpsertResponse>()
+            Log.d("CustomerRepo", "pushCustomer: $result")
             customerDao.markSynced(entity.id, result.updatedAt)
             Log.d("CustomerRepo", "pushCustomer: synced ${entity.id}")
         } catch (e: Exception) {

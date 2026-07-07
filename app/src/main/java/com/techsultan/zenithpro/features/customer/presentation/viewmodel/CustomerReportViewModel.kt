@@ -24,7 +24,14 @@ class CustomerReportsViewModel(
     private val _state = MutableStateFlow(CustomerReportsUiState())
     val state: StateFlow<CustomerReportsUiState> = _state.asStateFlow()
 
-    val session = sessionManager.currentSession
+    val session get() = sessionManager.currentSession
+    val businessId get() = session?.businessId
+
+    init {
+        viewModelScope.launch {
+            businessId?.let { load(it) }
+        }
+    }
 
     fun load(businessId: String) {
         viewModelScope.launch {

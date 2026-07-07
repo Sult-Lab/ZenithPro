@@ -1,7 +1,11 @@
 package com.techsultan.zenithpro.features.sales.domain.use_case
 
+import android.util.Log
+import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.PaymentReferenceGenerator
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.sales.PaymentMethod
+import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleRequest
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleResponse
@@ -9,31 +13,60 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import java.util.UUID
 
-class ProcessSaleUseCase(private val repository: SaleRepository) {
+class ProcessSaleUseCase(
+    private val repository: SaleRepository,
+    private val sessionManager: SessionManager
+) {
     suspend operator fun invoke(
         cart: List<CartItem>,
         customerId: String?,
         branchId: String?,
+        staffId: String,
         amountPaid: Long,
         paymentMethod: PaymentMethod,
         discountAmount: Long = 0L,
         taxAmount: Long = 0L,
-        notes: String? = null
+        notes: String? = null,
+        transferType: TransferType? = null
     ): Resource<ProcessSaleResponse> {
         if (cart.isEmpty()) return Resource.Error("Cart is empty")
         if (amountPaid < 0) return Resource.Error("Invalid payment amount")
 
         val subtotal = cart.sumOf { it.totalPrice }
-        val total = subtotal - discountAmount + taxAmount
+        val total    = maxOf(0L, subtotal - discountAmount + taxAmount)
 
         if (paymentMethod == PaymentMethod.DEBT && customerId == null) {
             return Resource.Error("Select a customer for debt sales")
         }
 
+
+        val effectiveAmountPaid = when (paymentMethod) {
+            PaymentMethod.CASH,
+            PaymentMethod.TRANSFER -> if (amountPaid <= 0L) total else amountPaid
+            PaymentMethod.DEBT     -> 0L
+            PaymentMethod.SPLIT    -> amountPaid
+            PaymentMethod.POS -> if (amountPaid <= 0L) total else amountPaid
+            PaymentMethod.USSD -> if (amountPaid <= 0L) total else amountPaid
+            PaymentMethod.CARD -> if (amountPaid <= 0L) total else amountPaid
+        }
+
+        val change = maxOf(0L, effectiveAmountPaid - total)
+
+        val paymentReference = if (paymentMethod == PaymentMethod.TRANSFER) {
+            val counter = repository.getNextSaleCounter(sessionManager.businessId)
+            PaymentReferenceGenerator.generate(counter)
+        } else null
+
+        Log.d("ProcessSaleUseCase",
+            "total=$total effectiveAmountPaid=$effectiveAmountPaid " +
+                    "change=$change method=${paymentMethod.name}"
+        )
+
         val request = ProcessSaleRequest(
             clientTransactionId = UUID.randomUUID().toString(),
             branchId = branchId,
             customerId = customerId,
+            staffId = staffId,
             items = cart.map { item ->
                 SaleItemRequest(
                     variantId = item.variantId,
@@ -50,12 +83,14 @@ class ProcessSaleUseCase(private val repository: SaleRepository) {
             discountAmount = discountAmount,
             taxAmount = taxAmount,
             totalAmount = total,
-            amountPaid = amountPaid,
-            changeAmount = maxOf(0L, amountPaid - total),
+            amountPaid = effectiveAmountPaid,
+            changeAmount = change,
             paymentMethod = paymentMethod.name,
-            notes = notes
+            notes = notes,
+            paymentReference = paymentReference,
+            transferType = transferType?.name
         )
-
+        Log.d("ProcessSaleUseCase", request.toString())
         return repository.processSale(request, cart)
     }
 }

@@ -9,11 +9,37 @@ enum class PaymentMethod {
     POS,
     USSD,
     SPLIT,
-    DEBT
+    DEBT,
+    CARD
 }
 enum class SaleStatus { COMPLETED, PARTIAL, REFUNDED, CANCELLED }
+
+enum class TransferType {
+    MANUAL,
+    NOMBA;
+
+    val isAutoConfirm: Boolean get() = this == NOMBA
+    val displayLabel: String get() = when (this) {
+        MANUAL -> "Manual Transfer"
+        NOMBA  -> "Nomba (Auto-confirm)"
+    }
+}
+
+enum class PaymentStep {
+    CART,           // viewing cart
+    SELECT_CUSTOMER, // searching/selecting customer
+    PAYMENT,        // entering payment details
+    CONFIRM         // review before submitting
+}
 
 fun Long.formatAmount(): String = NumberFormat
     .getNumberInstance(Locale("en", "NG"))
     .apply { maximumFractionDigits = 0 }
     .format(this)
+
+fun generateReceiptNumber(): String {
+
+    val timestamp = System.currentTimeMillis()
+
+    return "RCP-${timestamp.toString().takeLast(6)}"
+}

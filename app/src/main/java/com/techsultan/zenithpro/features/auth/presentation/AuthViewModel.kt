@@ -7,13 +7,16 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
-import com.techsultan.zenithpro.features.auth.domain.use_case.CreateStaffUseCase
+import com.techsultan.zenithpro.features.settings.domain.use_case.CreateStaffUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.IsUserLoggedInUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.LoginUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.SignUpUseCase
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 class AuthViewModel(
     private val signUpUseCase: SignUpUseCase,
@@ -32,11 +35,15 @@ class AuthViewModel(
     private val _createStaffState = mutableStateOf(AuthState())
     val createStaffState: State<AuthState> = _createStaffState
 
+    private val _events = MutableSharedFlow<AuthEvent>()
+    val events = _events.asSharedFlow()
+
     fun signUp(request: SignUpRequest) {
         signUpUseCase(request).onEach { result ->
             when (result) {
                 is Resource.Success -> {
                     _signUpState.value = AuthState(isSuccess = true)
+                    _events.emit(AuthEvent.SignUpSuccess)
                 }
                 is Resource.Error -> {
                     _signUpState.value = AuthState(error = result.message ?: "An unexpected error occurred")
@@ -53,6 +60,11 @@ class AuthViewModel(
             when (result) {
                 is Resource.Success -> {
                     _loginState.value = AuthState(isSuccess = true)
+                    val event = if (result.data == true)
+                        AuthEvent.LoginSuccessMustChangePassword
+                    else
+                        AuthEvent.LoginSuccess
+                    _events.emit(event)
                 }
                 is Resource.Error -> {
                     _loginState.value = AuthState(error = result.message ?: "An unexpected error occurred")
@@ -64,33 +76,17 @@ class AuthViewModel(
         }.launchIn(viewModelScope)
     }
 
-    fun createStaff(
-        email: String,
-        firstName: String,
-        lastName: String,
-        role: String,
-        temporaryPassword: String
-    ) {
-        createStaffUseCase(email, firstName, lastName, role, temporaryPassword).onEach { result ->
-            when (result) {
-                is Resource.Success -> {
-                    _createStaffState.value = AuthState(isSuccess = true, data = result.data)
-                }
-                is Resource.Error -> {
-                    _createStaffState.value = AuthState(error = result.message ?: "An unexpected error occurred")
-                }
-                is Resource.Loading -> {
-                    _createStaffState.value = AuthState(isLoading = true)
-                }
-            }
-        }.launchIn(viewModelScope)
-    }
-
     fun logout() {
         logoutUseCase().launchIn(viewModelScope)
     }
 
     fun isUserLoggedIn(): Boolean {
         return isUserLoggedInUseCase()
+    }
+
+    sealed class AuthEvent {
+        object LoginSuccess : AuthEvent()
+        object SignUpSuccess : AuthEvent()
+        object LoginSuccessMustChangePassword : AuthEvent()
     }
 }

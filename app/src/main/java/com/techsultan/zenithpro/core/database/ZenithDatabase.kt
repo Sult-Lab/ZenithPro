@@ -5,27 +5,35 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.category.data.local.CategoryDao
+import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.customer.data.local.CustomerDao
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
+import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.material.data.local.MaterialDao
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
 import com.techsultan.zenithpro.features.material.data.local.RecipeEntity
-import com.techsultan.zenithpro.features.product.data.local.ProductDao
-import com.techsultan.zenithpro.features.product.data.local.ProductEntity
-import com.techsultan.zenithpro.features.product.data.local.ProductStockDao
-import com.techsultan.zenithpro.features.product.data.local.ProductStockEntity
-import com.techsultan.zenithpro.features.product.data.local.ProductVariantDao
-import com.techsultan.zenithpro.features.product.data.local.ProductVariantEntity
-import com.techsultan.zenithpro.features.product.data.local.VariantAttributeEntity
+import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductEntity
+import com.techsultan.zenithpro.features.inventory.data.local.ProductStockDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductStockEntity
+import com.techsultan.zenithpro.features.inventory.data.local.ProductVariantDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductVariantEntity
+import com.techsultan.zenithpro.features.inventory.data.local.VariantAttributeEntity
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderDao
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
+import com.techsultan.zenithpro.features.payment.data.local.PaymentDao
+import com.techsultan.zenithpro.features.sales.data.local.PaymentEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsDao
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEntity
+import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
+import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 
 @Database(
     entities = [
@@ -41,9 +49,13 @@ import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEnt
         BranchEntity::class,
         MaterialEntity::class,
         RecipeEntity::class,
-        ProductionOrderEntity::class
+        ProductionOrderEntity::class,
+        CategoryEntity::class,
+        DebtPaymentEntity::class,
+        TerminalEntity::class,
+        PaymentEntity::class
                ],
-    version = 5,
+    version = 11,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -58,6 +70,10 @@ abstract class ZenithDatabase : RoomDatabase() {
     abstract val businessSettingsDao: BusinessSettingsDao
     abstract val materialDao: MaterialDao
     abstract val productionOrderDao: ProductionOrderDao
+    abstract val categoryDao: CategoryDao
+    abstract val debtPaymentDao: DebtPaymentDao
+    abstract val terminalDao: TerminalDao
+    abstract val paymentDao: PaymentDao
 
     companion object {
         const val DATABASE_NAME = "zenith_db"

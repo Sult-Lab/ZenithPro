@@ -5,7 +5,7 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
 import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRepository
-import com.techsultan.zenithpro.features.product.domain.repository.ProductRepository
+import com.techsultan.zenithpro.features.inventory.domain.repository.ProductRepository
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import kotlinx.coroutines.Dispatchers

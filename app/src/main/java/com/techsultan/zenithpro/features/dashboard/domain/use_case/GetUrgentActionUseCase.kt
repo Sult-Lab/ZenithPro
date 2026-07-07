@@ -1,6 +1,6 @@
 package com.techsultan.zenithpro.features.dashboard.domain.use_case
 
-import com.techsultan.zenithpro.features.product.data.local.ProductDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
 
 class GetUrgentActionsUseCase(
     private val productDao: ProductDao,

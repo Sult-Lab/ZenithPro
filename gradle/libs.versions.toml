@@ -21,6 +21,12 @@ supabase = "3.3.0"
 core-splash-screen = "1.0.1"
 coil = "2.7.0"
 dataStore = "1.1.1"
+mlkit-barcode-scanning = "17.3.0"
+camerax = "1.4.1"
+dantSuPos = "3.3.0"
+cameraMlkitVision = "1.6.1"
+zxing = "3.5.4"
+work = "2.10.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -55,6 +61,7 @@ koin-core = { module = "io.insert-koin:koin-core" }
 koin-navigation = { group = "io.insert-koin", name = "koin-androidx-navigation" }
 koin-compose = { group = "io.insert-koin", name = "koin-androidx-compose" }
 koin-android = { group = "io.insert-koin", name = "koin-android" }
+koin-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager" }
 androidx-room = { group = "androidx.room", name = "room-runtime", version.ref = "room_version"}
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room_version" }
 androidx-room-coroutine = { group = "androidx.room", name= "room-ktx", version.ref = "room_version" }
@@ -66,6 +73,15 @@ supabase-storage = { group = "io.github.jan-tennert.supabase", name = "storage-k
 core-splashscreen = {group = "androidx.core", name = "core-splashscreen", version.ref = "core-splash-screen"}
 io-coil = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 data-store = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "dataStore" }
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode-scanning" }
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+dantsu-eco-pos = {group = "com.github.DantSu", name = "ESCPOS-ThermalPrinter-Android",  version.ref = "dantSuPos"}
+camera-mlkit-vision = { group = "androidx.camera", name = "camera-mlkit-vision", version.ref = "cameraMlkitVision" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -74,4 +90,3 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization"}
 ksp = {id = "com.google.devtools.ksp", version.ref = "ksp"}
 room = { id = "androidx.room",  version.ref = "room_version"}
-

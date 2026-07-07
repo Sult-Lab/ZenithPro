@@ -5,20 +5,25 @@ import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.SessionDataStore
 import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.data.remote.UserProfileDto
+import com.techsultan.zenithpro.core.util.BusinessLogoManager
+import com.techsultan.zenithpro.features.branch.data.remote.BranchDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
+import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
+import java.util.Objects.isNull
 
-// data/session/SessionManager.kt
 class SessionManager(
     private val sessionDataStore: SessionDataStore,
     private val postgrest: Postgrest,
-    private val supabaseClient: SupabaseClient,
+    private val auth: Auth,
+    private val logoManager: BusinessLogoManager
 ) {
 
     @Volatile
@@ -35,8 +40,10 @@ class SessionManager(
 
         // Try DataStore
         val stored = sessionDataStore.getSession()
+        Log.d("SessionManager", "Loaded session from DataStore: $stored")
         if (stored != null) {
             _currentSession = stored
+            logoManager.loadLogo(stored.businessLogoUrl)
             return stored
         }
 
@@ -53,14 +60,13 @@ class SessionManager(
             val profile = withContext(Dispatchers.IO) {
                 postgrest
                     .from("user_profiles")
-                    .select()
-                    .decodeList<UserProfileDto>()
-                    .firstOrNull()
-                    ?: throw Exception("User profile not found")
+                    .select { filter { eq("id", userId) } }
+                    .decodeSingle<UserProfileDto>()
             }
+            Log.d("SessionManager", "Loaded profile: $profile")
 
             if (profile.status != "ACTIVE") {
-                supabaseClient.auth.signOut()
+                auth.signOut()
                 return Result.failure(Exception("Account is inactive"))
             }
 
@@ -80,6 +86,53 @@ class SessionManager(
                 }
             }.getOrNull()
 
+            // Fetch all active branches for this business
+            val branches = withContext(Dispatchers.IO) {
+                postgrest
+                    .from("branches")
+                    .select {
+                        filter {
+                            eq("business_id", profile.businessId)
+                            isNull("deleted_at")
+                            eq("is_active", true)
+                        }
+                    }
+                    .decodeList<BranchDto>()
+            }
+            Log.d("SessionManager", "Fetched ${branches.size} branches")
+
+            // Branch resolution — only admins have null branchId
+            // For staff: use their assigned branch, or auto-resolve if only one branch exists
+            val resolvedBranchId: String?
+            val resolvedBranchName: String?
+
+            when {
+                profile.role == "ADMIN" -> {
+                    // Admin sees all branches — no fixed branch
+                    resolvedBranchId   = null
+                    resolvedBranchName = null
+                }
+                profile.branchId != null -> {
+                    // Staff explicitly assigned to a branch
+                    val branch = branches.firstOrNull { it.id == profile.branchId }
+                    resolvedBranchId   = branch?.id ?: profile.branchId
+                    resolvedBranchName = branch?.name
+                    Log.d("SessionManager", "Staff assigned to branch: $resolvedBranchName")
+                }
+                branches.size == 1 -> {
+                    // Staff not assigned but only one branch — auto-assign
+                    resolvedBranchId   = branches.first().id
+                    resolvedBranchName = branches.first().name
+                    Log.d("SessionManager", "Auto-resolved single branch: $resolvedBranchName")
+                }
+                else -> {
+                    // Multiple branches, staff not assigned — they'll pick at checkout
+                    resolvedBranchId   = null
+                    resolvedBranchName = null
+                    Log.w("SessionManager", "Staff has no branch and multiple branches exist")
+                }
+            }
+
             val session = UserSession(
                 userId          = userId,
                 businessId      = profile.businessId,
@@ -90,31 +143,56 @@ class SessionManager(
                 businessName    = business.name,
                 businessPhone   = business.phone,
                 businessAddress = business.address,
+                mustChangePassword = profile.mustChangePassword,
                 currencySymbol  = settings?.currencySymbol ?: "₦",
-                branchId        = if (profile.role == "ADMIN") null else profile.branchId
+                currencyCode    = business.currencyCode.ifBlank { settings?.currencyCode ?: "NGN" },
+                branchId        = resolvedBranchId,
+                branchName      = resolvedBranchName,
+                businessType    = business.type,
+                businessEmail   = business.email,
+                businessLogoUrl = business.logoUrl,
             )
 
+            logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
+            Log.d("SessionManager", "Session initialized: ${session.fullName} branch=${session.branchName}")
             Result.success(session)
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)
             Result.failure(e)
         }
     }
 
+    suspend fun updateBusinessInSession(response: UpdateBusinessResponse) {
+        val current = _currentSession ?: return
+        val updated = current.copy(
+            businessName    = response.name,
+            businessType    = response.type,
+            businessPhone   = response.phone,
+            businessAddress = response.address,
+            businessEmail   = response.email,
+            businessLogoUrl = response.logoUrl,
+            currencySymbol  = response.currencySymbol,
+            currencyCode    = response.currencyCode
+        )
+        sessionDataStore.saveSession(updated)
+        _currentSession = updated
+        logoManager.loadLogo(updated.businessLogoUrl)
+    }
+
     suspend fun signOut() {
         try {
-            supabaseClient.auth.signOut()
+            auth.signOut()
         } catch (e: Exception) {
             Log.w("SessionManager", "Supabase sign out failed: ${e.message}")
         } finally {
             sessionDataStore.clearSession()
             _currentSession = null
+            logoManager.clear()
         }
     }
-
-    // ── Convenience getters — crash early if called before login ──
 
     val userId: String
         get() = _currentSession?.userId
