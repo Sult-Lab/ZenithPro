@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +45,7 @@ import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailVie
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
+import com.techsultan.zenithpro.features.sales.presentation.NombaTransferScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SaleDetailScreen
@@ -197,6 +197,7 @@ fun MainNavGraph(
                                 onSaleClick = { navigator.navigate(Route.Home.SaleDetail(it)) },
                                 onNewSale = { navigator.navigate(Route.Home.NewSale) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
+                                onNombaClick = { navigator.navigate(Route.Home.NombaTransferScreen)},
                                 onReceiptPreview = { receipt ->
                                     receiptViewModel.setReceipt(receipt)
                                     navigator.navigate(Route.Home.ReceiptPreview)
@@ -261,10 +262,7 @@ fun MainNavGraph(
                                     receiptViewModel.setReceipt(receipt)
                                     navigator.navigate(Route.Home.ReceiptPreview)
                                 },
-                                onAwaitingTransferConfirmed = { saleId ->
-                                    navigator.navigate(Route.Home.SaleDetail(saleId))
-                                },
-                                session = session
+
                             )
                         }
                         entry<Route.Home.AddProduct> {
@@ -396,6 +394,11 @@ fun MainNavGraph(
                             SaleDetailScreen(
                                 saleId = key.saleId,
                                 businessId = session?.businessId ?: "",
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.NombaTransferScreen> {
+                            NombaTransferScreen(
                                 onBack = { navigator.goBack() }
                             )
                         }

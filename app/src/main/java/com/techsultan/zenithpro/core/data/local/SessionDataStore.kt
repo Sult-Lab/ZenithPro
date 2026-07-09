@@ -30,6 +30,7 @@ object SessionKeys {
     val BUSINESS_EMAIL = stringPreferencesKey("business_email")
     val BUSINESS_LOGO_URL = stringPreferencesKey("business_logo_url")
     val CURRENCY_CODE = stringPreferencesKey("currency_code")
+    val TERMINAL_ID = stringPreferencesKey("terminal_id")
 }
 
 class SessionDataStore(private val context: Context) {
@@ -55,6 +56,7 @@ class SessionDataStore(private val context: Context) {
                 prefs[SessionKeys.BUSINESS_EMAIL]    = session.businessEmail ?: ""
                 prefs[SessionKeys.BUSINESS_LOGO_URL] = session.businessLogoUrl ?: ""
                 prefs[SessionKeys.CURRENCY_CODE]     = session.currencyCode
+                prefs[SessionKeys.TERMINAL_ID]       = session.terminalId ?: ""
             }
             Log.d("SessionDataStore", "Session saved successfully for user: ${session.userId}")
         } catch (e: Exception) {
@@ -98,6 +100,7 @@ class SessionDataStore(private val context: Context) {
             businessEmail = prefs[SessionKeys.BUSINESS_EMAIL]?.ifBlank { null },
             businessLogoUrl = prefs[SessionKeys.BUSINESS_LOGO_URL]?.ifBlank { null },
             currencyCode = prefs[SessionKeys.CURRENCY_CODE] ?: "NGN",
+            terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null }
         )
     }
 
@@ -129,6 +132,7 @@ class SessionDataStore(private val context: Context) {
                 businessEmail = prefs[SessionKeys.BUSINESS_EMAIL]?.ifBlank { null },
                 businessLogoUrl = prefs[SessionKeys.BUSINESS_LOGO_URL]?.ifBlank { null },
                 currencyCode = prefs[SessionKeys.CURRENCY_CODE] ?: "NGN",
+                terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null }
             )
         }
 }

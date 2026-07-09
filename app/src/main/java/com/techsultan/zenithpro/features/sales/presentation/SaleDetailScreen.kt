@@ -110,19 +110,6 @@ fun SaleDetailScreen(
             contentPadding  = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // ── Awaiting transfer panel (only when AWAITING_PAYMENT) ──
-            if (sale.paymentStatus == "AWAITING_PAYMENT") {
-                item {
-                    AwaitingTransferPanel(
-                        sale        = sale,
-                        isPolling   = state.isPolling
-                    )
-                }
-            } else if (sale.paymentMethod == PaymentMethod.TRANSFER &&
-                sale.paymentStatus == "COMPLETED") {
-                item { TransferConfirmedBanner(sale = sale) }
-            }
-
             // ── Sale summary ──────────────────────────────────────────
             item {
                 SaleSummaryCard(saleWithItems = state.saleWithItems!!)
@@ -206,115 +193,6 @@ private fun AwaitingTransferPanel(
 
             HorizontalDivider(color = Color(0xFFFFB300).copy(alpha = 0.2f))
 
-            // Virtual account details
-            sale.virtualAccountNumber?.let { accNum ->
-                Column(
-                    modifier            = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    TransferDetailRow("Bank", sale.virtualAccountBank ?: "—")
-                    TransferDetailRow(
-                        label    = "Account number",
-                        value    = accNum,
-                        copyable = true,
-                        context  = context
-                    )
-                    TransferDetailRow("Account name", sale.virtualAccountName ?: "—")
-                }
-            }
-
-            // Reference — most prominent
-            sale.paymentReference?.let { ref ->
-                Surface(
-                    shape  = RoundedCornerShape(10.dp),
-                    color  = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier            = Modifier.padding(14.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text("Include in transfer narration",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                .copy(alpha = 0.7f))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(ref,
-                                style         = MaterialTheme.typography.headlineSmall,
-                                fontWeight    = FontWeight.ExtraBold,
-                                color         = MaterialTheme.colorScheme.primary,
-                                letterSpacing = 2.sp)
-                            IconButton(
-                                onClick = {
-                                    val clipboard = context.getSystemService(
-                                        Context.CLIPBOARD_SERVICE
-                                    ) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(
-                                        android.content.ClipData.newPlainText("ref", ref)
-                                    )
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(Icons.Default.ContentCopy, null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint     = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
-            }
-
-            Text(
-                text = "Background monitoring is active. You'll be notified when payment is received.",
-                style     = MaterialTheme.typography.bodySmall,
-                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun TransferConfirmedBanner(sale: SaleEntity) {
-    Surface(
-        shape  = RoundedCornerShape(12.dp),
-        color  = Color(0xFF388E3C).copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, Color(0xFF388E3C).copy(alpha = 0.3f)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier          = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(Icons.Default.CheckCircle, null,
-                tint     = Color(0xFF388E3C),
-                modifier = Modifier.size(20.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Transfer confirmed",
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = Color(0xFF388E3C))
-                sale.paymentConfirmedAt?.let {
-                    Text(
-                        Instant.parse(it)
-                            .atZone(ZoneId.systemDefault())
-                            .format(DateTimeFormatter.ofPattern("MMM d, yyyy · h:mm a")),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF388E3C).copy(alpha = 0.7f)
-                    )
-                }
-            }
-            sale.paymentReference?.let {
-                Text(it,
-                    style      = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color      = Color(0xFF388E3C))
-            }
         }
     }
 }

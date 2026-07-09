@@ -18,6 +18,7 @@ data class UserSession(
     val businessEmail: String?,
     val businessLogoUrl: String?,
     val currencyCode: String   = "NGN",
+    val terminalId: String? = null
 ) {
     val fullName: String
         get() = "$firstName ${lastName.orEmpty()}".trim()

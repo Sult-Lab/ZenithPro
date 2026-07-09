@@ -55,7 +55,7 @@ import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
         TerminalEntity::class,
         PaymentEntity::class
                ],
-    version = 11,
+    version = 14,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

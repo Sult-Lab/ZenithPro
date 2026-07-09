@@ -8,6 +8,9 @@ import com.techsultan.zenithpro.core.data.remote.UserProfileDto
 import com.techsultan.zenithpro.core.util.BusinessLogoManager
 import com.techsultan.zenithpro.features.branch.data.remote.BranchDto
 import com.techsultan.zenithpro.features.settings.data.remote.BusinessSettingsDto
+import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
+import com.techsultan.zenithpro.features.settings.data.mapper.toEntity
+import com.techsultan.zenithpro.features.settings.data.remote.TerminalDto
 import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
@@ -23,7 +26,8 @@ class SessionManager(
     private val sessionDataStore: SessionDataStore,
     private val postgrest: Postgrest,
     private val auth: Auth,
-    private val logoManager: BusinessLogoManager
+    private val logoManager: BusinessLogoManager,
+    private val terminalDao: TerminalDao
 ) {
 
     @Volatile
@@ -86,6 +90,14 @@ class SessionManager(
                 }
             }.getOrNull()
 
+            val remote = postgrest.from("terminals").select {
+                filter { eq("business_id", profile.businessId) }  // ← use profile.businessId, not businessId
+            }.decodeList<TerminalDto>()
+
+            if (remote.isNotEmpty()) {
+                terminalDao.insertTerminals(remote.map { it.toEntity() })
+            }
+
             // Fetch all active branches for this business
             val branches = withContext(Dispatchers.IO) {
                 postgrest
@@ -132,7 +144,23 @@ class SessionManager(
                     Log.w("SessionManager", "Staff has no branch and multiple branches exist")
                 }
             }
+            // Replace the terminal resolution block with this:
+            val terminal: TerminalDto? = when {
+                // ADMIN — take first active terminal for the business
+                profile.role == "ADMIN" -> {
+                    remote.firstOrNull { it.isActive }
+                }
+                // Staff — find terminal matching their resolved branch
+                resolvedBranchId != null -> {
+                    remote.firstOrNull {
+                        it.branchId == resolvedBranchId && it.isActive
+                    }
+                }
+                else -> null
+            }
 
+            Log.d("SessionManager", "Resolved terminal: ${terminal?.id} " +
+                    "name=${terminal?.name} for branch=$resolvedBranchName")
             val session = UserSession(
                 userId          = userId,
                 businessId      = profile.businessId,
@@ -151,12 +179,20 @@ class SessionManager(
                 businessType    = business.type,
                 businessEmail   = business.email,
                 businessLogoUrl = business.logoUrl,
+                terminalId      = terminal?.id
             )
 
             logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
             Log.d("SessionManager", "Session initialized: ${session.fullName} branch=${session.branchName}")
+
+            ZenithFcmTokenManager.registerTokenForTerminal(
+                postgrest  = postgrest,
+                terminalId = terminal?.id ?: "",
+                businessId = profile.businessId,
+            )
+            Log.d("SessionManager", "FCM token registered for terminal ${terminal?.id}")
             Result.success(session)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
@@ -175,7 +211,8 @@ class SessionManager(
             businessEmail   = response.email,
             businessLogoUrl = response.logoUrl,
             currencySymbol  = response.currencySymbol,
-            currencyCode    = response.currencyCode
+            currencyCode    = response.currencyCode,
+            terminalId      = current.terminalId
         )
         sessionDataStore.saveSession(updated)
         _currentSession = updated

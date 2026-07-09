@@ -126,6 +126,13 @@ fun ReceiptPreviewScreen(
                         containerColor = MaterialTheme.colorScheme.primary,
                         icon = Icons.Default.Print
                     )
+
+                    ZenithButton(
+                        text = stringResource(R.string.done),
+                        onClick = onBack,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
                 }
             }
         }

@@ -2,7 +2,6 @@ package com.techsultan.zenithpro.features.payment.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.payment.data.repository.PaymentRepository
 import com.techsultan.zenithpro.features.payment.domain.repository.TransferPaymentDetails
 import com.techsultan.zenithpro.features.payment.domain.model.PaymentStatus
@@ -16,17 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * Manages the bank transfer payment waiting screen.
- *
- * Flow:
- *  1. CheckoutViewModel calls initiateTransfer() → gets virtual account details
- *  2. UI shows account number + amount to cashier/customer
- *  3. Customer transfers
- *  4. nomba-webhook fires → updates payments + sales on server
- *  5. SyncManager pulls update → Room emits → observePayment() detects SUCCESSFUL
- *  6. ViewModel emits PaymentConfirmed event → UI navigates to receipt
- */
+
 class TransferPaymentViewModel(
     private val paymentRepository: PaymentRepository,
 ) : ViewModel() {
@@ -43,24 +32,6 @@ class TransferPaymentViewModel(
     private var pollJob: Job? = null
 
 
-
-    fun initiateTransfer(
-        saleId: String,
-        businessId: String,
-        terminalId: String?,
-        amount: Long,
-        transferType: TransferType,
-    ) {
-        viewModelScope.launch {
-            _uiState.value = TransferPaymentUiState.Loading
-
-            if (transferType.isAutoConfirm) {
-                handleNombaTransfer(saleId, businessId, terminalId, amount)
-            } else {
-                handleManualTransfer(saleId, businessId, amount)
-            }
-        }
-    }
 
     private suspend fun handleNombaTransfer(
         saleId: String,
@@ -85,28 +56,6 @@ class TransferPaymentViewModel(
                 _uiState.value = TransferPaymentUiState.AwaitingNombaPayment(details)
                 startObservingPayment(details.paymentId, saleId)
                 startPolling(details.paymentId, saleId, businessId)
-            },
-            onFailure = { error ->
-                _uiState.value = TransferPaymentUiState.Error(
-                    error.message ?: "Unable to initiate payment"
-                )
-            }
-        )
-    }
-
-    private suspend fun handleManualTransfer(
-        saleId: String,
-        businessId: String,
-        amount: Long,
-    ) {
-        paymentRepository.initiateManualTransfer(
-            saleId = saleId,
-            businessId = businessId,
-            amount = amount,
-            transferType = TransferType.MANUAL,
-        ).fold(
-            onSuccess = { details ->
-                _uiState.value = TransferPaymentUiState.AwaitingManualConfirmation(details)
             },
             onFailure = { error ->
                 _uiState.value = TransferPaymentUiState.Error(
