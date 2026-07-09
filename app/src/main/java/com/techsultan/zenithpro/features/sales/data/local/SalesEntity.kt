@@ -1,12 +1,24 @@
 package com.techsultan.zenithpro.features.sales.data.local
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
+import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 
-@Entity(tableName = "sales")
+@Entity(
+    tableName = "sales",
+    foreignKeys = [
+        ForeignKey(
+            entity = TerminalEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["terminalId"],
+            onDelete = ForeignKey.SET_NULL  // ← must be SET_NULL not CASCADE
+        )
+    ]
+)
 data class SaleEntity(
     @PrimaryKey val id: String,
     val clientTransactionId: String,

@@ -140,11 +140,11 @@ class SaleRepositoryImpl(
                         productId = item.productId,
                         productName = item.productName,
                         variantSku = item.variantSku,
-                        unitPrice = item.unitPrice * 100,
-                        costPrice = item.costPrice * 100,
+                        unitPrice = item.unitPrice,
+                        costPrice = item.costPrice,
                         quantity = item.quantity,
-                        discount = item.discount * 100,
-                        totalPrice = item.totalPrice * 100
+                        discount = item.discount,
+                        totalPrice = item.totalPrice
                     )
                 }
             )
