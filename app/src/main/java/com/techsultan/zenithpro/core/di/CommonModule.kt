@@ -25,7 +25,7 @@ val commonModule = module {
     single { NetworkMonitor(androidContext()) }
     single { ImageCacheManager(androidContext()) }
     single { FileShareManager(androidContext()) }
-    viewModel { DataPersistentViewModel(get(), get(), get(), get()) }
+    viewModel { DataPersistentViewModel(get(), get(), get(), get(), get()) }
     single { BarcodeLabelFormatter() }
     single { ImageLoader(androidContext()) }
     single { BusinessLogoManager(androidContext(), get()) }

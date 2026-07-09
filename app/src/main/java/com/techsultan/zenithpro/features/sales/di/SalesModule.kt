@@ -1,13 +1,17 @@
 package com.techsultan.zenithpro.features.sales.di
 
-import com.techsultan.zenithpro.core.worker.SalePaymentPollerWorker
+import com.techsultan.zenithpro.features.sales.data.repository.NombaRepositoryImpl
 import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
+import com.techsultan.zenithpro.features.sales.domain.repository.NombaRepository
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetDailySummaryUseCase
+import com.techsultan.zenithpro.features.sales.domain.use_case.GetNombaSummaryUseCase
+import com.techsultan.zenithpro.features.sales.domain.use_case.GetNombaTransfersUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.GetSalesUseCase
 import com.techsultan.zenithpro.features.sales.domain.use_case.ProcessSaleUseCase
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
+import com.techsultan.zenithpro.features.sales.presentation.NombaTransferViewModel
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SaleDetailViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SalesListViewModel
@@ -17,8 +21,6 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val salesModule = module {
-
-    worker { SalePaymentPollerWorker(get(), get(), get()) }
 
     single<SaleRepository> {
         SaleRepositoryImpl(
@@ -33,6 +35,10 @@ val salesModule = module {
         )
     }
 
+    single<NombaRepository> {
+        NombaRepositoryImpl(get(), get())
+    }
+
     viewModel { CheckoutViewModel(
         getProductsUseCase = get(),
         processSaleUseCase = get(),
@@ -44,6 +50,7 @@ val salesModule = module {
         getSettingsUseCase = get(),
         getBranchesUseCase = get(),
         getTerminalsUseCase = get(),
+        saleDao = get()
     ) }
 
     viewModel {
@@ -78,9 +85,20 @@ val salesModule = module {
         )
     }
 
+    viewModel {
+        NombaTransferViewModel(
+            getNombaTransfersUseCase = get(),
+            getNombaSummaryUseCase = get(),
+            nombaRepository = get(),
+            sessionManager = get()
+        )
+    }
+
     factory { ProcessSaleUseCase(get(), get()) }
     factory { GetSalesUseCase(get()) }
     factory { GetDailySummaryUseCase(get()) }
     factory { GenerateReceiptUseCase() }
+    factory { GetNombaTransfersUseCase(get()) }
+    factory { GetNombaSummaryUseCase(get()) }
 
 }

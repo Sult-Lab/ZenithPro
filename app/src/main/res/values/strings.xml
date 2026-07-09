@@ -25,6 +25,7 @@
     <string name="receipt_preview">Receipt Preview</string>
     <string name="share_receipt">Share Receipt</string>
     <string name="print_receipt">Print Receipt</string>
+    <string name="done">Done</string>
     <string name="date_time">DATE/TIME</string>
     <string name="receipt_id">RECEIPT ID</string>
     <string name="subtotal">Subtotal</string>

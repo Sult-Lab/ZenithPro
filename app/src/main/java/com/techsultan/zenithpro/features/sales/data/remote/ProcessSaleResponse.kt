@@ -8,8 +8,6 @@ data class ProcessSaleResponse(
     val status: String,
     val debtAmount: Long,
     val idempotent: Boolean,
-    val paymentReference: String?,
-    val paymentStatus: String,
     val virtualAccountNumber: String? = null,
     val virtualAccountBank: String?   = null,
     val virtualAccountName: String?   = null,

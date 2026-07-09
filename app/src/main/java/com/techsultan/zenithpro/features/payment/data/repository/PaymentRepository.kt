@@ -2,7 +2,6 @@ package com.techsultan.zenithpro.features.payment.data.repository
 
 import com.techsultan.zenithpro.core.data.remote.BusinessDto
 import com.techsultan.zenithpro.core.util.Util
-import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.settings.data.remote.TerminalDto
@@ -91,48 +90,7 @@ class PaymentRepository(
     }
 
     // Manual transfer — no virtual account needed, just create payment record
-    suspend fun initiateManualTransfer(
-        saleId: String,
-        businessId: String,
-        amount: Long,
-        transferType: TransferType,
-    ): Result<TransferPaymentDetails> = runCatching {
-        val paymentId = UUID.randomUUID().toString()
-        val now = Instant.now().toString()
 
-        // Load business bank details from session or business settings
-        val business = supabaseClient.postgrest
-            .from("businesses")
-            .select { filter { eq("id", businessId) } }
-            .decodeSingleOrNull<BusinessDto>()
-            ?: error("Business not found")
-
-        paymentDao.insertPayment(
-            PaymentEntity(
-                id = paymentId,
-                saleId = saleId,
-                businessId = businessId,
-                provider = "MANUAL",
-                status = PaymentStatus.PENDING.name,
-                amount = amount,
-                currency = "NGN",
-                paymentMethod = "TRANSFER",
-                transferType = TransferType.MANUAL.name,
-                syncStatus = Util.SyncStatus.PENDING.name,
-                createdAt = now,
-                updatedAt = now,
-            )
-        )
-
-        TransferPaymentDetails(
-            paymentId = paymentId,
-            accountNumber = business.accountNumber ?: "",
-            bankName = business.bankName ?: "",
-            accountName = business.accountName ?: "",
-            amount = amount,
-            amountDisplay = "₦${String.format("%,.2f", amount / 100.0)}",
-        )
-    }
 
     // Cashier confirms manual payment received
     suspend fun confirmManualPayment(
@@ -143,14 +101,6 @@ class PaymentRepository(
 
         // Update payment locally
         paymentDao.updateStatus(paymentId, PaymentStatus.SUCCESSFUL.name, now)
-
-        // Update sale locally — same pattern as webhook does remotely
-        // SyncManager will push this to Supabase when online
-        saleDao.updateSaleAndPaymentStatus(
-            id = saleId,
-            paymentStatus = "COMPLETED",
-            status = SaleStatus.COMPLETED
-        )
     }
 
     // ── Get payment status from backend ──────────────────────────────────────

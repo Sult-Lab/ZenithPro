@@ -30,34 +30,7 @@ class SaleDetailViewModel(
     fun load(saleId: String, businessId: String) {
         this.saleId = saleId
         viewModelScope.launch {
-            // Observe the sale live — updates when WorkManager confirms payment
-            saleDao.observeSaleById(saleId).collect { saleWithItems ->
-                if (saleWithItems != null) {
-                    val wasAwaiting = _state.value.saleWithItems?.sale?.isAwaitingPayment == true
-                    val isNowComplete = saleWithItems.sale.paymentStatus == "COMPLETED"
 
-                    _state.update {
-                        it.copy(saleWithItems = saleWithItems)
-                    }
-
-                    // Emit event if payment just got confirmed while viewing this screen
-                    if (wasAwaiting && isNowComplete) {
-                        _events.emit(SaleDetailEvent.PaymentConfirmed)
-                    }
-                }
-            }
-        }
-
-        // Show polling indicator while WorkManager is active
-        viewModelScope.launch {
-            while (true) {
-                val sale = saleDao.getSaleByIdOnce(saleId)
-                _state.update {
-                    it.copy(isPolling = sale?.isAwaitingPayment == true)
-                }
-                if (sale?.isAwaitingPayment == false) break
-                delay(6_000.milliseconds)
-            }
         }
     }
 

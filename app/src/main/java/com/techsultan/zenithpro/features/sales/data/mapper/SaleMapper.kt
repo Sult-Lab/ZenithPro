@@ -25,15 +25,9 @@ fun SaleDto.toEntity() = SaleEntity(
     debtAmount = debtAmount,
     paymentMethod = PaymentMethod.valueOf(paymentMethod),
     status = SaleStatus.valueOf(status),
-    paymentStatus = paymentStatus,
-    paymentReference = paymentReference,
-    nombaPaymentReference = nombaPaymentReference,
-    paymentConfirmedAt = paymentConfirmedAt,
-    virtualAccountNumber = virtualAccountNumber,
-    virtualAccountBank = virtualAccountBank,
-    virtualAccountName = virtualAccountName,
     notes = notes,
     soldAt = soldAt,
+    updatedAt = updatedAt,
     syncStatus = Util.SyncStatus.SYNCED
 )
 

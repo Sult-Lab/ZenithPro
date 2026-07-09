@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CreditCard
@@ -74,12 +75,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.R
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatAsTime
@@ -92,9 +95,7 @@ import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
 import com.techsultan.zenithpro.features.sales.formatAmount
 import org.koin.androidx.compose.koinViewModel
 import java.time.DayOfWeek
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,6 +105,7 @@ fun SalesScreen(
     onSaleClick: (String) -> Unit,
     onNewSale: () -> Unit,
     onMenuClick: () -> Unit = {},
+    onNombaClick: () -> Unit = {},
     onReceiptPreview: (ReceiptData) -> Unit = {}
 ) {
 
@@ -140,11 +142,12 @@ fun SalesScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* export / report */ }) {
+                    IconButton(onClick = { onNombaClick() }) {
                         Icon(
-                            imageVector        = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            tint               = MaterialTheme.colorScheme.onSurface
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = "Nomba",
+                            tint = Color.Unspecified,
+                            modifier = Modifier
                         )
                     }
                 }
@@ -152,7 +155,7 @@ fun SalesScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick        = onNewSale,
+                onClick  = onNewSale,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor   = MaterialTheme.colorScheme.onPrimary,
             ) {
@@ -795,7 +798,6 @@ private fun SaleCard(
         branches.firstOrNull { it.id == sale.branchId }?.name
     }
     var showMenu by remember { mutableStateOf(false) }
-    val isAwaiting = sale.paymentStatus == "AWAITING_PAYMENT"
 
     val (typeIcon, iconBg, iconTint) = when (sale.paymentMethod) {
         PaymentMethod.CASH     -> Triple(Icons.Default.Money,       Color(0xFFE8F5E9), Color(0xFF2E7D32))
@@ -810,7 +812,7 @@ private fun SaleCard(
     Card(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = if (isAwaiting) CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors =CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -925,56 +927,8 @@ private fun SaleCard(
                     }
                 }
 
-                if (isAwaiting) {
-                    Spacer(Modifier.height(8.dp))
-                    Surface(
-                        shape  = RoundedCornerShape(8.dp),
-                        color  = Color(0xFFFFB300).copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
-                    ) {
-                        Row(
-                            modifier          = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Pulsing dot
-                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                            val alpha by infiniteTransition.animateFloat(
-                                initialValue  = 0.3f,
-                                targetValue   = 1f,
-                                animationSpec = infiniteRepeatable(
-                                    tween(700), RepeatMode.Reverse
-                                ),
-                                label = "alpha"
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(
-                                        Color(0xFFFFB300).copy(alpha = alpha),
-                                        CircleShape
-                                    )
-                            )
-                            Text("Awaiting transfer",
-                                style  = MaterialTheme.typography.labelSmall,
-                                color  = Color(0xFFFFB300),
-                                fontWeight = FontWeight.Medium,
-                                modifier   = Modifier.weight(1f))
-                            sale.paymentReference?.let { ref ->
-                                Text(ref,
-                                    style      = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = Color(0xFFFFB300))
-                            }
-                        }
-                    }
-                }
-
-
                 // Debt row
-                if (!isAwaiting && sale.debtAmount > 0) {
+                if (sale.debtAmount > 0) {
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier

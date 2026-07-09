@@ -22,12 +22,6 @@ data class SaleDto(
     val status: String,
     val notes: String?,
     @SerialName("sold_at")      val soldAt: String,
+    @SerialName("updated_at")   val updatedAt: String,
     @SerialName("terminal_id")  val terminalId: String? = null,
-    @SerialName("payment_status") val paymentStatus: String = "COMPLETED",
-    @SerialName("payment_reference") val paymentReference: String? = null,
-    @SerialName("nomba_payment_reference") val nombaPaymentReference: String? = null,
-    @SerialName("payment_confirmed_at") val paymentConfirmedAt: String? = null,
-    @SerialName("virtual_account_number") val virtualAccountNumber: String? = null,
-    @SerialName("virtual_account_bank") val virtualAccountBank: String? = null,
-    @SerialName("virtual_account_name") val virtualAccountName: String? = null
 )

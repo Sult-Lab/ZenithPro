@@ -272,22 +272,6 @@ interface SaleDao {
 """)
     suspend fun getDistinctStaffIds(businessId: String): List<String>
 
-    // New queries for awaiting sales
-    @Transaction
-    @Query("""
-    SELECT * FROM sales
-    WHERE businessId   = :businessId
-      AND paymentStatus = 'AWAITING_PAYMENT'
-    ORDER BY soldAt DESC
-""")
-    fun getAwaitingSales(businessId: String): Flow<List<SaleWithItems>>
-
-    @Query("UPDATE sales SET paymentStatus = :status WHERE id = :id")
-    suspend fun updatePaymentStatus(id: String, status: String)
-
-    @Query("UPDATE sales SET paymentStatus = :paymentStatus, status = :status WHERE id = :id")
-    suspend fun updateSaleAndPaymentStatus(id: String, paymentStatus: String, status: SaleStatus)
-
     @Query("SELECT * FROM sales WHERE id = :saleId")
     suspend fun getSaleByIdOnce(saleId: String): SaleEntity?
 
