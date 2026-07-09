@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    id("com.google.gms.google-services")
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 val localProperties = Properties()
@@ -149,4 +151,11 @@ dependencies {
     // work manager
     implementation(libs.androidx.work.runtime.ktx)
     androidTestImplementation(libs.androidx.work.testing)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.config)
 }

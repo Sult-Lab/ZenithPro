@@ -73,14 +73,7 @@ sealed interface Route: NavKey {
         data class SaleDetail(val saleId: String) : Route, NavKey
 
         @Serializable
-        data class AwaitingTransfer(
-            val saleId: String,
-            val totalAmount: Long,
-            val paymentReference: String,
-            val virtualAccountNumber: String,
-            val virtualAccountBank: String,
-            val virtualAccountName: String
-        ) : Route, NavKey
+        data object NombaTransferScreen: Route, NavKey
     }
 
     @Serializable

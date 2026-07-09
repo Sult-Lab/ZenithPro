@@ -23,19 +23,9 @@ data class SaleEntity(
     val changeAmount: Long,
     val debtAmount: Long,
     val paymentMethod: PaymentMethod,
-    val transferType: String? = null,
     val status: SaleStatus,
-    val paymentStatus: String,                 // ← new: COMPLETED | AWAITING_PAYMENT
-    val paymentReference: String?,             // ← new: ZP-XXXXX
-    val nombaPaymentReference: String?,        // ← new: Nomba's txn ID from webhook
-    val paymentConfirmedAt: String?,
-    val virtualAccountNumber: String? = null,
-    val virtualAccountBank: String?   = null,
-    val virtualAccountName: String?   = null,
     val notes: String?,
     val soldAt: String,
+    val updatedAt: String,
     val syncStatus: Util.SyncStatus = Util.SyncStatus.PENDING
-){
-    val isAwaitingPayment: Boolean
-        get() = paymentStatus == "AWAITING_PAYMENT"
-}
+)

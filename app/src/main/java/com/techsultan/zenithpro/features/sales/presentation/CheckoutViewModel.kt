@@ -16,7 +16,7 @@ import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepo
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.sales.PaymentMethod
-import com.techsultan.zenithpro.features.sales.TransferType
+import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
 import com.techsultan.zenithpro.features.sales.domain.use_case.GenerateReceiptUseCase
@@ -48,6 +48,7 @@ class CheckoutViewModel(
     private val getSettingsUseCase: GetSettingsUseCase,
     private val getBranchesUseCase: GetBranchesUseCase,
     private val getTerminalsUseCase: GetTerminalsUseCase,
+    private val saleDao: SaleDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -73,6 +74,9 @@ class CheckoutViewModel(
 
     private val _currentTerminal = MutableStateFlow<TerminalEntity?>(null)
     val currentTerminal = _currentTerminal.asStateFlow()
+
+    private val _paymentStatus = MutableStateFlow<String?>(null)
+    val paymentStatus = _paymentStatus.asStateFlow()
 
     val cartTotal: StateFlow<Long> = _cart.map { it.values.sumOf { item -> item.totalPrice } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
@@ -117,40 +121,20 @@ class CheckoutViewModel(
                 if (result is Resource.Success) {
                     val terminals = result.data ?: emptyList()
                     _currentTerminal.value = when {
-                        // ADMIN — no branch assigned, take first active terminal
+                        // ADMIN has no branch — take first active terminal
                         branchId == null -> terminals.firstOrNull { it.isActive }
-                        // Staff/Manager — match their branch exactly
+                        // Staff/Manager — match their branch
                         else -> terminals.firstOrNull {
                             it.branchId == branchId && it.isActive
                         }
                     }
-                    Log.d(
-                        "CheckoutVM",
+                    Log.d("CheckoutVM",
                         "Terminal resolved: ${_currentTerminal.value?.id} " +
-                                "for branchId=$branchId"
+                                "branchId=$branchId isAdmin=${session.isAdmin}"
                     )
                 }
             }
         }
-    }
-
-    fun resolveTransferType(): TransferType {
-        return if (_currentTerminal.value?.nombaVirtualAccountNumber != null) {
-            TransferType.NOMBA
-        } else {
-            TransferType.MANUAL
-        }
-    }
-
-    fun getTransferDetails(): TransferDetails? {
-        val terminal = _currentTerminal.value ?: return null
-        val accountNumber = terminal.nombaVirtualAccountNumber ?: return null
-        return TransferDetails(
-            accountNumber = accountNumber,
-            bankName = terminal.nombaVirtualAccountBank ?: "",
-            accountName = terminal.nombaVirtualAccountName ?: "",
-            transferType = TransferType.NOMBA,
-        )
     }
 
     private fun initBranch() {
@@ -441,13 +425,13 @@ class CheckoutViewModel(
         _customerSearchQuery.value = ""
     }
 
-    fun checkout(notes: String? = null, transferType: TransferType? = null) {
+    fun checkout(notes: String? = null) {
         val currentCartMap = _cart.value
         if (currentCartMap.isEmpty()) return
 
         val s = _state.value
         if (s.isLoading) return
-
+        Log.d("CheckoutVM", "Terminal ID: ${_currentTerminal.value}")
         if (!validateBranch()) return
 
         // Validate based on payment method
@@ -512,7 +496,6 @@ class CheckoutViewModel(
                 notes = notes,
                 staffId = sessionManager.userId,
                 taxAmount = taxAmount,
-                transferType = transferType
             )
 
             when (result) {
@@ -522,29 +505,15 @@ class CheckoutViewModel(
                     val saleId = response?.saleId ?: ""
                     val change = maxOf(0L, effectivePaid - total)
 
-                    if (response?.paymentStatus == "AWAITING_PAYMENT") {
-                        val terminal = _currentTerminal.value
-                        _events.emit(
-                            CheckoutEvent.AwaitingTransfer(
-                                saleId = response.saleId,
-                                totalAmount = if (_state.value.amountPaid > 0) _state.value.amountPaid else total,
-                                paymentReference = response.paymentReference ?: "",
-                                virtualAccountNumber = terminal?.nombaVirtualAccountNumber ?: "",
-                                virtualAccountBank = terminal?.nombaVirtualAccountBank ?: "",
-                                virtualAccountName = terminal?.nombaVirtualAccountName ?: ""
-                            )
-                        )
-                    } else {
-                        _events.emit(CheckoutEvent.SaleCompleted(
-                            saleId = saleId,
-                            change = change,
-                            debtAmount = result.data?.debtAmount ?: 0L,
-                            customer = s.selectedCustomer?.firstName ?: ""
-                        ))
+                    _events.emit(CheckoutEvent.SaleCompleted(
+                        saleId = saleId,
+                        change = change,
+                        debtAmount = result.data?.debtAmount ?: 0L,
+                        customer = s.selectedCustomer?.firstName ?: ""
+                    ))
 
-                        completePayment(saleId, effectivePaid, change)
-                        clearCart()
-                    }
+                    completePayment(saleId, effectivePaid, change)
+                    clearCart()
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
@@ -645,27 +614,11 @@ class CheckoutViewModel(
             val customer: String
         ) : CheckoutEvent()
 
-        data class AwaitingTransfer(
-            val saleId: String,
-            val totalAmount: Long,
-            val paymentReference: String,
-            val virtualAccountNumber: String,
-            val virtualAccountBank: String,
-            val virtualAccountName: String
-        ) : CheckoutEvent()
-
         data class ProductAddedByBarcode(val productName: String) : CheckoutEvent()
     }
 
 
 }
-
-data class TransferDetails(
-    val accountNumber: String,
-    val bankName: String,
-    val accountName: String,
-    val transferType: TransferType,
-)
 
 data class NewSaleUiState(
     val isLoading: Boolean = false,

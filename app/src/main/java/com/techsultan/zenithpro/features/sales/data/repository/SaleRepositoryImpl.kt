@@ -6,7 +6,6 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
-import com.techsultan.zenithpro.core.worker.SalePaymentPollerWorker
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
@@ -52,7 +51,7 @@ class SaleRepositoryImpl(
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
     private val debtPaymentDao: DebtPaymentDao,
-    private val branchDao: BranchDao
+    private val branchDao: BranchDao,
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -95,11 +94,8 @@ class SaleRepositoryImpl(
             val saleId = UUID.randomUUID().toString()
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
-
-            // Convert amounts to kobo
-            val koboTotalAmount = request.totalAmount * 100
-            val koboAmountPaid = request.amountPaid * 100
-            val koboDebtAmount = maxOf(0L, koboTotalAmount - koboAmountPaid)
+            val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
+            val terminalId = sessionManager.currentSession?.terminalId
 
             if (request.branchId == null) {
                 val branchCount = branchDao.getActiveBranchCount(businessId)
@@ -117,35 +113,21 @@ class SaleRepositoryImpl(
                     branchId = request.branchId,
                     customerId = request.customerId,
                     staffId = request.staffId,
-                    subtotal = request.subtotal * 100,
-                    discountAmount = request.discountAmount * 100,
-                    taxAmount = request.taxAmount * 100,
-                    totalAmount = koboTotalAmount,
-                    amountPaid = koboAmountPaid,
-                    changeAmount = request.changeAmount * 100,
-                    debtAmount = koboDebtAmount,
+                    subtotal = request.subtotal,
+                    discountAmount = request.discountAmount,
+                    taxAmount = request.taxAmount,
+                    totalAmount = request.totalAmount,
+                    amountPaid = request.amountPaid,
+                    changeAmount = request.changeAmount,
+                    debtAmount = debtAmount,
                     paymentMethod = PaymentMethod.valueOf(request.paymentMethod),
-                    transferType = request.transferType,
-                    status = if (koboAmountPaid >= koboTotalAmount)
+                    status = if (request.amountPaid >= request.totalAmount)
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
                     notes = request.notes,
                     soldAt = now,
+                    updatedAt = now,
                     syncStatus = Util.SyncStatus.PENDING,
-                    terminalId = request.terminalId,
-                    paymentStatus = when (request.paymentMethod) {
-                        "TRANSFER" -> {
-                            if (request.transferType == "NOMBA" || request.transferType == "MANUAL") {
-                                "AWAITING_PAYMENT"
-                            } else "COMPLETED"
-                        }
-                        else -> "COMPLETED"
-                    },
-                    paymentReference = request.paymentReference,
-                    nombaPaymentReference = null,
-                    paymentConfirmedAt = null,
-                    virtualAccountNumber = request.virtualAccountNumber,
-                    virtualAccountBank = request.virtualAccountBank,
-                    virtualAccountName = request.virtualAccountName
+                    terminalId = terminalId,
                 )
             )
             
@@ -172,38 +154,23 @@ class SaleRepositoryImpl(
                     ProcessSaleResponse(
                         saleId = saleId,
                         status = "Saved locally. Sync pending.",
-                        debtAmount = koboDebtAmount,
+                        debtAmount = debtAmount,
                         idempotent = false,
-                        paymentReference = request.paymentReference,
-                        paymentStatus = if (request.paymentMethod == "TRANSFER")
-                            "AWAITING_PAYMENT" else "COMPLETED"
                     )
                 )
             }
 
             val remoteResult = pushSale(saleId)
-            Log.d("SaleRepo", "processSale: remoteResult=$remoteResult")
+
             if (remoteResult != null) {
-                if (request.paymentMethod == "TRANSFER" &&
-                    request.transferType == "NOMBA") {
-                    Log.d("SaleRepo", "Scheduling poller for saleId=${remoteResult.saleId}")
-                    SalePaymentPollerWorker.schedule(
-                        context = context,
-                        saleId = remoteResult.saleId,
-                        businessId = sessionManager.businessId
-                    )
-                }
                 Resource.Success(remoteResult)
             } else {
                 Resource.Success(
-                    data = ProcessSaleResponse(
-                        saleId           = saleId,
-                        status           = "Saved locally. Sync pending.",
-                        debtAmount       = koboDebtAmount,
-                        idempotent       = false,
-                        paymentReference = request.paymentReference,
-                        paymentStatus    = if (request.paymentMethod == "TRANSFER")
-                            "AWAITING_PAYMENT" else "COMPLETED"
+                    ProcessSaleResponse(
+                        saleId = saleId,
+                        status = "Saved locally. Sync failed.",
+                        debtAmount = debtAmount,
+                        idempotent = false
                     )
                 )
             }
@@ -211,10 +178,6 @@ class SaleRepositoryImpl(
             Log.e("SaleRepo", "processSale failed: ${e.message}", e)
             Resource.Error(e.message ?: "Sale failed")
         }
-    }
-
-    fun cancelPoller(saleId: String) {
-        SalePaymentPollerWorker.cancel(context, saleId)
     }
 
     internal suspend fun pushSale(saleId: String): ProcessSaleResponse? {
@@ -236,9 +199,6 @@ class SaleRepositoryImpl(
                 notes = saleWithItems.sale.notes,
                 staffId = saleWithItems.sale.staffId,
                 terminalId = saleWithItems.sale.terminalId,
-                virtualAccountNumber = saleWithItems.sale.virtualAccountNumber,
-                virtualAccountBank = saleWithItems.sale.virtualAccountBank,
-                virtualAccountName = saleWithItems.sale.virtualAccountName,
                 items = saleWithItems.items.map {
                     SaleItemRequest(
                         variantId = it.variantId,
@@ -251,7 +211,6 @@ class SaleRepositoryImpl(
                         discount = it.discount
                     )
                 },
-                paymentReference = saleWithItems.sale.paymentReference
             )
             Log.d("SaleRepo", "pushSale: request=$request")
             val response = functions.invoke(
@@ -345,12 +304,6 @@ class SaleRepositoryImpl(
 
             if (toUpsert.isNotEmpty()) {
                 saleDao.insertSales(toUpsert)
-
-                toUpsert.forEach { sale ->
-                    if (sale.paymentStatus == "COMPLETED") {
-                        SalePaymentPollerWorker.cancel(context, sale.id)
-                    }
-                }
             }
 
             val saleIds = remoteSales.map { it.id }

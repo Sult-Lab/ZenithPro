@@ -5,11 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.manager.ZenithFcmTokenManager
 import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,8 @@ class DataPersistentViewModel(
     private val authRepository: AuthenticationRepository,
     private val auth: Auth,
     private val sessionManager: SessionManager,
-    private val logoutUseCase: LogoutUseCase
+    private val logoutUseCase: LogoutUseCase,
+    private val postgrest: Postgrest
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -87,8 +90,12 @@ class DataPersistentViewModel(
             _authState.value = AuthState.Loading
 
             try {
+                ZenithFcmTokenManager.unregisterToken(
+                    postgrest = postgrest,
+                    terminalId = session.value?.terminalId ?: "",
+                    businessId = session.value?.businessId ?: ""
+                )
                 logoutUseCase().collect()
-
                 // Force final state
                 _authState.value = AuthState.Unauthenticated
 

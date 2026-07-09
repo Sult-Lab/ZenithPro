@@ -5,7 +5,6 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.PaymentReferenceGenerator
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.sales.PaymentMethod
-import com.techsultan.zenithpro.features.sales.TransferType
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleRequest
 import com.techsultan.zenithpro.features.sales.data.remote.ProcessSaleResponse
@@ -27,7 +26,6 @@ class ProcessSaleUseCase(
         discountAmount: Long = 0L,
         taxAmount: Long = 0L,
         notes: String? = null,
-        transferType: TransferType? = null
     ): Resource<ProcessSaleResponse> {
         if (cart.isEmpty()) return Resource.Error("Cart is empty")
         if (amountPaid < 0) return Resource.Error("Invalid payment amount")
@@ -87,8 +85,6 @@ class ProcessSaleUseCase(
             changeAmount = change,
             paymentMethod = paymentMethod.name,
             notes = notes,
-            paymentReference = paymentReference,
-            transferType = transferType?.name
         )
         Log.d("ProcessSaleUseCase", request.toString())
         return repository.processSale(request, cart)

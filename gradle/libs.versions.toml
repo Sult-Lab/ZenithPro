@@ -27,6 +27,8 @@ dantSuPos = "3.3.0"
 cameraMlkitVision = "1.6.1"
 zxing = "3.5.4"
 work = "2.10.4"
+firebase-bom = "33.4.0"
+firebase-crashlytics = "3.0.7"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -83,6 +85,12 @@ zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" 
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom"}
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics"}
+firebase-config = { group = "com.google.firebase", name = "firebase-config"}
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics"}
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
@@ -90,3 +98,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization"}
 ksp = {id = "com.google.devtools.ksp", version.ref = "ksp"}
 room = { id = "androidx.room",  version.ref = "room_version"}
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics" }

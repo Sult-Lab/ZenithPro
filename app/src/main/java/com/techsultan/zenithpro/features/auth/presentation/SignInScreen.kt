@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -85,6 +87,7 @@ fun SignInScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(paddingValues)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -215,30 +218,30 @@ fun SignInScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Sign Up Row
-                val annotatedString = buildAnnotatedString {
-                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                        append("Don't have an account? ")
-                    }
-                    withStyle(
-                        style = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) {
-                        append("Sign Up")
-                    }
-                }
-
-                Text(
-                    text = annotatedString,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.clickable { onCreateAccountClick() }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
             }
+            // Sign Up Row
+            val annotatedString = buildAnnotatedString {
+                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    append("Don't have an account? ")
+                }
+                withStyle(
+                    style = SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                ) {
+                    append("Sign Up")
+                }
+            }
+
+            Text(
+                text = annotatedString,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .clickable { onCreateAccountClick() }
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+            )
             if (state.isLoading) {
                 Box(
                     modifier = Modifier
