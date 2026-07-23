@@ -10,6 +10,7 @@ data class ProductStockDto(
     val quantity: Int,
     @SerialName("expiry_date")     val expiryDate: String?,
     @SerialName("low_stock_alert") val lowStockAlert: Int?,
-    @SerialName("updated_at")      val updatedAt: String
+    @SerialName("updated_at")      val updatedAt: String,
+    @SerialName("branchId") val branchId: String
 )
 

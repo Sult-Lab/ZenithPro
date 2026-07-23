@@ -5,7 +5,7 @@ import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRe
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetChartDataUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetDashboardSummaryUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetPendingDebtsUseCase
-import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetUrgentActionsUseCase
+import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetUrgentActionUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.SyncDashboardUseCase
 import com.techsultan.zenithpro.features.dashboard.presentation.DashboardViewModel
 import org.koin.core.module.dsl.viewModel
@@ -24,7 +24,7 @@ val dashboardModule = module {
     factory { GetChartDataUseCase(get()) }
     factory { GetPendingDebtsUseCase(get()) }
     factory { SyncDashboardUseCase(get(), get()) }
-    factory { GetUrgentActionsUseCase(get()) }
+    factory { GetUrgentActionUseCase(get()) }
 
     viewModel {
         DashboardViewModel(
@@ -32,7 +32,7 @@ val dashboardModule = module {
             getChartDataUseCase = get(),
             getPendingDebtsUseCase = get(),
             syncDashboardUseCase = get(),
-            getUrgentActionsUseCase = get(),
+            getUrgentActionUseCase = get(),
             networkMonitor = get(),
             sessionManager = get()
         )

@@ -2,10 +2,15 @@ package com.techsultan.zenithpro.features.inventory.domain.use_case
 
 import android.net.Uri
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.domain.repository.ProductRepository
 
-class AddProductUseCase(private val productRepository: ProductRepository) {
+class AddProductUseCase(private val productRepository: ProductRepository, private val branchDao: BranchDao, ) {
+
+    suspend fun getFirstBranchId(businessId: String): String? {
+        return branchDao.getFirstBranchForBusiness(businessId)?.id
+    }
 
     suspend operator fun invoke(
         addProductRequest: AddProductRequest,

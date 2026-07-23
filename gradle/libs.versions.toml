@@ -29,6 +29,7 @@ zxing = "3.5.4"
 work = "2.10.4"
 firebase-bom = "33.4.0"
 firebase-crashlytics = "3.0.7"
+vico = "3.2.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -90,6 +91,8 @@ firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics
 firebase-config = { group = "com.google.firebase", name = "firebase-config"}
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics"}
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

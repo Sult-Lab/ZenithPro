@@ -49,6 +49,7 @@ class ProductDetailViewModel(
     val scannedBarcode: State<String?> = _scannedBarcode
 
     val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
+    val branchId: String? get() = try { sessionManager.currentSession?.branchId } catch (e: Exception) { null }
 
     fun onBarcodeScanned(barcode: String) {
         _scannedBarcode.value = barcode
@@ -155,6 +156,7 @@ class ProductDetailViewModel(
             }
 
             val requestWithIds = updateProductRequest.copy(
+                branchId = branchId,
                 variants = variants,
                 imageUrls = remoteUrls
             )

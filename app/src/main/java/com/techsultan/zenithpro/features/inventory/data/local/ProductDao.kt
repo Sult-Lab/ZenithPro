@@ -58,19 +58,6 @@ interface ProductDao {
     @Query("SELECT id FROM products WHERE businessId = :businessId")
     suspend fun getAllProductIds(businessId: String): List<String>
 
-    // Low stock — variants where total quantity <= low_stock_alert threshold
-    @Query("""
-    SELECT COUNT(DISTINCT pv.id)
-    FROM product_variants pv
-    INNER JOIN product_stock ps ON ps.variantId = pv.id
-    WHERE pv.businessId = :businessId
-      AND pv.deletedAt IS NULL
-      AND pv.syncStatus != 'DELETED'
-      AND ps.lowStockAlert IS NOT NULL
-      AND ps.quantity <= ps.lowStockAlert
-""")
-    suspend fun getLowStockCount(businessId: String): Int
-
     @Query("SELECT 0")
     suspend fun getPendingPurchaseOrderCount(): Int
 
@@ -132,4 +119,33 @@ interface ProductDao {
 
     @Query("DELETE FROM variant_attributes WHERE variantId = :variantId")
     suspend fun deleteAttributesForVariant(variantId: String)
+
+    @Query("""
+    SELECT COUNT(DISTINCT pv.id)
+    FROM product_variants pv
+    INNER JOIN product_stock ps ON ps.variantId = pv.id
+    WHERE pv.businessId = :businessId
+      AND (:branchId IS NULL OR ps.branchId = :branchId)
+      AND pv.deletedAt IS NULL
+      AND pv.syncStatus != 'DELETED'
+      AND ps.lowStockAlert IS NOT NULL
+      AND ps.quantity <= ps.lowStockAlert
+""")
+    suspend fun getLowStockCount(businessId: String, branchId: String?): Int
+
+    @Transaction
+    @Query("""
+    SELECT DISTINCT p.* FROM products p
+    INNER JOIN product_variants pv ON pv.productId = p.id
+    INNER JOIN product_stock ps ON ps.variantId = pv.id
+    WHERE p.businessId = :businessId
+      AND ps.branchId = :branchId
+      AND p.deletedAt IS NULL
+      AND p.syncStatus != 'DELETED'
+    ORDER BY 
+        CASE WHEN p.syncStatus = 'PENDING' THEN 0 ELSE 1 END,
+        p.updatedAt DESC
+""")
+    fun getProductsForBranch(businessId: String, branchId: String): Flow<List<ProductWithVariants>>
+
 }

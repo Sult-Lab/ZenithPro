@@ -20,4 +20,6 @@ interface ProductRepository {
         request: UpdateProductRequest,
         newImageUris: List<Uri>
     ): Resource<Unit>
+
+    fun getProductsForBranch(businessId: String, branchId: String): Flow<Resource<List<ProductWithVariants>>>
 }

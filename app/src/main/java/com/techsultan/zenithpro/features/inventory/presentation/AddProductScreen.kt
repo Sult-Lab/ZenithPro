@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -54,6 +55,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -94,6 +96,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.DatePickerDialog
@@ -128,6 +131,7 @@ fun AddProductScreen(
     var expiryDate by remember { mutableStateOf("") }
     var barcode by remember { mutableStateOf("") }
     var warningDay by remember { mutableStateOf("") }
+    var branch by remember { mutableStateOf("") }
     var expandWarningDay by remember { mutableStateOf(false) }
     var trackExpiryDate by remember { mutableStateOf(false) }
     var datePickerDialog by remember { mutableStateOf(false) }
@@ -137,6 +141,7 @@ fun AddProductScreen(
     // Variations state
     var showVariationsSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
+    var showBranches by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var variations by remember {
         mutableStateOf(
@@ -149,7 +154,10 @@ fun AddProductScreen(
 
     val state by viewModel.state
     val scannedBarcode by viewModel.scannedBarcode
-    val categories by viewModel.categories.collectAsState()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val branches by viewModel.branches.collectAsStateWithLifecycle()
+    val selectedBranchId by viewModel.selectedBranchId.collectAsStateWithLifecycle()
+    val isAdmin = viewModel.isAdmin
 
     LaunchedEffect(scannedBarcode) {
         scannedBarcode?.let {
@@ -372,6 +380,43 @@ fun AddProductScreen(
                 // Core Details
                 SectionHeader("Core Details")
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+                    if (isAdmin && branches.size > 1){
+                        var expanded by remember { mutableStateOf(false) }
+                        val selectedBranch = branches.find { it.id == selectedBranchId }
+
+                        ExposedDropdownMenuBox(
+                            expanded = showBranches,
+                            onExpandedChange = { showBranches = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                        ){
+                            CustomTextField(
+                                value = selectedBranch?.name ?: "",
+                                onValueChange = { },
+                                label = "Branch",
+                                placeholder = "Select branch",
+                                modifier = Modifier
+                                    .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                    .fillMaxWidth(),
+                                trailingIcon = {  ExposedDropdownMenuDefaults.TrailingIcon(expanded = showBranches) }
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ){
+                                branches.forEach { branch ->
+                                    DropdownMenuItem(
+                                        text = { Text(branch.name) },
+                                        onClick = {
+                                            viewModel.onBranchSelected(branch.id)
+                                            expanded = false
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
                     CustomTextField(
                         value = productName,
                         onValueChange = { productName = it },

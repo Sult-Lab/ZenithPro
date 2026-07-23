@@ -11,5 +11,6 @@ fun ProductStockDto.toEntity() = ProductStockEntity(
     expiryDate = expiryDate,
     lowStockAlert = lowStockAlert,
     updatedAt = updatedAt,
-    syncStatus = Util.SyncStatus.SYNCED
+    syncStatus = Util.SyncStatus.SYNCED,
+    branchId = branchId
 )

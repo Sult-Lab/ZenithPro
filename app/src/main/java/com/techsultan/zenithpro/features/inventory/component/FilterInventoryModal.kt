@@ -21,7 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,8 +47,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 
 @Composable
 fun FilterInventoryBottomSheet(
@@ -53,14 +60,15 @@ fun FilterInventoryBottomSheet(
     maxPrice: Long?,
     onDismiss: () -> Unit,
     onApply: (String, Long?, Long?) -> Unit,
-    onReset: () -> Unit
+    onReset: () -> Unit,
+    isAdmin: Boolean,
+    branches: List<BranchEntity>,
+    onBranchFilterChanged: (String) -> Unit,
+    selectedBranchId: String?
 ) {
     var localStockStatus by remember { mutableStateOf(selectedStockStatus) }
     var minText by remember { mutableStateOf(minPrice?.toString() ?: "") }
     var maxText by remember { mutableStateOf(maxPrice?.toString() ?: "") }
-
-    // Simplified slider logic for now as it needs a range
-    var sliderPosition by remember { mutableStateOf(0f..1000000f) }
 
     ModalBottomSheet(
         onDismissRequest = { onDismiss() },
@@ -100,6 +108,49 @@ fun FilterInventoryBottomSheet(
             thickness = 0.5.dp
         )
 
+        if (isAdmin && branches.size > 1){
+            var expanded by remember { mutableStateOf(false) }
+            val selectedBranch = branches.find { it.id == selectedBranchId }
+
+            Text(
+                text = "Branches",
+                modifier = Modifier.padding(16.dp),
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+            ){
+                CustomTextField(
+                    value = selectedBranch?.name ?: "",
+                    onValueChange = { },
+                    label = "",
+                    placeholder = "Select branch",
+                    readOnly = true,
+                    modifier = Modifier
+                        .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                        .fillMaxWidth(),
+                    trailingIcon = {  ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+                )
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ){
+                    branches.forEach { branch ->
+                        DropdownMenuItem(
+                            text = { Text(branch.name) },
+                            onClick = {
+                                onBranchFilterChanged(branch.id)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
         Text(
             text = "Stock Status",
             modifier = Modifier.padding(16.dp),

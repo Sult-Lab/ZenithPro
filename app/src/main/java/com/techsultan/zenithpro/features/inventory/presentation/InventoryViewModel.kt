@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.DeleteProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
@@ -27,7 +29,8 @@ class InventoryViewModel(
     private val syncProductsUseCase: SyncProductsUseCase,
     private val deleteProductUseCase: DeleteProductUseCase,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val branchDao: BranchDao,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InventoryUiState())
@@ -37,30 +40,68 @@ class InventoryViewModel(
     val events = _events.asSharedFlow()
 
     private var businessId: String? = null
+    private var sessionBranchId: String? = null
+    private var isAdmin: Boolean = false
 
     init {
         viewModelScope.launch {
-            businessId = sessionManager.loadSession()?.businessId
-            if (businessId != null) {
-                observeProducts()
-                observeConnectivity()
-                syncOnStart()
+            val session = sessionManager.loadSession() ?: return@launch
+            businessId     = session.businessId
+            sessionBranchId = session.branchId
+            isAdmin        = session.isAdmin
+
+            // Load branches for admin branch filter
+            if (isAdmin) {
+                val branches = branchDao.getActiveBranchesForBusiness(session.businessId)
+                _state.update { it.copy(
+                    branches  = branches,
+                    isAdmin   = true,
+                    // Admin defaults to all branches (null = no filter)
+                    selectedBranchId = null,
+                )}
+            } else {
+                _state.update { it.copy(isAdmin = false) }
             }
+
+            observeProducts()
+            observeConnectivity()
+            syncOnStart()
         }
+    }
+
+    fun onBranchFilterChanged(branchId: String?) {
+        _state.update { it.copy(selectedBranchId = branchId) }
+        // Re-observe products for the selected branch
+        observeProducts()
     }
 
     private fun observeProducts() {
         val bId = businessId ?: return
         viewModelScope.launch {
-            getProductsUseCase(bId).collect { result ->
+            // Determine which branch to scope to
+            val branchId = when {
+                !isAdmin -> sessionBranchId          // Staff/Manager — their branch
+                _state.value.selectedBranchId != null -> _state.value.selectedBranchId // Admin filtered
+                else -> null                          // Admin all branches
+            }
+
+            val productsFlow = if (branchId != null) {
+                getProductsUseCase(bId, branchId)    // branch scoped
+            } else {
+                getProductsUseCase(bId)              // all branches (admin only)
+            }
+
+            productsFlow.collect { result ->
                 when (result) {
-                    is Resource.Loading -> _state.update { it.copy(isLoading = it.products.isEmpty()) }
+                    is Resource.Loading -> _state.update {
+                        it.copy(isLoading = it.products.isEmpty())
+                    }
                     is Resource.Success -> _state.update {
                         it.copy(
                             isLoading = false,
-                            products = result.data ?: emptyList(),
-                            isEmpty = result.data?.isEmpty() ?: true,
-                            error = null
+                            products  = result.data ?: emptyList(),
+                            isEmpty   = result.data?.isEmpty() ?: true,
+                            error     = null
                         )
                     }
                     is Resource.Error -> _state.update {
@@ -211,5 +252,9 @@ data class InventoryUiState(
     val minPrice: Long? = null,
     val maxPrice: Long? = null,
     val sortOption: SortOption = SortOption.RECENTLY_ADDED,
-    val error: String? = null
+    val error: String? = null,
+    // Branch filter — only relevant for ADMIN
+    val branches: List<BranchEntity> = emptyList(),
+    val selectedBranchId: String? = null,   // null = all branches
+    val isAdmin: Boolean = false,
 )

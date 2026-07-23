@@ -11,7 +11,7 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummar
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetChartDataUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetDashboardSummaryUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetPendingDebtsUseCase
-import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetUrgentActionsUseCase
+import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetUrgentActionUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.SyncDashboardUseCase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +26,7 @@ class DashboardViewModel(
     private val getChartDataUseCase: GetChartDataUseCase,
     private val getPendingDebtsUseCase: GetPendingDebtsUseCase,
     private val syncDashboardUseCase: SyncDashboardUseCase,
-    private val getUrgentActionsUseCase: GetUrgentActionsUseCase,
+    private val getUrgentActionUseCase: GetUrgentActionUseCase,
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -54,10 +54,11 @@ class DashboardViewModel(
             _state.update { it.copy(isLoading = true) }
 
             // All three load from local Room — fast, no network needed
+            val branchId = sessionManager.currentSession?.branchId
             val summaryJob = async { getDashboardSummaryUseCase(bId) }
             val chartJob   = async { getChartDataUseCase(bId, 7) }
             val debtJob    = async { getPendingDebtsUseCase(bId) }
-            val urgentJob  = async { getUrgentActionsUseCase(bId) }
+            val urgentJob  = async { getUrgentActionUseCase(bId, branchId) }
 
             val summary = summaryJob.await()
             val chart   = chartJob.await()
@@ -88,12 +89,13 @@ class DashboardViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isRefreshing = true) }
             
+            val branchId = sessionManager.currentSession?.branchId
             syncDashboardUseCase(bId)
             // Reload from Room after sync
             val summary = getDashboardSummaryUseCase(bId)
             val chart   = getChartDataUseCase(bId, _state.value.selectedDays)
             val debt    = getPendingDebtsUseCase(bId)
-            val urgent  = getUrgentActionsUseCase(bId)
+            val urgent  = getUrgentActionUseCase(bId, branchId)
             _state.update { s ->
                 s.copy(
                     isRefreshing = false,
@@ -130,13 +132,14 @@ class DashboardViewModel(
     private fun syncInBackground() {
         val bId = businessId ?: return
         viewModelScope.launch {
+            val branchId = sessionManager.currentSession?.branchId
             val result = syncDashboardUseCase(bId)
             if (result is Resource.Success) {
                 // Reload Room data after sync completes
                 val summary = getDashboardSummaryUseCase(bId)
                 val chart   = getChartDataUseCase(bId, _state.value.selectedDays)
                 val debt    = getPendingDebtsUseCase(bId)
-                val urgent  = getUrgentActionsUseCase(bId)
+                val urgent  = getUrgentActionUseCase(bId, branchId)
                 _state.update { s ->
                     s.copy(
                         summary = (summary as? Resource.Success)?.data ?: s.summary,
