@@ -11,6 +11,7 @@ import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
 import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
@@ -33,7 +34,8 @@ class AddProductViewModel(
     val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
-    private val branchDao: BranchDao
+    private val branchDao: BranchDao,
+    private val getBranchesUseCase: GetBranchesUseCase,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductUiState())
@@ -48,8 +50,8 @@ class AddProductViewModel(
     private val _selectedBranchId = MutableStateFlow<String?>(null)
     val selectedBranchId: StateFlow<String?> = _selectedBranchId.asStateFlow()
 
-    val isAdmin: Boolean get() = sessionManager.currentSession?.isAdmin ?: false
-
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
@@ -74,12 +76,16 @@ class AddProductViewModel(
     init {
         viewModelScope.launch {
             sessionManager.loadSession()
-            observeCategories()
-            loadBranches()
+            val session = sessionManager.currentSession
+            Log.d(
+                "AddProductViewModel",
+                "Session loaded: $session"
+            )
+            _isAdmin.value = sessionManager.currentSession?.isAdmin ?: false
         }
     }
 
-    private fun observeCategories() {
+    fun observeCategories() {
         viewModelScope.launch {
             val bId = businessId ?: return@launch
             getCategoriesUseCase(bId).collect { result ->
@@ -169,12 +175,13 @@ class AddProductViewModel(
         }
     }
 
-    private fun loadBranches() {
+   fun loadBranches() {
         viewModelScope.launch {
             val bId = businessId ?: return@launch
             val branches = branchDao.getActiveBranchesForBusiness(bId)
             _branches.value = branches
-
+            Log.d("AddProductViewModel", "Branches: ${_branches.value}")
+            Log.d("AddProductViewModel", "Branches: ${_branches.value.size}")
             // Auto-select the session branch for staff/manager
             // For admin — they must pick from the dropdown
             val sessionBranchId = sessionManager.currentSession?.branchId

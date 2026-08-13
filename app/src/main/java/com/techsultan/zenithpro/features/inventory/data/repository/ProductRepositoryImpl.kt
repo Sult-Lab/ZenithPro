@@ -132,7 +132,8 @@ class ProductRepositoryImpl(
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.PENDING,
-                    locallyCreatedAt = now
+                    locallyCreatedAt = now,
+                    branchId = productRequest.branchId
                 )
             )
             productRequest.variants?.forEach { variantReq ->
@@ -237,7 +238,8 @@ class ProductRepositoryImpl(
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.DIRTY,
-                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt
+                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt,
+                    branchId = productRequest.branchId
                 )
             )
 
@@ -320,6 +322,7 @@ class ProductRepositoryImpl(
                 expiryWarningDays = productWithVariants.product.expiryWarningDays,
                 isActive = productWithVariants.product.isActive,
                 businessId = productWithVariants.product.businessId,
+                branchId = productWithVariants.product.branchId,
                 imageUrls = productWithVariants.product.imageUrls,
                 variants = productWithVariants.variants.map { variantWithStock ->
                     ProductVariantCreateRequest(

@@ -9,8 +9,8 @@ data class ProductDto(
     @SerialName("business_id")
     val businessId: String,
     val name: String,
-    val description: String?,
-    val category: String?,
+    val description: String? = null,
+    val category: String? = null,
     @SerialName("base_sales_price")
     val baseSalesPrice: Long,
     @SerialName("base_cost_price")
@@ -20,7 +20,8 @@ data class ProductDto(
     @SerialName("image_urls") val imageUrls: List<String> = emptyList(),
     @SerialName("updated_at") val updatedAt: String,
     @SerialName("deleted_at") val deletedAt: String? = null,
-    @SerialName("expiry_warning_days") val expiryWarningDays: Int? = null
+    @SerialName("expiry_warning_days") val expiryWarningDays: Int? = null,
+    @SerialName("branch_id") val branchId: String? = null,
 )
 
 

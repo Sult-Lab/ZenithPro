@@ -22,7 +22,7 @@ class BranchViewModel(
     private val upsertBranchUseCase: UpsertBranchUseCase,
     private val deleteBranchUseCase: DeleteBranchUseCase,
     private val branchRepository: BranchRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BranchUiState())
@@ -66,7 +66,7 @@ class BranchViewModel(
         }
     }
 
-    private fun pullFromServer() {
+    fun pullFromServer() {
         val bId = businessId ?: return
         viewModelScope.launch { branchRepository.pullFromServer(bId) }
     }
@@ -82,6 +82,7 @@ class BranchViewModel(
                 is Resource.Success -> {
                     _state.update { it.copy(isSaving = false) }
                     _events.emit(BranchEvent.Saved)
+                    observeBranches()
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isSaving = false) }

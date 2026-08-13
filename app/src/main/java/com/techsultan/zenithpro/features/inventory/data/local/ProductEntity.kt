@@ -19,5 +19,6 @@ data class ProductEntity(
     val updatedAt: String,
     val deletedAt: String?,
     val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED,
-    val locallyCreatedAt: String? = null
+    val locallyCreatedAt: String? = null,
+    val branchId: String?
 )

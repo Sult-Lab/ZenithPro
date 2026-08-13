@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.inventory.presentation
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -131,7 +132,6 @@ fun AddProductScreen(
     var expiryDate by remember { mutableStateOf("") }
     var barcode by remember { mutableStateOf("") }
     var warningDay by remember { mutableStateOf("") }
-    var branch by remember { mutableStateOf("") }
     var expandWarningDay by remember { mutableStateOf(false) }
     var trackExpiryDate by remember { mutableStateOf(false) }
     var datePickerDialog by remember { mutableStateOf(false) }
@@ -157,8 +157,16 @@ fun AddProductScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val branches by viewModel.branches.collectAsStateWithLifecycle()
     val selectedBranchId by viewModel.selectedBranchId.collectAsStateWithLifecycle()
-    val isAdmin = viewModel.isAdmin
-
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
+    Log.d("AddProductScreen", "Branches 162: $branches")
+    Log.d(
+        "AddProductScreen",
+        "isAdmin=$isAdmin, branches=${branches.size}, selectedBranchId=$selectedBranchId"
+    )
+    LaunchedEffect(Unit) {
+        viewModel.observeCategories()
+        viewModel.loadBranches()
+    }
     LaunchedEffect(scannedBarcode) {
         scannedBarcode?.let {
             barcode = it
@@ -382,7 +390,6 @@ fun AddProductScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
                     if (isAdmin && branches.size > 1){
-                        var expanded by remember { mutableStateOf(false) }
                         val selectedBranch = branches.find { it.id == selectedBranchId }
 
                         ExposedDropdownMenuBox(
@@ -396,21 +403,22 @@ fun AddProductScreen(
                                 onValueChange = { },
                                 label = "Branch",
                                 placeholder = "Select branch",
+                                readOnly = true,
                                 modifier = Modifier
                                     .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                                     .fillMaxWidth(),
                                 trailingIcon = {  ExposedDropdownMenuDefaults.TrailingIcon(expanded = showBranches) }
                             )
                             ExposedDropdownMenu(
-                                expanded = expanded,
-                                onDismissRequest = { expanded = false }
+                                expanded = showBranches,
+                                onDismissRequest = { showBranches = false }
                             ){
                                 branches.forEach { branch ->
                                     DropdownMenuItem(
                                         text = { Text(branch.name) },
                                         onClick = {
                                             viewModel.onBranchSelected(branch.id)
-                                            expanded = false
+                                            showBranches = false
                                         },
                                     )
                                 }

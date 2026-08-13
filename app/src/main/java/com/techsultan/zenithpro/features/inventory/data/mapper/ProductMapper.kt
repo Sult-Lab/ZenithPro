@@ -17,7 +17,8 @@ fun ProductDto.toProductEntity() = ProductEntity(
     expiryWarningDays = expiryWarningDays,
     updatedAt = updatedAt,
     deletedAt = deletedAt,
-    syncStatus = Util.SyncStatus.SYNCED
+    syncStatus = Util.SyncStatus.SYNCED,
+    branchId = branchId
 )
 
 fun ProductEntity.toProductDto(): ProductDto {
@@ -33,6 +34,7 @@ fun ProductEntity.toProductDto(): ProductDto {
         imageUrls = imageUrls,
         updatedAt = updatedAt,
         deletedAt = deletedAt,
-        expiryWarningDays = expiryWarningDays
+        expiryWarningDays = expiryWarningDays,
+        branchId = branchId
     )
 }
