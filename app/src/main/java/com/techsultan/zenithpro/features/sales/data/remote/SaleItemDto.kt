@@ -13,7 +13,7 @@ data class SaleItemDto(
     @SerialName("variant_sku")  val variantSku: String,
     @SerialName("unit_price")   val unitPrice: Long,
     @SerialName("cost_price")   val costPrice: Long,
-    val quantity: Int,
+    val quantity: Double,
     val discount: Long,
     @SerialName("total_price")  val totalPrice: Long
 )

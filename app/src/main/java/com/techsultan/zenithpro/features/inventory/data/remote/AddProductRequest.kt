@@ -13,6 +13,7 @@ data class AddProductRequest(
     @SerialName("baseSalesPrice") val baseSalesPrice: Long,
     @SerialName("baseCostPrice") val baseCostPrice: Long,
     @SerialName("expiryWarningDays") val expiryWarningDays: Int? = null,
+    @SerialName("unitType") val unitType: String = "UNIT",
     @SerialName("isActive") val isActive: Boolean = true,
     @SerialName("variants") val variants: List<ProductVariantCreateRequest>? = emptyList(),
     @SerialName("businessId") val businessId: String,
@@ -39,7 +40,7 @@ data class VariantAttributeInput(
 
 @Serializable
 data class StockCreateRequest(
-    @SerialName("quantity") val quantity: Int,
+    @SerialName("quantity") val quantity: Double,
     @SerialName("expiryDate") val expiryDate: String?,
     @SerialName("lowStockAlert") val lowStockAlert: Int? = null
 )

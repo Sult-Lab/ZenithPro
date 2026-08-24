@@ -81,8 +81,8 @@ class CheckoutViewModel(
     val cartTotal: StateFlow<Long> = _cart.map { it.values.sumOf { item -> item.totalPrice } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 
-    val cartItemCount: StateFlow<Int> = _cart.map { it.values.sumOf { item -> item.quantity } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val cartItemCount: StateFlow<Double> = _cart.map { it.values.sumOf { item -> item.quantity } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     val customerSearchResults: StateFlow<List<CustomerEntity>> = combine(
         _customerSearchQuery,
@@ -324,7 +324,8 @@ class CheckoutViewModel(
                     unitPrice = product.product.baseSalesPrice,
                     costPrice = product.product.baseCostPrice,
                     variantSku = variant.variant.sku,
-                    quantity = 1
+                    unitType = product.product.unitType,
+                    quantity = 1.0
                 )
             }
             updatedCart
@@ -357,6 +358,22 @@ class CheckoutViewModel(
                 updatedCart[productId] = existingItem.copy(quantity = existingItem.quantity - 1)
             } else {
                 updatedCart.remove(productId)
+            }
+            updatedCart
+        }
+    }
+
+    fun updateCartItemQuantity(variantId: String, quantity: Double) {
+        _cart.update { currentCart ->
+            val updatedCart = currentCart.toMutableMap()
+            // Find item by variantId
+            val entry = updatedCart.entries.find { it.value.variantId == variantId }
+            if (entry != null) {
+                if (quantity > 0) {
+                    updatedCart[entry.key] = entry.value.copy(quantity = quantity)
+                } else {
+                    updatedCart.remove(entry.key)
+                }
             }
             updatedCart
         }
@@ -556,7 +573,7 @@ class CheckoutViewModel(
     ) {
         val s = state.value
         val currentCartList = _cart.value.values.toList()
-        val subtotal = currentCartList.sumOf { it.unitPrice * it.quantity }
+        val subtotal = currentCartList.sumOf { it.unitPrice * it.quantity }.toLong()
         val total = maxOf(0L, subtotal - s.discountAmount)
         val receiptNumber = receiptNumberGenerator.generate()
 

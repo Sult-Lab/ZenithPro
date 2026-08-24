@@ -66,9 +66,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.techsultan.zenithpro.core.components.QuantityInput
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.payment.presentation.TransferPaymentViewModel
@@ -198,7 +200,7 @@ fun CheckoutScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "$cartItemCount Items",
+                                    text = "${if (cartItemCount % 1.0 == 0.0) cartItemCount.toInt() else cartItemCount} Items",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onPrimary
@@ -317,9 +319,13 @@ fun CheckoutScreen(
                             val cartItem = cart[productWithVariants.product.id]
                             SaleProductItemCard(
                                 productWithVariants = productWithVariants,
-                                quantityInCart = cartItem?.quantity ?: 0,
+                                cartItem = cartItem,
                                 onAdd = { viewModel.addToCart(productWithVariants) },
-                                onRemove = { viewModel.removeFromCart(productWithVariants.product.id) }
+                                onQuantityChange = { newQty ->
+                                    cartItem?.let {
+                                        viewModel.updateCartItemQuantity(it.variantId, newQty)
+                                    }
+                                }
                             )
                         }
                     }
@@ -395,9 +401,9 @@ fun CategoryChip(
 @Composable
 fun SaleProductItemCard(
     productWithVariants: ProductWithVariants,
-    quantityInCart: Int,
+    cartItem: CartItem?,
     onAdd: () -> Unit,
-    onRemove: () -> Unit
+    onQuantityChange: (Double) -> Unit
 ) {
     val product = productWithVariants.product
     val totalStock = productWithVariants.variants.sumOf { v -> v.stock.sumOf { it.quantity } }
@@ -438,44 +444,20 @@ fun SaleProductItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Stock: $totalStock",
+                    text = "Stock: ${com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (totalStock > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
                 )
             }
 
-            if (quantityInCart > 0) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    IconButton(
-                        onClick = onRemove,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = quantityInCart.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    IconButton(
-                        onClick = onAdd,
-                        enabled = totalStock > quantityInCart,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-                }
+            if (cartItem != null && cartItem.quantity > 0) {
+                QuantityInput(
+                    quantity = cartItem.quantity,
+                    unitType = UnitType.fromString(cartItem.unitType),
+                    onQuantityChange = onQuantityChange,
+                    maxQuantity = totalStock, // prevent overselling
+                    modifier = Modifier.width(180.dp)
+                )
             } else {
                 Button(
                     onClick = onAdd,
@@ -525,13 +507,13 @@ fun CartBottomSheetContent(
                     Column {
                         Text(text = item.productName, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            text = "${item.quantity} x ₦${item.unitPrice.formatPrice()}",
+                            text = "${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))} x ₦${item.unitPrice.formatPrice()}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "₦${(item.unitPrice * item.quantity).formatPrice()}",
+                        text = "₦${(item.unitPrice * item.quantity).toLong().formatPrice()}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )

@@ -140,6 +140,7 @@ class SaleRepositoryImpl(
                         productId = item.productId,
                         productName = item.productName,
                         variantSku = item.variantSku,
+                        unitType = item.unitType,
                         unitPrice = item.unitPrice,
                         costPrice = item.costPrice,
                         quantity = item.quantity,

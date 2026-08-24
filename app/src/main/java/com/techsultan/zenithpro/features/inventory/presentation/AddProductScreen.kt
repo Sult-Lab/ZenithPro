@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -101,10 +102,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.DatePickerDialog
+import com.techsultan.zenithpro.core.components.QuantityInput
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.features.category.presentation.CategoryPickerSheet
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
@@ -120,6 +123,13 @@ fun AddProductScreen(
     onScanBarcode: () -> Unit = {},
     viewModel: AddProductViewModel
 ) {
+    val state by viewModel.state
+    val scannedBarcode by viewModel.scannedBarcode
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val branches by viewModel.branches.collectAsStateWithLifecycle()
+    val selectedBranchId by viewModel.selectedBranchId.collectAsStateWithLifecycle()
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
+
     val context = LocalContext.current
     var productName by remember { mutableStateOf("") }
     var productDescription by remember { mutableStateOf("") }
@@ -127,7 +137,7 @@ fun AddProductScreen(
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var salesPrice by remember { mutableStateOf("") }
     var costPrice by remember { mutableStateOf("") }
-    var stockQuantity by remember { mutableStateOf("") }
+    var stockQuantity by remember { mutableStateOf(0.0) }
     var lowStockAlert by remember { mutableStateOf("") }
     var expiryDate by remember { mutableStateOf("") }
     var barcode by remember { mutableStateOf("") }
@@ -137,11 +147,12 @@ fun AddProductScreen(
     var datePickerDialog by remember { mutableStateOf(false) }
     var productImageUris by rememberSaveable { mutableStateOf(listOf<Uri>()) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
+    val selectedUnitType = UnitType.fromString(state.unitType)
     // Variations state
     var showVariationsSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
     var showBranches by remember { mutableStateOf(false) }
+    var expandUnitType by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var variations by remember {
         mutableStateOf(
@@ -152,13 +163,6 @@ fun AddProductScreen(
         )
     }
 
-    val state by viewModel.state
-    val scannedBarcode by viewModel.scannedBarcode
-    val categories by viewModel.categories.collectAsStateWithLifecycle()
-    val branches by viewModel.branches.collectAsStateWithLifecycle()
-    val selectedBranchId by viewModel.selectedBranchId.collectAsStateWithLifecycle()
-    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
-    Log.d("AddProductScreen", "Branches 162: $branches")
     Log.d(
         "AddProductScreen",
         "isAdmin=$isAdmin, branches=${branches.size}, selectedBranchId=$selectedBranchId"
@@ -186,12 +190,13 @@ fun AddProductScreen(
                     selectedCategoryId = null
                     salesPrice = ""
                     costPrice = ""
-                    stockQuantity = ""
+                    stockQuantity = 0.0
                     lowStockAlert = ""
                     expiryDate = ""
                     barcode = ""
                     trackExpiryDate = false
                     productImageUris = emptyList()
+                    viewModel.onUnitTypeChanged("UNIT")
                     variations = listOf(
                         VariationType("Size", Icons.Default.Straighten, emptyList()),
                         VariationType("Color", Icons.Default.Palette, emptyList())
@@ -461,6 +466,108 @@ fun AddProductScreen(
                             shape = RoundedCornerShape(8.dp)
                         )
                     }
+
+                    // Unit Type Selector
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Sold by",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = expandUnitType,
+                            onExpandedChange = { expandUnitType = it }
+                        ) {
+                            OutlinedTextField(
+                                value = "${selectedUnitType.label} (${selectedUnitType.abbreviation})",
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandUnitType)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expandUnitType,
+                                onDismissRequest = { expandUnitType = false }
+                            ) {
+                                // Group by category
+                                val groups = mapOf(
+                                    "Discrete" to listOf(
+                                        UnitType.UNIT,
+                                        UnitType.PIECE,
+                                        UnitType.PACK,
+                                        UnitType.DOZEN,
+                                        UnitType.CARTON,
+                                        UnitType.BAG,
+                                        UnitType.SACHET,
+                                        UnitType.BOTTLE,
+                                        UnitType.TIN,
+                                        UnitType.ROLL,
+                                        UnitType.BUNDLE,
+                                        UnitType.PALLET
+                                    ),
+                                    "Weight" to listOf(UnitType.KILOGRAM, UnitType.GRAM, UnitType.POUND),
+                                    "Volume" to listOf(UnitType.LITRE, UnitType.MILLILITRE, UnitType.GALLON),
+                                    "Length" to listOf(UnitType.METRE, UnitType.YARD, UnitType.FOOT),
+                                )
+
+                                groups.forEach { (groupName, units) ->
+                                    // Group header
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                groupName.uppercase(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        },
+                                        onClick = {},
+                                        enabled = false
+                                    )
+                                    units.forEach { unit ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(unit.label)
+                                                    Text(
+                                                        unit.abbreviation,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.onUnitTypeChanged(unit.name)
+                                                expandUnitType = false
+                                            },
+                                            leadingIcon = if (unit == selectedUnitType) {
+                                                {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        null,
+                                                        tint = Color(0xFF00C853)
+                                                    )
+                                                }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Pricing & Profit
@@ -488,24 +595,25 @@ fun AddProductScreen(
 
                 // Stock Management
                 SectionHeader("Stock Management")
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    CustomTextField(
-                        value = stockQuantity,
-                        onValueChange = { stockQuantity = it },
-                        label = "Stock Quantity",
-                        placeholder = "0",
-                        modifier = Modifier.weight(1f),
-                        keyboardType = KeyboardType.Number
-                    )
-                    CustomTextField(
-                        value = lowStockAlert,
-                        onValueChange = { lowStockAlert = it },
-                        label = "Low Stock Alert",
-                        placeholder = "",
-                        modifier = Modifier.weight(1f),
-                        keyboardType = KeyboardType.Number
-                    )
-                }
+                QuantityInput(
+                    quantity = stockQuantity,
+                    unitType = selectedUnitType,
+                    onQuantityChange = { stockQuantity = it },
+                    label = "Opening stock",
+                    minQuantity = 0.0,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+           //     Spacer(modifier = Modifier.height(16.dp))
+
+                CustomTextField(
+                    value = lowStockAlert,
+                    onValueChange = { lowStockAlert = it },
+                    label = "Low Stock Alert",
+                    placeholder = "",
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardType = KeyboardType.Number
+                )
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -671,7 +779,7 @@ fun AddProductScreen(
                         variations.forEach { variationType ->
                             variationType.items.forEach { item ->
                                 val priceAdj = item.priceAdjustment.toLongOrNull() ?: 0L
-                                val itemStock = item.stock.toIntOrNull() ?: 0
+                                val itemStock = item.stock.toDoubleOrNull() ?: 0.0
 
                                 productVariants.add(
                                     ProductVariantCreateRequest(
@@ -705,6 +813,7 @@ fun AddProductScreen(
                                 name = productName,
                                 description = productDescription,
                                 category = category,
+                                unitType = state.unitType,
                                 baseSalesPrice = baseSPrice,
                                 baseCostPrice = baseCPrice,
                                 expiryWarningDays = warningDay.toIntOrNull(),
@@ -714,7 +823,7 @@ fun AddProductScreen(
                                 defaultStock = if (productVariants.isEmpty()) {
                                     listOf(
                                         StockCreateRequest(
-                                            quantity = stockQuantity.toIntOrNull() ?: 0,
+                                            quantity = stockQuantity ,
                                             expiryDate = if (trackExpiryDate) expiryDate else null,
                                             lowStockAlert = lowStockAlert.toIntOrNull()
                                         )

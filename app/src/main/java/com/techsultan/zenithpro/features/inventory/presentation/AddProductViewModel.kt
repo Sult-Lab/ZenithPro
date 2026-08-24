@@ -65,6 +65,10 @@ class AddProductViewModel(
         _scannedBarcode.value = barcode
     }
 
+    fun onUnitTypeChanged(unitType: String) {
+        _state.value = state.value.copy(unitType = unitType)
+    }
+
     fun onBranchSelected(branchId: String) {
         _selectedBranchId.value = branchId
     }
@@ -204,5 +208,6 @@ class AddProductViewModel(
 
 data class ProductUiState(
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val unitType: String = "UNIT"
 )

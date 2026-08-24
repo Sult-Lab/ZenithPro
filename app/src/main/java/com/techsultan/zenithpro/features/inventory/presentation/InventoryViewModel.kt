@@ -193,7 +193,7 @@ class InventoryViewModel(
                 val matchesStockStatus = when (s.selectedStockStatus) {
                     "In Stock" -> totalStock > 0
                     "Low Stock" -> p.variants.any { v -> v.stock.any { it.quantity <= (it.lowStockAlert ?: 5) && it.quantity > 0 } }
-                    "Out of Stock" -> totalStock == 0
+                    "Out of Stock" -> totalStock == 0.0
                     else -> true
                 }
 

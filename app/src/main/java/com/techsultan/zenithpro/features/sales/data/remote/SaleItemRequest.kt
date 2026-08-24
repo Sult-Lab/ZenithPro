@@ -10,6 +10,6 @@ data class SaleItemRequest(
     val variantSku: String,
     val unitPrice: Long,
     val costPrice: Long,
-    val quantity: Int,
+    val quantity: Double,
     val discount: Long
 )

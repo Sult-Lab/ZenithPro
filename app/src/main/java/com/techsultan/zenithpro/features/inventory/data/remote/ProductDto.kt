@@ -21,6 +21,7 @@ data class ProductDto(
     @SerialName("updated_at") val updatedAt: String,
     @SerialName("deleted_at") val deletedAt: String? = null,
     @SerialName("expiry_warning_days") val expiryWarningDays: Int? = null,
+    @SerialName("unit_type") val unitType: String = "UNIT",
     @SerialName("branch_id") val branchId: String? = null,
 )
 

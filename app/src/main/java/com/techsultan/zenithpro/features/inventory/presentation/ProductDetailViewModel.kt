@@ -64,6 +64,10 @@ class ProductDetailViewModel(
         _scannedBarcode.value = null
     }
 
+    fun onUnitTypeChanged(unitType: String) {
+        _state.value = _state.value.copy(unitType = unitType)
+    }
+
     init {
         observeCategories()
     }
@@ -90,9 +94,11 @@ class ProductDetailViewModel(
                 when (result) {
                     is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
                     is Resource.Success -> {
+                        val product = result.data
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            product = result.data,
+                            product = product,
+                            unitType = product?.product?.unitType ?: "UNIT",
                             error = null
                         )
                     }
@@ -189,5 +195,6 @@ class ProductDetailViewModel(
 data class ProductDetailUiState(
     val isLoading: Boolean = false,
     val product: ProductWithVariants? = null,
+    val unitType: String = "UNIT",
     val error: String? = null
 )

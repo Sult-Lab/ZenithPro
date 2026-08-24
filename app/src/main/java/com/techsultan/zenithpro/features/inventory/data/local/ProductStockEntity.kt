@@ -24,8 +24,8 @@ import com.techsultan.zenithpro.core.util.Util
 data class ProductStockEntity(
     @PrimaryKey val id: String,
     val variantId: String,
-    val branchId: String,       // ADD
-    val quantity: Int,
+    val branchId: String,
+    val quantity: Double,
     val expiryDate: String?,
     val lowStockAlert: Int?,
     val updatedAt: String,
