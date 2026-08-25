@@ -86,8 +86,7 @@ val productModule = module {
             syncProductsUseCase = get(),
             deleteProductUseCase = get(),
             networkMonitor = get(),
-            sessionManager = get(),
-            branchDao = get()
+            sessionManager = get()
         )
     }
 

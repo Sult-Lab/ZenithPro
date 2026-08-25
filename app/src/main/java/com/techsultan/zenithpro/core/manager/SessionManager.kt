@@ -57,6 +57,7 @@ class SessionManager(
         if (stored != null) {
             _currentSession = stored
             logoManager.loadLogo(stored.businessLogoUrl)
+            initActiveBranch(stored)
             return stored
         }
 
@@ -69,23 +70,24 @@ class SessionManager(
     }
 
     // Called after login to set the initial active branch
-    fun initActiveBranch(session: UserSession) {
+    suspend fun initActiveBranch(session: UserSession) {
         if (!session.isAdmin) {
             // Staff/Manager — lock to their branch
             _activeBranchId.value  = session.branchId
             _activeBranchName.value = session.branchName
         } else {
-            // Admin — default to null (all branches view)
-            // They select a branch when needed
-            _activeBranchId.value  = null
-            _activeBranchName.value = null
+            // Admin — load persisted selection if any
+            val (persistedId, persistedName) = sessionDataStore.getSelectedBranch()
+            _activeBranchId.value  = persistedId
+            _activeBranchName.value = persistedName
         }
     }
 
     // Called when admin selects a branch
-    fun setActiveBranch(branchId: String?, branchName: String?) {
+    suspend fun setActiveBranch(branchId: String?, branchName: String?) {
         _activeBranchId.value  = branchId
         _activeBranchName.value = branchName
+        sessionDataStore.updateSelectedBranch(branchId, branchName)
     }
 
     // Convenience — returns active branch or throws if null

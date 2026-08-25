@@ -74,8 +74,6 @@ import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.payment.presentation.TransferPaymentViewModel
-import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
-import com.techsultan.zenithpro.features.sales.component.BranchSelectorChip
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -95,13 +93,10 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
-    val currentTerminal by viewModel.currentTerminal.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
-
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
-    var pendingSaleId by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     val vatAmount = (cartTotal * (state.taxRate / 100)).toLong()
@@ -115,9 +110,7 @@ fun CheckoutScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is CheckoutViewModel.CheckoutEvent.SaleCompleted -> {
-
-                }
+                is CheckoutViewModel.CheckoutEvent.SaleCompleted -> { }
                 is CheckoutViewModel.CheckoutEvent.ReceiptReady-> {
                     onReceiptPreview(event.receipt)
                     snackbarHost.showSnackbar("Payment successful")
@@ -154,78 +147,44 @@ fun CheckoutScreen(
                         .clickable { showBottomSheet = true }
                         .padding(16.dp)
                 ) {
-                    Column(modifier = Modifier) {
-                        if (state.availableBranches.isNotEmpty() &&
-                            state.selectedBranchId == null){
-                            Surface(
-                                shape  = RoundedCornerShape(8.dp),
-                                color  = Color(0xFFD32F2F).copy(alpha = 0.08f),
-                                border = BorderStroke(
-                                    1.dp, Color(0xFFD32F2F).copy(alpha = 0.3f)
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(Icons.Default.Warning, null,
-                                        tint     = Color(0xFFD32F2F),
-                                        modifier = Modifier.size(16.dp))
-                                    Text("Select a branch to continue",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFFD32F2F),
-                                        modifier = Modifier.weight(1f))
-                                    TextButton(
-                                        onClick = { viewModel.onShowBranchPicker() },
-                                        colors  = ButtonDefaults.textButtonColors(
-                                            contentColor = Color(0xFFD32F2F)
-                                        )
-                                    ) { Text("Select") }
-                                }
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Cart",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${if (cartItemCount % 1.0 == 0.0) cartItemCount.toInt() else cartItemCount} Items",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.ShoppingCart,
-                                    contentDescription = "Cart",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "${if (cartItemCount % 1.0 == 0.0) cartItemCount.toInt() else cartItemCount} Items",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "Total: ",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Text(
-                                    text = "₦${grandTotal.formatPrice()}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.Default.ExpandLess,
-                                    contentDescription = "Expand",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Total: ",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text(
+                                text = "₦${grandTotal.formatPrice()}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.ExpandLess,
+                                contentDescription = "Expand",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                     }
                 }
@@ -303,15 +262,6 @@ fun CheckoutScreen(
                         contentPadding = PaddingValues(bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (state.availableBranches.isNotEmpty()) {
-                            item {
-                                BranchSelectorChip(
-                                    selectedBranchName = state.selectedBranchName,
-                                    canSelect          = state.canSelectBranch,
-                                    onClick            = { viewModel.onShowBranchPicker() }
-                                )
-                            }
-                        }
                         items(
                             items = filteredProducts,
                             key = { it.product.id }
@@ -332,15 +282,6 @@ fun CheckoutScreen(
                 }
             }
         }
-    }
-
-    if (state.showBranchPicker) {
-        BranchPickerSheet(
-            branches   = state.availableBranches,
-            selectedId = state.selectedBranchId,
-            onSelect   = { viewModel.onBranchSelected(it) },
-            onDismiss  = { viewModel.onDismissBranchPicker() }
-        )
     }
 
     if (showBottomSheet) {

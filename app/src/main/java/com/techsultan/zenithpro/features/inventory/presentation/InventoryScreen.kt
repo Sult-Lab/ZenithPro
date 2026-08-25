@@ -85,7 +85,6 @@ fun InventoryScreen(
     var openMenuDialog by remember { mutableStateOf(false) }
     var sortInventory by remember { mutableStateOf(false) }
     var filterInventory by remember { mutableStateOf(false) }
-    val isAdmin = state.isAdmin
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -311,13 +310,7 @@ fun InventoryScreen(
             onApply = { stockStatus, min, max ->
                 viewModel.onFilterChanged(stockStatus, min, max)
             },
-            onReset = { viewModel.resetFilters() },
-            isAdmin = isAdmin,
-            branches = state.branches,
-            selectedBranchId = state.selectedBranchId,
-            onBranchFilterChanged = {
-                viewModel.onBranchFilterChanged(it)
-            }
+            onReset = { viewModel.resetFilters() }
         )
     }
 }

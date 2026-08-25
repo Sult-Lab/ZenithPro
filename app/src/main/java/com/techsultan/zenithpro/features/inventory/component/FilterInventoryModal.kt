@@ -60,11 +60,7 @@ fun FilterInventoryBottomSheet(
     maxPrice: Long?,
     onDismiss: () -> Unit,
     onApply: (String, Long?, Long?) -> Unit,
-    onReset: () -> Unit,
-    isAdmin: Boolean,
-    branches: List<BranchEntity>,
-    onBranchFilterChanged: (String) -> Unit,
-    selectedBranchId: String?
+    onReset: () -> Unit
 ) {
     var localStockStatus by remember { mutableStateOf(selectedStockStatus) }
     var minText by remember { mutableStateOf(minPrice?.toString() ?: "") }
@@ -108,49 +104,6 @@ fun FilterInventoryBottomSheet(
             thickness = 0.5.dp
         )
 
-        if (isAdmin && branches.size > 1){
-            var expanded by remember { mutableStateOf(false) }
-            val selectedBranch = branches.find { it.id == selectedBranchId }
-
-            Text(
-                text = "Branches",
-                modifier = Modifier.padding(16.dp),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-            ){
-                CustomTextField(
-                    value = selectedBranch?.name ?: "",
-                    onValueChange = { },
-                    label = "",
-                    placeholder = "Select branch",
-                    readOnly = true,
-                    modifier = Modifier
-                        .menuAnchor(type = ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                        .fillMaxWidth(),
-                    trailingIcon = {  ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-                )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ){
-                    branches.forEach { branch ->
-                        DropdownMenuItem(
-                            text = { Text(branch.name) },
-                            onClick = {
-                                onBranchFilterChanged(branch.id)
-                                expanded = false
-                            },
-                        )
-                    }
-                }
-            }
-        }
         Text(
             text = "Stock Status",
             modifier = Modifier.padding(16.dp),

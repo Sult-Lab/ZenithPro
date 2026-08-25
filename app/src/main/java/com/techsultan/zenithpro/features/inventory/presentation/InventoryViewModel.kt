@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.DeleteProductUseCase
@@ -30,7 +29,6 @@ class InventoryViewModel(
     private val deleteProductUseCase: DeleteProductUseCase,
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
-    private val branchDao: BranchDao,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InventoryUiState())
@@ -46,33 +44,32 @@ class InventoryViewModel(
     init {
         viewModelScope.launch {
             val session = sessionManager.loadSession() ?: return@launch
-            businessId     = session.businessId
-            sessionBranchId = session.branchId
-            isAdmin        = session.isAdmin
+            businessId = session.businessId
 
-            // Load branches for admin branch filter
-            if (isAdmin) {
-                val branches = branchDao.getActiveBranchesForBusiness(session.businessId)
-                _state.update { it.copy(
-                    branches  = branches,
-                    isAdmin   = true,
-                    // Admin defaults to all branches (null = no filter)
-                    selectedBranchId = null,
-                )}
-            } else {
-                _state.update { it.copy(isAdmin = false) }
-            }
-
-            observeProducts()
             observeConnectivity()
             syncOnStart()
+
+            // Observe branch changes and reload products
+            sessionManager.activeBranchId.collect { id ->
+                sessionBranchId = id
+                isAdmin = sessionManager.isAdmin
+                _state.update { it.copy(
+                    isAdmin = isAdmin,
+                    selectedBranchId = id,
+                )}
+                observeProducts()
+            }
         }
     }
 
-    fun onBranchFilterChanged(branchId: String?) {
-        _state.update { it.copy(selectedBranchId = branchId) }
-        // Re-observe products for the selected branch
-        observeProducts()
+    fun onFilterChanged(stockStatus: String, minPrice: Long?, maxPrice: Long?) {
+        _state.update {
+            it.copy(
+                selectedStockStatus = stockStatus,
+                minPrice = minPrice,
+                maxPrice = maxPrice
+            )
+        }
     }
 
     private fun observeProducts() {
@@ -158,16 +155,6 @@ class InventoryViewModel(
 
     fun onCategoryFilterChanged(category: String?) {
         _state.update { it.copy(selectedCategory = category) }
-    }
-
-    fun onFilterChanged(stockStatus: String, minPrice: Long?, maxPrice: Long?) {
-        _state.update {
-            it.copy(
-                selectedStockStatus = stockStatus,
-                minPrice = minPrice,
-                maxPrice = maxPrice
-            )
-        }
     }
 
     fun resetFilters() {

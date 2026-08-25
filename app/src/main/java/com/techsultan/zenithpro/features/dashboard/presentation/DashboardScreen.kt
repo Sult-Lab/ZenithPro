@@ -46,7 +46,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +78,8 @@ import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBar
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBottomSheet
 import com.techsultan.zenithpro.features.sales.formatAmount
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
@@ -95,6 +99,7 @@ fun DashboardScreen(
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showBranchSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -135,6 +140,15 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                if (state.isAdmin && state.branches.size > 1) {
+                    item {
+                        BranchSelectorBar(
+                            activeBranchName = state.activeBranchName,
+                            onClick = { showBranchSheet = true }
+                        )
+                    }
+                }
+
                 item {
                     DashboardHero(onNewSale = onNewSale)
                 }
@@ -185,6 +199,15 @@ fun DashboardScreen(
 
                 item { Spacer(Modifier.height(8.dp)) }
             }
+        }
+
+        if (showBranchSheet) {
+            BranchSelectorBottomSheet(
+                branches = state.branches,
+                activeBranchId = state.activeBranchId,
+                onBranchSelected = viewModel::onBranchSelected,
+                onDismiss = { showBranchSheet = false }
+            )
         }
     }
 }

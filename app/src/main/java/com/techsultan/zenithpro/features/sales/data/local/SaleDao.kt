@@ -112,8 +112,13 @@ interface SaleDao {
     WHERE s.businessId  = :businessId
       AND s.soldAt      >= :startOfDay
       AND s.status      != 'CANCELLED'
+      AND (:branchId    IS NULL OR s.branchId = :branchId)
 """)
-    suspend fun getTodaySummary(businessId: String, startOfDay: String): DashboardSummary
+    suspend fun getTodaySummary(
+        businessId: String,
+        startOfDay: String,
+        branchId: String? = null
+    ): DashboardSummary
 
     // Last N days — one row per day for the chart
     @Query("""
@@ -127,10 +132,15 @@ interface SaleDao {
     WHERE s.businessId  = :businessId
       AND s.soldAt      >= :since
       AND s.status      != 'CANCELLED'
+      AND (:branchId    IS NULL OR s.branchId = :branchId)
     GROUP BY DATE(s.soldAt)
     ORDER BY saleDate ASC
 """)
-    suspend fun getChartData(businessId: String, since: String): List<ChartDataPoint>
+    suspend fun getChartData(
+        businessId: String,
+        since: String,
+        branchId: String? = null
+    ): List<ChartDataPoint>
 
     // Pending debts count and total
     @Query("""
@@ -140,8 +150,12 @@ interface SaleDao {
     FROM sales
     WHERE businessId = :businessId
       AND status     = 'PARTIAL'
+      AND (:branchId   IS NULL OR branchId = :branchId)
 """)
-    suspend fun getPendingDebts(businessId: String): PendingDebtSummary
+    suspend fun getPendingDebts(
+        businessId: String,
+        branchId: String? = null
+    ): PendingDebtSummary
 
     @Transaction
     @Query("""
