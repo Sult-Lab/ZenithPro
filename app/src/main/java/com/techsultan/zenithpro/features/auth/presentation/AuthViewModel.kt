@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.auth.presentation
 
+import android.net.Uri
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -38,8 +39,8 @@ class AuthViewModel(
     private val _events = MutableSharedFlow<AuthEvent>()
     val events = _events.asSharedFlow()
 
-    fun signUp(request: SignUpRequest) {
-        signUpUseCase(request).onEach { result ->
+    fun signUp(request: SignUpRequest, logoUri: Uri?) {
+        signUpUseCase(request, logoUri).onEach { result ->
             when (result) {
                 is Resource.Success -> {
                     _signUpState.value = AuthState(isSuccess = true)

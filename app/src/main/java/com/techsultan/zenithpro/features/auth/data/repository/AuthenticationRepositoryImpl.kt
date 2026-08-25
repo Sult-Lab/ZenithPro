@@ -1,9 +1,10 @@
 package com.techsultan.zenithpro.features.auth.data.repository
 
+import android.net.Uri
 import android.util.Log
 import com.techsultan.zenithpro.core.database.ZenithDatabase
 import com.techsultan.zenithpro.core.manager.SessionManager
-import com.techsultan.zenithpro.core.manager.ZenithFcmTokenManager
+import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffResponse
@@ -29,15 +30,23 @@ class AuthenticationRepositoryImpl(
     private val postgrest: Postgrest,
     private val functions: Functions,
     private val sessionManager: SessionManager,
-    private val database: ZenithDatabase
+    private val database: ZenithDatabase,
+    private val imageUploadManager: ImageUploadManager
 ) : AuthenticationRepository {
 
-    override fun signUp(request: SignUpRequest): Flow<Resource<Unit>> = flow {
+    override fun signUp(request: SignUpRequest, logoUri: Uri?): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading())
         try {
+            val finalRequest = if (logoUri != null) {
+                val logoUrl = imageUploadManager.uploadBusinessLogo(logoUri, request.businessName)
+                request.copy(businessLogoUrl = logoUrl)
+            } else {
+                request
+            }
+
             functions.invoke(
                 function = "signup",
-                body = request
+                body = finalRequest
             )
             emit(Resource.Success(Unit))
         } catch (e: Exception) {

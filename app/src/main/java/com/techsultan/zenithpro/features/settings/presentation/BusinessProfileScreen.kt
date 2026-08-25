@@ -38,6 +38,8 @@ import coil.compose.AsyncImage
 import com.techsultan.zenithpro.R
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.core.components.ZenithLogoSection
+import com.techsultan.zenithpro.core.components.ZenithPhoneNumberField
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
@@ -113,7 +115,7 @@ fun BusinessProfileScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 item {
-                    LogoSection(
+                    ZenithLogoSection(
                         logoUri = state.logoDisplayUri,
                         onPick = {
                             checkAndRequestStoragePermission(context, storagePermissionLauncher) {
@@ -153,9 +155,11 @@ fun BusinessProfileScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         SectionHeader(title = stringResource(id = R.string.contact_location))
 
-                        PhoneNumberField(
+                        ZenithPhoneNumberField(
+                            label = stringResource(id = R.string.phone_number),
                             value = state.phoneNumber,
-                            onValueChange = viewModel::onPhoneChanged
+                            onValueChange = viewModel::onPhoneChanged,
+                            placeholder = stringResource(id = R.string.placeholder_phone_number)
                         )
 
                         CustomTextField(
@@ -226,110 +230,6 @@ fun BusinessProfileScreen(
 }
 
 @Composable
-private fun LogoSection(
-    modifier: Modifier = Modifier,
-    logoUri: Any?,
-    onPick: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(contentAlignment = Alignment.BottomEnd) {
-            if (logoUri != null) {
-                AsyncImage(
-                    model = logoUri,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .border(
-                            2.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                            RoundedCornerShape(16.dp)
-                        ),
-                    contentScale = ContentScale.Crop,
-                )
-                IconButton(
-                    onClick  = onRemove,
-                    modifier = Modifier
-                        .size(24.dp),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                ){
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .clickable{ onPick() }
-                        .size(100.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF0F171B)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .border(2.dp, Color.White.copy(alpha = 0.2f), CircleShape)
-                    )
-                }
-                Surface(
-                    modifier = Modifier.size(28.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    tonalElevation = 2.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(id = R.string.your_store_logo),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = stringResource(id = R.string.logo_subtext),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-        }
-
-        Button(
-            onClick = onPick,
-            shape = RoundedCornerShape(8.dp),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-            modifier = Modifier.height(36.dp)
-        ) {
-            Text(
-                text = stringResource(id = R.string.change_logo),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionHeader(title: String) {
     Text(
         text = title,
@@ -392,57 +292,6 @@ private fun BusinessTypeField(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun PhoneNumberField(
-    value: String,
-    onValueChange: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(id = R.string.phone_number),
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
-            fontWeight = FontWeight.Bold
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(0.dp)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .width(80.dp)
-                    .height(56.dp),
-                shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
-                color = Color(0xFFF9FAFB),
-                border = BorderStroke(1.dp, Color.LightGray.copy(alpha = 0.5f))
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "+234",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF1976D2),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text(stringResource(id = R.string.placeholder_phone_number)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f)
-                ),
-                singleLine = true
-            )
         }
     }
 }
