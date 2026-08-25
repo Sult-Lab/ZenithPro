@@ -270,9 +270,9 @@ fun SignUpScreen(
                     onClick = {
                         viewModel.signUp(
                             SignUpRequest(
-                                email = email,
-                                password = password,
-                                confirmPassword = confirmPassword,
+                                email = email.trim(),
+                                password = password.trim(),
+                                confirmPassword = confirmPassword.trim(),
                                 adminFirstName = adminFirstName,
                                 adminLastName = adminLastName,
                                 businessName = businessName,

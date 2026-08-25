@@ -1,7 +1,6 @@
 package com.techsultan.zenithpro.features.dashboard.presentation
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,24 +46,40 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
+import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
+import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
+import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.common.Fill
+import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
+import com.techsultan.zenithpro.features.analytics.component.SalesChartCard
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBar
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBottomSheet
 import com.techsultan.zenithpro.features.sales.formatAmount
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
@@ -84,6 +99,7 @@ fun DashboardScreen(
 ) {
 
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showBranchSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -124,6 +140,15 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
+                if (state.isAdmin && state.branches.size > 1) {
+                    item {
+                        BranchSelectorBar(
+                            activeBranchName = state.activeBranchName,
+                            onClick = { showBranchSheet = true }
+                        )
+                    }
+                }
+
                 item {
                     DashboardHero(onNewSale = onNewSale)
                 }
@@ -174,6 +199,15 @@ fun DashboardScreen(
 
                 item { Spacer(Modifier.height(8.dp)) }
             }
+        }
+
+        if (showBranchSheet) {
+            BranchSelectorBottomSheet(
+                branches = state.branches,
+                activeBranchId = state.activeBranchId,
+                onBranchSelected = viewModel::onBranchSelected,
+                onDismiss = { showBranchSheet = false }
+            )
         }
     }
 }
@@ -587,152 +621,6 @@ private fun QuickActionsRow(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
         )
-    }
-}
-
-@Composable
-private fun SalesChartCard(
-    chartData: List<ChartDataPoint>,
-    selectedDays: Int,
-    onPeriodChange: (Int) -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Sales trend",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (chartData.isNotEmpty()) {
-                        Text(
-                            text = "₦${chartData.sumOf { it.revenue }.formatAmount()} total",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(7, 14, 30).forEach { days ->
-                        val selected = selectedDays == days
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (selected)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.clickable { onPeriodChange(days) }
-                        ) {
-                            Text(
-                                text = "${days}d",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (selected)
-                                    MaterialTheme.colorScheme.onPrimary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            if (chartData.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(160.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No sales data for this period",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                SalesBarChart(chartData = chartData)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SalesBarChart(chartData: List<ChartDataPoint>) {
-    val maxRevenue = chartData.maxOfOrNull { it.revenue } ?: 1L
-    val barColor = MaterialTheme.colorScheme.primary
-    val profitColor = Color(0xFF388E3C)
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val formatter = DateTimeFormatter.ofPattern("MM/dd")
-
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(180.dp)
-    ) {
-        val groupWidth = size.width / chartData.size
-        val barWidth = groupWidth * 0.5f
-        val maxH = size.height * 0.78f
-        val baseY = size.height - 20.dp.toPx()
-
-        chartData.forEachIndexed { index, point ->
-            val centerX = groupWidth * index + groupWidth / 2f
-
-            val revenueH = if (maxRevenue > 0)
-                (point.revenue.toFloat() / maxRevenue) * maxH else 0f
-            drawRoundRect(
-                color = barColor.copy(alpha = 0.85f),
-                topLeft = Offset(centerX - barWidth / 2, baseY - revenueH),
-                size = Size(barWidth, revenueH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())
-            )
-
-            val profitH = if (maxRevenue > 0)
-                (point.profit.toFloat() / maxRevenue) * maxH else 0f
-            drawRoundRect(
-                color = profitColor.copy(alpha = 0.75f),
-                topLeft = Offset(centerX - barWidth / 4, baseY - profitH),
-                size = Size(barWidth / 2, profitH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx())
-            )
-
-            if (chartData.size <= 14 || index % 2 == 0) {
-                drawContext.canvas.nativeCanvas.drawText(
-                    LocalDate.parse(point.saleDate).format(formatter),
-                    centerX,
-                    size.height,
-                    android.graphics.Paint().apply {
-                        color = labelColor.copy(alpha = 0.6f).toArgb()
-                        textSize = 9.sp.toPx()
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
-                )
-            }
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        LegendItem(color = MaterialTheme.colorScheme.primary, label = "Revenue")
-        Spacer(Modifier.width(16.dp))
-        LegendItem(color = Color(0xFF388E3C), label = "Profit")
     }
 }
 

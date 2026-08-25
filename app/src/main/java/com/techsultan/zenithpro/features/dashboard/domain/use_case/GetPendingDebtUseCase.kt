@@ -6,6 +6,9 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummar
 import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRepository
 
 class GetPendingDebtsUseCase(private val repository: DashboardRepository) {
-    suspend operator fun invoke(businessId: String): Resource<PendingDebtSummary> =
-        repository.getPendingDebts(businessId)
+    suspend operator fun invoke(
+        businessId: String,
+        branchId: String? = null
+    ): Resource<PendingDebtSummary> =
+        repository.getPendingDebts(businessId, branchId)
 }

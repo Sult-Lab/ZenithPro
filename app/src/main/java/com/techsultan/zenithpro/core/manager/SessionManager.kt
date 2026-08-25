@@ -18,6 +18,9 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import java.util.Objects.isNull
@@ -37,6 +40,12 @@ class SessionManager(
     val sessionFlow: Flow<UserSession?> = sessionDataStore.sessionFlow
         .onEach { _currentSession = it }
 
+    private val _activeBranchId = MutableStateFlow<String?>(null)
+    val activeBranchId: StateFlow<String?> = _activeBranchId.asStateFlow()
+
+    private val _activeBranchName = MutableStateFlow<String?>(null)
+    val activeBranchName: StateFlow<String?> = _activeBranchName.asStateFlow()
+
 
     suspend fun loadSession(): UserSession? {
         // Try memory first
@@ -48,6 +57,7 @@ class SessionManager(
         if (stored != null) {
             _currentSession = stored
             logoManager.loadLogo(stored.businessLogoUrl)
+            initActiveBranch(stored)
             return stored
         }
 
@@ -58,6 +68,32 @@ class SessionManager(
         sessionDataStore.saveSession(session)
         _currentSession = session
     }
+
+    // Called after login to set the initial active branch
+    suspend fun initActiveBranch(session: UserSession) {
+        if (!session.isAdmin) {
+            // Staff/Manager — lock to their branch
+            _activeBranchId.value  = session.branchId
+            _activeBranchName.value = session.branchName
+        } else {
+            // Admin — load persisted selection if any
+            val (persistedId, persistedName) = sessionDataStore.getSelectedBranch()
+            _activeBranchId.value  = persistedId
+            _activeBranchName.value = persistedName
+        }
+    }
+
+    // Called when admin selects a branch
+    suspend fun setActiveBranch(branchId: String?, branchName: String?) {
+        _activeBranchId.value  = branchId
+        _activeBranchName.value = branchName
+        sessionDataStore.updateSelectedBranch(branchId, branchName)
+    }
+
+    // Convenience — returns active branch or throws if null
+    // Used in checkout where branch is required
+    fun requireActiveBranchId(): String = _activeBranchId.value
+        ?: error("SessionManager: requireActiveBranchId() called before branch selected")
 
     suspend fun initSessionFromServer(userId: String): Result<UserSession> {
         return try {
@@ -185,6 +221,7 @@ class SessionManager(
             logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
+            initActiveBranch(session)
             Log.d("SessionManager", "Session initialized: ${session.fullName} branch=${session.branchName}")
 
             ZenithFcmTokenManager.registerTokenForTerminal(

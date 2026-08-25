@@ -13,6 +13,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.core.graphics.scale
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -150,6 +151,28 @@ object Util {
         val cleanName = name.filter { it.isLetterOrDigit() }.padEnd(3, 'X').take(3).uppercase()
         val timestamp = System.currentTimeMillis().toString().takeLast(4)
         return "$category-$cleanName-$timestamp"
+    }
+
+    fun formatQuantity(quantity: Double, unitType: UnitType): String {
+        return if (unitType.isDecimal) {
+            if (quantity == quantity.toLong().toDouble()) {
+                quantity.toLong().toString()   // show "2" not "2.0"
+            } else {
+                "%.3f".format(quantity).trimEnd('0').trimEnd('.')
+            }
+        } else {
+            quantity.toLong().toString()
+        }
+    }
+
+    fun formatReceiptQuantity(quantity: Double, unitType: UnitType): String {
+        return "${formatQuantity(quantity, unitType)} ${unitType.abbreviation}"
+        // → "2.5 kg", "3 pcs", "0.5 bag", "1 L"
+    }
+
+    fun formatStockDisplay(quantity: Double, unitType: UnitType): String {
+        return "${formatQuantity(quantity, unitType)} ${unitType.abbreviation} in stock"
+        // → "50 pcs in stock", "12.5 kg in stock"
     }
 
 }

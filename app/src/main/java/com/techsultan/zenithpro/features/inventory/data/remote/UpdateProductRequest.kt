@@ -6,9 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UpdateProductRequest(
     @SerialName("clientId")  val clientId: String,
+    @SerialName("branchId")  val branchId: String? = null,
     @SerialName("name") val name: String,
     @SerialName("description") val description: String?,
     @SerialName("category")  val category: String?,
+    @SerialName("unitType")  val unitType: String = "UNIT",
     @SerialName("baseSalesPrice") val baseSalesPrice: Long,
     @SerialName("baseCostPrice") val baseCostPrice: Long,
     @SerialName("expiryWarningDays") val expiryWarningDays: Int? = null,

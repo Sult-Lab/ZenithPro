@@ -8,20 +8,27 @@ import com.techsultan.zenithpro.core.util.Util
 
 @Entity(
     tableName = "product_stock",
-    foreignKeys = [ForeignKey(
-        entity = ProductVariantEntity::class,
-        parentColumns = ["id"],
-        childColumns = ["variantId"],
-        onDelete = ForeignKey.CASCADE
-    )],
-    indices = [Index("variantId")]
+    foreignKeys = [
+        ForeignKey(
+            entity = ProductVariantEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["variantId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index("variantId"),
+        Index("branchId"),      // ADD
+    ]
 )
 data class ProductStockEntity(
     @PrimaryKey val id: String,
     val variantId: String,
-    val quantity: Int,
+    val branchId: String,
+    val quantity: Double,
     val expiryDate: String?,
     val lowStockAlert: Int?,
     val updatedAt: String,
-    val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED
+    val deletedAt: String? = null,
+    val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED,
 )

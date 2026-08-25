@@ -158,4 +158,7 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.config)
+
+    //vico
+    implementation(libs.vico.compose.m3)
 }

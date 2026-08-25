@@ -27,11 +27,13 @@ fun CustomTextField(
     placeholder: String,
     modifier: Modifier = Modifier,
     prefix: String? = null,
+    suffix: String? = null,
     leadingIcon: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
     keyboardType: KeyboardType = KeyboardType.Text,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     readOnly: Boolean = false,
+    enabled: Boolean = true,
     error: String? = null,
     minLines: Int = 1
 ) {
@@ -39,18 +41,21 @@ fun CustomTextField(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold
-        )
+        if (label.isNotEmpty()){
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold
+            )
+        }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             placeholder = { Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), fontSize = 14.sp) },
             modifier = Modifier.fillMaxWidth(),
             prefix = if (prefix != null) { { Text(prefix, style = MaterialTheme.typography.bodyMedium) } } else null,
+            suffix = if (suffix != null) { { Text(suffix, style = MaterialTheme.typography.bodyMedium) } } else null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = keyboardType,
                 capitalization = KeyboardCapitalization.Words
@@ -67,6 +72,7 @@ fun CustomTextField(
             leadingIcon = leadingIcon,
             trailingIcon = trailingIcon,
             readOnly = readOnly,
+            enabled = enabled,
             supportingText = error?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
             isError = error != null,
             minLines = minLines,

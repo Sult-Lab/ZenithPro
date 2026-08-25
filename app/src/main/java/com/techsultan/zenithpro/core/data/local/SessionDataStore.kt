@@ -31,6 +31,8 @@ object SessionKeys {
     val BUSINESS_LOGO_URL = stringPreferencesKey("business_logo_url")
     val CURRENCY_CODE = stringPreferencesKey("currency_code")
     val TERMINAL_ID = stringPreferencesKey("terminal_id")
+    val SELECTED_BRANCH_ID = stringPreferencesKey("selected_branch_id")
+    val SELECTED_BRANCH_NAME = stringPreferencesKey("selected_branch_name")
 }
 
 class SessionDataStore(private val context: Context) {
@@ -70,6 +72,23 @@ class SessionDataStore(private val context: Context) {
 
     suspend fun updateCurrencySymbol(symbol: String) {
         dataStore.edit { it[SessionKeys.CURRENCY_SYMBOL] = symbol }
+    }
+
+    suspend fun updateSelectedBranch(branchId: String?, branchName: String?) {
+        dataStore.edit { prefs ->
+            if (branchId == null) {
+                prefs.remove(SessionKeys.SELECTED_BRANCH_ID)
+                prefs.remove(SessionKeys.SELECTED_BRANCH_NAME)
+            } else {
+                prefs[SessionKeys.SELECTED_BRANCH_ID] = branchId
+                prefs[SessionKeys.SELECTED_BRANCH_NAME] = branchName ?: ""
+            }
+        }
+    }
+
+    suspend fun getSelectedBranch(): Pair<String?, String?> {
+        val prefs = dataStore.data.first()
+        return prefs[SessionKeys.SELECTED_BRANCH_ID] to prefs[SessionKeys.SELECTED_BRANCH_NAME]
     }
 
     suspend fun getSession(): UserSession? {

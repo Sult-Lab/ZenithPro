@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.SyncStatusBadge
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.component.EmptyInventoryState
@@ -376,7 +377,7 @@ fun InventoryItemCard(
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when {
-                    totalStock == 0 -> {
+                    totalStock == 0.0 -> {
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = null,
@@ -399,14 +400,14 @@ fun InventoryItemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$totalStock in Stock",
+                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFFA000)
                         )
                     }
                     else -> {
                         Text(
-                            text = "$totalStock in Stock",
+                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

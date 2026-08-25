@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRe
 class GetChartDataUseCase(private val repository: DashboardRepository) {
     suspend operator fun invoke(
         businessId: String,
-        days: Int = 7
-    ): Resource<List<ChartDataPoint>> = repository.getChartData(businessId, days)
+        days: Int = 7,
+        branchId: String? = null
+    ): Resource<List<ChartDataPoint>> = repository.getChartData(businessId, days, branchId)
 }

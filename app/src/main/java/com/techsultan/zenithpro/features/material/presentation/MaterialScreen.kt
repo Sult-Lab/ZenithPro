@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
 import com.techsultan.zenithpro.features.material.data.remote.UpsertMaterialRequest
@@ -285,13 +286,16 @@ private fun MaterialCard(
             ) {
                 Column {
                     Text(
-                        "${material.quantity} ${material.unit}",
+                        com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(
+                            material.quantity, 
+                            UnitType.fromString(material.unit)
+                        ),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = statusColor
                     )
                     material.lowStockAlert?.let {
-                        Text("Alert at $it ${material.unit}",
+                        Text("Alert at ${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(it, UnitType.fromString(material.unit))}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -437,7 +441,7 @@ private fun AdjustStockSheet(
             Text("Adjust stock — ${material.name}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold)
-            Text("Current: ${material.quantity} ${material.unit}",
+            Text("Current: ${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(material.quantity, UnitType.fromString(material.unit))}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 

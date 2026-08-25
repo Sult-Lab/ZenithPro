@@ -47,4 +47,22 @@ interface BranchDao {
       AND deletedAt  IS NULL
 """)
     suspend fun getActiveBranchCount(businessId: String): Int
+
+    @Query("""
+    SELECT * FROM branches 
+    WHERE businessId = :businessId 
+    AND isActive = 1
+    AND deletedAt IS NULL
+    ORDER BY createdAt ASC
+""")
+    suspend fun getActiveBranchesForBusiness(businessId: String): List<BranchEntity>
+
+    @Query("""
+    SELECT * FROM branches 
+    WHERE businessId = :businessId 
+    AND isActive = 1
+    ORDER BY createdAt ASC 
+    LIMIT 1
+""")
+    suspend fun getFirstBranchForBusiness(businessId: String): BranchEntity?
 }

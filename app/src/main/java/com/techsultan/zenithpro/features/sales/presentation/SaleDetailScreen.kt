@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
@@ -304,7 +305,7 @@ private fun SaleItemRow(item: SaleItemEntity) {
             Text(item.productName,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium)
-            Text("${item.variantSku} × ${item.quantity}",
+            Text("${item.variantSku} × ${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

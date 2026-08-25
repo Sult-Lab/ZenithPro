@@ -66,14 +66,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.techsultan.zenithpro.core.components.QuantityInput
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.payment.presentation.TransferPaymentViewModel
-import com.techsultan.zenithpro.features.sales.component.BranchPickerSheet
-import com.techsultan.zenithpro.features.sales.component.BranchSelectorChip
 import com.techsultan.zenithpro.features.sales.component.PaymentDialog
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import org.koin.compose.viewmodel.koinViewModel
@@ -93,13 +93,10 @@ fun CheckoutScreen(
     val cart by viewModel.cart.collectAsStateWithLifecycle()
     val cartTotal by viewModel.cartTotal.collectAsStateWithLifecycle()
     val cartItemCount by viewModel.cartItemCount.collectAsStateWithLifecycle()
-    val currentTerminal by viewModel.currentTerminal.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
-
 
     var showBottomSheet by remember { mutableStateOf(false) }
     var showPaymentDialog by remember { mutableStateOf(false) }
-    var pendingSaleId by remember { mutableStateOf<String?>(null) }
     val sheetState = rememberModalBottomSheetState()
 
     val vatAmount = (cartTotal * (state.taxRate / 100)).toLong()
@@ -113,9 +110,7 @@ fun CheckoutScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is CheckoutViewModel.CheckoutEvent.SaleCompleted -> {
-
-                }
+                is CheckoutViewModel.CheckoutEvent.SaleCompleted -> { }
                 is CheckoutViewModel.CheckoutEvent.ReceiptReady-> {
                     onReceiptPreview(event.receipt)
                     snackbarHost.showSnackbar("Payment successful")
@@ -152,78 +147,44 @@ fun CheckoutScreen(
                         .clickable { showBottomSheet = true }
                         .padding(16.dp)
                 ) {
-                    Column(modifier = Modifier) {
-                        if (state.availableBranches.isNotEmpty() &&
-                            state.selectedBranchId == null){
-                            Surface(
-                                shape  = RoundedCornerShape(8.dp),
-                                color  = Color(0xFFD32F2F).copy(alpha = 0.08f),
-                                border = BorderStroke(
-                                    1.dp, Color(0xFFD32F2F).copy(alpha = 0.3f)
-                                )
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(Icons.Default.Warning, null,
-                                        tint     = Color(0xFFD32F2F),
-                                        modifier = Modifier.size(16.dp))
-                                    Text("Select a branch to continue",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFFD32F2F),
-                                        modifier = Modifier.weight(1f))
-                                    TextButton(
-                                        onClick = { viewModel.onShowBranchPicker() },
-                                        colors  = ButtonDefaults.textButtonColors(
-                                            contentColor = Color(0xFFD32F2F)
-                                        )
-                                    ) { Text("Select") }
-                                }
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Cart",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${if (cartItemCount % 1.0 == 0.0) cartItemCount.toInt() else cartItemCount} Items",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.ShoppingCart,
-                                    contentDescription = "Cart",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "$cartItemCount Items",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "Total: ",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Text(
-                                    text = "₦${grandTotal.formatPrice()}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.Default.ExpandLess,
-                                    contentDescription = "Expand",
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Total: ",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Text(
+                                text = "₦${grandTotal.formatPrice()}",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.ExpandLess,
+                                contentDescription = "Expand",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
                         }
                     }
                 }
@@ -301,15 +262,6 @@ fun CheckoutScreen(
                         contentPadding = PaddingValues(bottom = 80.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        if (state.availableBranches.isNotEmpty()) {
-                            item {
-                                BranchSelectorChip(
-                                    selectedBranchName = state.selectedBranchName,
-                                    canSelect          = state.canSelectBranch,
-                                    onClick            = { viewModel.onShowBranchPicker() }
-                                )
-                            }
-                        }
                         items(
                             items = filteredProducts,
                             key = { it.product.id }
@@ -317,24 +269,19 @@ fun CheckoutScreen(
                             val cartItem = cart[productWithVariants.product.id]
                             SaleProductItemCard(
                                 productWithVariants = productWithVariants,
-                                quantityInCart = cartItem?.quantity ?: 0,
+                                cartItem = cartItem,
                                 onAdd = { viewModel.addToCart(productWithVariants) },
-                                onRemove = { viewModel.removeFromCart(productWithVariants.product.id) }
+                                onQuantityChange = { newQty ->
+                                    cartItem?.let {
+                                        viewModel.updateCartItemQuantity(it.variantId, newQty)
+                                    }
+                                }
                             )
                         }
                     }
                 }
             }
         }
-    }
-
-    if (state.showBranchPicker) {
-        BranchPickerSheet(
-            branches   = state.availableBranches,
-            selectedId = state.selectedBranchId,
-            onSelect   = { viewModel.onBranchSelected(it) },
-            onDismiss  = { viewModel.onDismissBranchPicker() }
-        )
     }
 
     if (showBottomSheet) {
@@ -395,9 +342,9 @@ fun CategoryChip(
 @Composable
 fun SaleProductItemCard(
     productWithVariants: ProductWithVariants,
-    quantityInCart: Int,
+    cartItem: CartItem?,
     onAdd: () -> Unit,
-    onRemove: () -> Unit
+    onQuantityChange: (Double) -> Unit
 ) {
     val product = productWithVariants.product
     val totalStock = productWithVariants.variants.sumOf { v -> v.stock.sumOf { it.quantity } }
@@ -438,44 +385,20 @@ fun SaleProductItemCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Stock: $totalStock",
+                    text = "Stock: ${com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType))}",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (totalStock > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
                 )
             }
 
-            if (quantityInCart > 0) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    IconButton(
-                        onClick = onRemove,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Remove", modifier = Modifier.size(16.dp))
-                    }
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(
-                        text = quantityInCart.toString(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.width(2.dp))
-                    IconButton(
-                        onClick = onAdd,
-                        enabled = totalStock > quantityInCart,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(16.dp))
-                    }
-                }
+            if (cartItem != null && cartItem.quantity > 0) {
+                QuantityInput(
+                    quantity = cartItem.quantity,
+                    unitType = UnitType.fromString(cartItem.unitType),
+                    onQuantityChange = onQuantityChange,
+                    maxQuantity = totalStock, // prevent overselling
+                    modifier = Modifier.width(180.dp)
+                )
             } else {
                 Button(
                     onClick = onAdd,
@@ -525,13 +448,13 @@ fun CartBottomSheetContent(
                     Column {
                         Text(text = item.productName, style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            text = "${item.quantity} x ₦${item.unitPrice.formatPrice()}",
+                            text = "${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))} x ₦${item.unitPrice.formatPrice()}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
-                        text = "₦${(item.unitPrice * item.quantity).formatPrice()}",
+                        text = "₦${(item.unitPrice * item.quantity).toLong().formatPrice()}",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )

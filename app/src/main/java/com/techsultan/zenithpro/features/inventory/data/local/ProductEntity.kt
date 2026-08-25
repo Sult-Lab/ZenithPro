@@ -16,8 +16,10 @@ data class ProductEntity(
     val isActive: Boolean,
     val imageUrls: List<String>,
     val expiryWarningDays: Int?,
+    val unitType: String = "UNIT",
     val updatedAt: String,
     val deletedAt: String?,
     val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED,
-    val locallyCreatedAt: String? = null
+    val locallyCreatedAt: String? = null,
+    val branchId: String?
 )

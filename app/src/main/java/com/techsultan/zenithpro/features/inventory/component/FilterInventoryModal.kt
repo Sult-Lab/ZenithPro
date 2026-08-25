@@ -21,7 +21,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,8 +47,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 
 @Composable
 fun FilterInventoryBottomSheet(
@@ -58,9 +65,6 @@ fun FilterInventoryBottomSheet(
     var localStockStatus by remember { mutableStateOf(selectedStockStatus) }
     var minText by remember { mutableStateOf(minPrice?.toString() ?: "") }
     var maxText by remember { mutableStateOf(maxPrice?.toString() ?: "") }
-
-    // Simplified slider logic for now as it needs a range
-    var sliderPosition by remember { mutableStateOf(0f..1000000f) }
 
     ModalBottomSheet(
         onDismissRequest = { onDismiss() },

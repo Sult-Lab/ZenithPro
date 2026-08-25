@@ -9,6 +9,9 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
 import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
@@ -31,6 +34,8 @@ class AddProductViewModel(
     val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
+    private val branchDao: BranchDao,
+    private val getBranchesUseCase: GetBranchesUseCase,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductUiState())
@@ -39,6 +44,14 @@ class AddProductViewModel(
     private val _categories = MutableStateFlow<List<CategoryEntity>>(emptyList())
     val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
 
+    private val _branches = MutableStateFlow<List<BranchEntity>>(emptyList())
+    val branches: StateFlow<List<BranchEntity>> = _branches.asStateFlow()
+
+    private val _selectedBranchId = MutableStateFlow<String?>(null)
+    val selectedBranchId: StateFlow<String?> = _selectedBranchId.asStateFlow()
+
+    private val _isAdmin = MutableStateFlow(false)
+    val isAdmin: StateFlow<Boolean> = _isAdmin.asStateFlow()
     private val _eventFlow = MutableSharedFlow<UiEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
@@ -46,9 +59,18 @@ class AddProductViewModel(
     val scannedBarcode: State<String?> = _scannedBarcode
 
     val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
+    val branchId: String? get() = try { sessionManager.currentSession?.branchId } catch (e: Exception) { null }
 
     fun onBarcodeScanned(barcode: String) {
         _scannedBarcode.value = barcode
+    }
+
+    fun onUnitTypeChanged(unitType: String) {
+        _state.value = state.value.copy(unitType = unitType)
+    }
+
+    fun onBranchSelected(branchId: String) {
+        _selectedBranchId.value = branchId
     }
 
     fun clearScannedBarcode() {
@@ -58,11 +80,16 @@ class AddProductViewModel(
     init {
         viewModelScope.launch {
             sessionManager.loadSession()
-            observeCategories()
+            val session = sessionManager.currentSession
+            Log.d(
+                "AddProductViewModel",
+                "Session loaded: $session"
+            )
+            _isAdmin.value = sessionManager.currentSession?.isAdmin ?: false
         }
     }
 
-    private fun observeCategories() {
+    fun observeCategories() {
         viewModelScope.launch {
             val bId = businessId ?: return@launch
             getCategoriesUseCase(bId).collect { result ->
@@ -81,6 +108,24 @@ class AddProductViewModel(
         viewModelScope.launch {
             _state.value = state.value.copy(isLoading = true)
 
+            // ADMIN has null branchId — resolve to first branch
+            val resolvedBranchId = branchId ?: run {
+                // Admin adding product — they must select a branch
+                // For now use first branch, UI will add branch picker later
+                sessionManager.currentSession?.let { session ->
+                    addProductUseCase.getFirstBranchId(session.businessId)
+                }
+            }
+
+            if (resolvedBranchId == null) {
+                _state.value = state.value.copy(
+                    isLoading = false,
+                    error = "No branch found. Please create a branch first."
+                )
+                _eventFlow.emit(UiEvent.Error("No branch found"))
+                return@launch
+            }
+
             val cachedPaths = imageUris.mapNotNull { uri ->
                 try {
                     imageCacheManager.cacheImage(uri)
@@ -93,18 +138,16 @@ class AddProductViewModel(
 
             val productClientId = UUID.randomUUID().toString()
 
-            // If no variants were added by the user, create a single default variant
-            // so stock information is never lost
             val variants = if (addProductRequest.variants.isNullOrEmpty()) {
                 listOf(
                     ProductVariantCreateRequest(
-                        clientId = UUID.randomUUID().toString(),
-                        sku = "${addProductRequest.name.take(3).uppercase()}-DEFAULT",
+                        clientId  = UUID.randomUUID().toString(),
+                        sku       = "${addProductRequest.name.take(3).uppercase()}-DEFAULT",
                         salesPrice = addProductRequest.baseSalesPrice,
-                        costPrice = addProductRequest.baseCostPrice,
-                        barcode = barcode,
+                        costPrice  = addProductRequest.baseCostPrice,
+                        barcode    = barcode,
                         attributes = emptyList(),
-                        stock = addProductRequest.defaultStock
+                        stock      = addProductRequest.defaultStock
                     )
                 )
             } else {
@@ -114,8 +157,9 @@ class AddProductViewModel(
             }
 
             val requestWithIds = addProductRequest.copy(
-                clientId = productClientId,
-                variants = variants
+                clientId  = productClientId,
+                branchId  = resolvedBranchId,
+                variants  = variants
             )
 
             when (val result = addProductUseCase(requestWithIds, cachedUris)) {
@@ -128,11 +172,30 @@ class AddProductViewModel(
                         isLoading = false,
                         error = result.message ?: "An unexpected error occurred"
                     )
-                    Log.e("AddProductViewModel", "addProduct: ${result.message}")
                     _eventFlow.emit(UiEvent.Error(result.message ?: "An unexpected error occurred"))
                 }
                 is Resource.Loading -> _state.value = state.value.copy(isLoading = true)
             }
+        }
+    }
+
+   fun loadBranches() {
+        viewModelScope.launch {
+            val bId = businessId ?: return@launch
+            val branches = branchDao.getActiveBranchesForBusiness(bId)
+            _branches.value = branches
+            Log.d("AddProductViewModel", "Branches: ${_branches.value}")
+            Log.d("AddProductViewModel", "Branches: ${_branches.value.size}")
+            // Auto-select the session branch for staff/manager
+            // For admin — they must pick from the dropdown
+            val sessionBranchId = sessionManager.currentSession?.branchId
+            if (sessionBranchId != null) {
+                _selectedBranchId.value = sessionBranchId
+            } else if (branches.size == 1) {
+                // Only one branch — auto select even for admin
+                _selectedBranchId.value = branches.first().id
+            }
+            // Multiple branches + admin → selectedBranchId stays null until they pick
         }
     }
 
@@ -145,5 +208,6 @@ class AddProductViewModel(
 
 data class ProductUiState(
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val unitType: String = "UNIT"
 )

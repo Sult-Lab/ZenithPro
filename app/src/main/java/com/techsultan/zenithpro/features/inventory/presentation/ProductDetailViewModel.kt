@@ -49,6 +49,7 @@ class ProductDetailViewModel(
     val scannedBarcode: State<String?> = _scannedBarcode
 
     val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
+    val branchId: String? get() = try { sessionManager.currentSession?.branchId } catch (e: Exception) { null }
 
     fun onBarcodeScanned(barcode: String) {
         _scannedBarcode.value = barcode
@@ -61,6 +62,10 @@ class ProductDetailViewModel(
     fun clearState() {
         _state.value = ProductDetailUiState()
         _scannedBarcode.value = null
+    }
+
+    fun onUnitTypeChanged(unitType: String) {
+        _state.value = _state.value.copy(unitType = unitType)
     }
 
     init {
@@ -89,9 +94,11 @@ class ProductDetailViewModel(
                 when (result) {
                     is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
                     is Resource.Success -> {
+                        val product = result.data
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            product = result.data,
+                            product = product,
+                            unitType = product?.product?.unitType ?: "UNIT",
                             error = null
                         )
                     }
@@ -155,6 +162,7 @@ class ProductDetailViewModel(
             }
 
             val requestWithIds = updateProductRequest.copy(
+                branchId = branchId,
                 variants = variants,
                 imageUrls = remoteUrls
             )
@@ -187,5 +195,6 @@ class ProductDetailViewModel(
 data class ProductDetailUiState(
     val isLoading: Boolean = false,
     val product: ProductWithVariants? = null,
+    val unitType: String = "UNIT",
     val error: String? = null
 )

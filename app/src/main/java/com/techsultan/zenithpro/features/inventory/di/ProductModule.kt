@@ -70,14 +70,14 @@ val productModule = module {
         SyncManager(androidContext())
     }
 
-    factory { AddProductUseCase(get()) }
+    factory { AddProductUseCase(get(), get()) }
     factory { GetProductsUseCase(get()) }
     factory { GetProductUseCase(get()) }
     factory { UpdateProductUseCase(get()) }
     factory { SyncProductsUseCase(get(), get(), get()) }
     factory { DeleteProductUseCase(get()) }
 
-    viewModel { AddProductViewModel(get(), get(), get(), get(), get()) }
+    viewModel { AddProductViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ProductDetailViewModel(get(), get(), get(), get(), get(), get()) }
 
     viewModel {

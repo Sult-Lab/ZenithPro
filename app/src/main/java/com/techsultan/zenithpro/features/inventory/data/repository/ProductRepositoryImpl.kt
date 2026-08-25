@@ -78,6 +78,21 @@ class ProductRepositoryImpl(
         }
     }
 
+    override fun getProductsForBranch(
+        businessId: String,
+        branchId: String
+    ): Flow<Resource<List<ProductWithVariants>>> = flow {
+        emit(Resource.Loading())
+        try {
+            productDao.getProductsForBranch(businessId, branchId)
+                .collect { products ->
+                    emit(Resource.Success(products))
+                }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Failed to load products"))
+        }
+    }
+
     override suspend fun addProduct(
         productRequest: AddProductRequest,
         imageUris: List<Uri>,
@@ -114,10 +129,12 @@ class ProductRepositoryImpl(
                     isActive = productRequest.isActive,
                     imageUrls = imageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
+                    unitType = productRequest.unitType,
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.PENDING,
-                    locallyCreatedAt = now
+                    locallyCreatedAt = now,
+                    branchId = productRequest.branchId
                 )
             )
             productRequest.variants?.forEach { variantReq ->
@@ -156,7 +173,8 @@ class ProductRepositoryImpl(
                             expiryDate = it.expiryDate,
                             lowStockAlert = it.lowStockAlert,
                             updatedAt = now,
-                            syncStatus = Util.SyncStatus.PENDING
+                            syncStatus = Util.SyncStatus.PENDING,
+                            branchId = productRequest.branchId ?: ""
                         )
                     }
                 )
@@ -218,10 +236,12 @@ class ProductRepositoryImpl(
                     isActive = productRequest.isActive,
                     imageUrls = allImageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
+                    unitType = productRequest.unitType,
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.DIRTY,
-                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt
+                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt,
+                    branchId = productRequest.branchId
                 )
             )
 
@@ -263,7 +283,8 @@ class ProductRepositoryImpl(
                             expiryDate = it.expiryDate,
                             lowStockAlert = it.lowStockAlert,
                             updatedAt = now,
-                            syncStatus = Util.SyncStatus.DIRTY
+                            syncStatus = Util.SyncStatus.DIRTY,
+                            branchId = productRequest.branchId ?: ""
                         )
                     }
                 )
@@ -303,7 +324,9 @@ class ProductRepositoryImpl(
                 expiryWarningDays = productWithVariants.product.expiryWarningDays,
                 isActive = productWithVariants.product.isActive,
                 businessId = productWithVariants.product.businessId,
+                branchId = productWithVariants.product.branchId,
                 imageUrls = productWithVariants.product.imageUrls,
+                unitType = productWithVariants.product.unitType,
                 variants = productWithVariants.variants.map { variantWithStock ->
                     ProductVariantCreateRequest(
                         clientId = variantWithStock.variant.id,
@@ -540,6 +563,7 @@ class ProductRepositoryImpl(
                     baseSalesPrice = entity.baseSalesPrice,
                     baseCostPrice = entity.baseCostPrice,
                     expiryWarningDays = entity.expiryWarningDays,
+                    unitType = entity.unitType,
                     isActive = entity.isActive,
                     businessId = entity.businessId,
                     imageUrls = imagePaths,
@@ -629,6 +653,7 @@ class ProductRepositoryImpl(
             reconcileVariantsLocally(
                 productId  = request.clientId,
                 businessId = request.businessId,
+                branchId   = request.branchId,
                 variants   = request.variants,
                 now        = now
             )
@@ -660,6 +685,7 @@ class ProductRepositoryImpl(
                 baseSalesPrice = request.baseSalesPrice,
                 baseCostPrice = request.baseCostPrice,
                 expiryWarningDays = request.expiryWarningDays,
+                unitType = request.unitType,
                 isActive = request.isActive,
                 businessId = request.businessId,
                 imageUrls = request.imageUrls,
@@ -689,6 +715,7 @@ class ProductRepositoryImpl(
     private suspend fun reconcileVariantsLocally(
         productId: String,
         businessId: String,
+        branchId: String?,
         variants: List<ProductVariantCreateRequest>,
         now: String
     ) {
@@ -764,7 +791,8 @@ class ProductRepositoryImpl(
                         expiryDate    = it.expiryDate,
                         lowStockAlert = it.lowStockAlert,
                         updatedAt     = now,
-                        syncStatus    = Util.SyncStatus.DIRTY
+                        syncStatus    = Util.SyncStatus.DIRTY,
+                        branchId      = branchId ?: ""
                     )
                 }
             )

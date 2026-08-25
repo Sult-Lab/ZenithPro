@@ -54,6 +54,7 @@ import coil.compose.AsyncImage
 import com.techsultan.zenithpro.R
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.theme.ZenithProTheme
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import org.koin.androidx.compose.koinViewModel
@@ -237,8 +238,9 @@ fun ReceiptPreviewScreen(
                             ReceiptItemRow(
                                 name = item.name,
                                 quantity = item.qty,
-                                price = item.price.toInt(),
-                                total = (item.price * item.qty).toInt()
+                                unitType = item.unitType,
+                                price = item.price,
+                                total = (item.price * item.qty).toLong()
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                         }
@@ -302,9 +304,10 @@ fun ReceiptPreviewScreen(
 @Composable
 fun ReceiptItemRow(
     name: String,
-    quantity: Int,
-    price: Int,
-    total: Int,
+    quantity: Double,
+    unitType: String,
+    price: Long,
+    total: Long,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -320,13 +323,13 @@ fun ReceiptItemRow(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "$quantity x ₦${price.toLong().formatPrice()}",
+                text = "${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(quantity, UnitType.fromString(unitType))} x ₦${price.formatPrice()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(
-            text = "₦${total.toLong().formatPrice()}",
+            text = "₦${total.formatPrice()}",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
