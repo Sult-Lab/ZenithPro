@@ -28,6 +28,6 @@ val authModule = module {
     }
 
     viewModel {
-        ChangePasswordViewModel(get(), get())
+        ChangePasswordViewModel(get(), get(), get())
     }
 }

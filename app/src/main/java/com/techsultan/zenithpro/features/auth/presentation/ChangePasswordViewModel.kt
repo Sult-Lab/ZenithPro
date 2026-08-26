@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.navigation.Route
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.functions.Functions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class ChangePasswordViewModel(
+    private val auth: Auth,
     private val functions: Functions,
     private val sessionManager: SessionManager,
 ) : ViewModel() {
@@ -23,6 +26,14 @@ class ChangePasswordViewModel(
 
     private val _events = MutableSharedFlow<ChangePasswordEvent>()
     val events = _events.asSharedFlow()
+
+    fun init(mode: Route.PasswordChangeMode, email: String?) {
+        _state.update { it.copy(mode = mode, email = email ?: "") }
+    }
+
+    fun onEmailChanged(value: String) {
+        _state.update { it.copy(email = value, emailError = null) }
+    }
 
     fun onPasswordChanged(value: String) {
         _state.update { it.copy(password = value, passwordError = null) }
@@ -34,6 +45,34 @@ class ChangePasswordViewModel(
 
     fun submit() {
         val s = _state.value
+        
+        if (s.mode == Route.PasswordChangeMode.FORGOT) {
+            submitForgotPassword(s.email)
+        } else {
+            submitChangePassword(s)
+        }
+    }
+
+    private fun submitForgotPassword(email: String) {
+        if (email.isBlank()) {
+            _state.update { it.copy(emailError = "Email is required") }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            try {
+                auth.resetPasswordForEmail(email)
+                _state.update { it.copy(isLoading = false) }
+                _events.emit(ChangePasswordEvent.ResetLinkSent)
+            } catch (e: Exception) {
+                Log.e("ChangePasswordVM", "forgotPassword: ${e.message}", e)
+                _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    private fun submitChangePassword(s: ChangePasswordUiState) {
         var hasError = false
 
         if (s.password.length < 6) {
@@ -70,14 +109,18 @@ class ChangePasswordViewModel(
 
     sealed class ChangePasswordEvent {
         data object Changed : ChangePasswordEvent()
+        data object ResetLinkSent : ChangePasswordEvent()
     }
 }
 
 data class ChangePasswordUiState(
-    val password: String        = "",
-    val confirmPassword: String = "",
-    val isLoading: Boolean      = false,
-    val passwordError: String?  = null,
-    val confirmError: String?   = null,
-    val error: String?          = null
+    val mode: Route.PasswordChangeMode = Route.PasswordChangeMode.CHANGE,
+    val email: String                  = "",
+    val password: String               = "",
+    val confirmPassword: String        = "",
+    val isLoading: Boolean             = false,
+    val emailError: String?            = null,
+    val passwordError: String?         = null,
+    val confirmError: String?          = null,
+    val error: String?                 = null
 )

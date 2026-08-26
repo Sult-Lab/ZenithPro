@@ -13,7 +13,15 @@ sealed interface Route: NavKey {
         @Serializable
         data object SignUp : Route, NavKey
         @Serializable
-        data class ChangePassword(val isForced: Boolean) : Route, NavKey
+        data class ChangePassword(
+            val mode: PasswordChangeMode = PasswordChangeMode.CHANGE,
+            val email: String? = null
+        ) : Route, NavKey
+    }
+
+    @Serializable
+    enum class PasswordChangeMode {
+        CHANGE, FORCED, FORGOT
     }
 
     @Serializable

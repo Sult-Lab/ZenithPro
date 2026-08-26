@@ -61,19 +61,29 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 
 
+import com.techsultan.zenithpro.core.navigation.Route
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.MarkEmailRead
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChangePasswordScreen(
-    isForcedChange: Boolean = false,
+    mode: Route.PasswordChangeMode = Route.PasswordChangeMode.CHANGE,
+    initialEmail: String? = null,
     viewModel: ChangePasswordViewModel = koinViewModel(),
     onChanged: () -> Unit,
     onSkip: (() -> Unit)? = null,
     onBack: () -> Unit,
 ) {
-    val state        by viewModel.state.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHost  = remember { SnackbarHostState() }
     var showPassword  by remember { mutableStateOf(false) }
     var showConfirm   by remember { mutableStateOf(false) }
+
+    LaunchedEffect(mode, initialEmail) {
+        viewModel.init(mode, initialEmail)
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -81,6 +91,9 @@ fun ChangePasswordScreen(
                 is ChangePasswordViewModel.ChangePasswordEvent.Changed -> {
                     snackbarHost.showSnackbar("Password changed successfully")
                     onChanged()
+                }
+                is ChangePasswordViewModel.ChangePasswordEvent.ResetLinkSent -> {
+                    snackbarHost.showSnackbar("Reset link sent to your email")
                 }
             }
         }
@@ -92,20 +105,22 @@ fun ChangePasswordScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (isForcedChange) "Set new password"
-                        else "Change password"
+                        when (mode) {
+                            Route.PasswordChangeMode.FORCED -> "Set new password"
+                            Route.PasswordChangeMode.FORGOT -> "Forgot password"
+                            Route.PasswordChangeMode.CHANGE -> "Change password"
+                        }
                     )
                 },
                 navigationIcon = {
-                    if (!isForcedChange) {
+                    if (mode != Route.PasswordChangeMode.FORCED) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Default.ArrowBack, null)
                         }
                     }
                 },
                 actions = {
-                    // Allow skipping only when not forced and onSkip provided
-                    if (!isForcedChange && onSkip != null) {
+                    if (mode == Route.PasswordChangeMode.CHANGE && onSkip != null) {
                         TextButton(onClick = onSkip) {
                             Text("Skip")
                         }
@@ -122,7 +137,7 @@ fun ChangePasswordScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (isForcedChange) {
+            if (mode == Route.PasswordChangeMode.FORCED) {
                 Surface(
                     shape  = RoundedCornerShape(12.dp),
                     color  = Color(0xFFF57C00).copy(alpha = 0.08f),
@@ -158,99 +173,130 @@ fun ChangePasswordScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            if (mode == Route.PasswordChangeMode.FORGOT) {
+                Text(
+                    "Enter your email address and we'll send you a link to reset your password.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-            val strength = passwordStrength(state.password)
+                OutlinedTextField(
+                    value = state.email,
+                    onValueChange = viewModel::onEmailChanged,
+                    label = { Text("Email address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = state.emailError != null,
+                    supportingText = state.emailError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Email, contentDescription = null)
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { viewModel.submit() }
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            } else {
+                Spacer(Modifier.height(8.dp))
 
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = viewModel::onPasswordChanged,
-                label = { Text("New password") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = state.passwordError != null,
-                supportingText = state.passwordError?.let {
-                    { Text(it, color = MaterialTheme.colorScheme.error) }
-                },
-                visualTransformation = if (showPassword)
-                    VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { showPassword = !showPassword }) {
-                        Icon(
-                            if (showPassword) Icons.Default.VisibilityOff
-                            else Icons.Default.Visibility,
-                            contentDescription = null
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Next
-                ),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
+                val strength = passwordStrength(state.password)
 
-            // Strength bar — only show when user has typed something
-            if (state.password.isNotEmpty()) {
-                PasswordStrengthBar(strength = strength)
-            }
-
-            OutlinedTextField(
-                value = state.confirmPassword,
-                onValueChange = viewModel::onConfirmPasswordChanged,
-                label = { Text("Confirm new password") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = state.confirmError != null,
-                supportingText = state.confirmError?.let {
-                    { Text(it, color = MaterialTheme.colorScheme.error) }
-                } ?: if (
-                    state.confirmPassword.isNotEmpty() &&
-                    state.password == state.confirmPassword
-                ) {
-                    {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                OutlinedTextField(
+                    value = state.password,
+                    onValueChange = viewModel::onPasswordChanged,
+                    label = { Text("New password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = state.passwordError != null,
+                    supportingText = state.passwordError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    },
+                    visualTransformation = if (showPassword)
+                        VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint     = Color(0xFF388E3C),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                "Passwords match",
-                                color = Color(0xFF388E3C),
-                                style = MaterialTheme.typography.labelSmall
+                                if (showPassword) Icons.Default.VisibilityOff
+                                else Icons.Default.Visibility,
+                                contentDescription = null
                             )
                         }
-                    }
-                } else null,
-                visualTransformation = if (showConfirm)
-                    VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { showConfirm = !showConfirm }) {
-                        Icon(
-                            if (showConfirm) Icons.Default.VisibilityOff
-                            else Icons.Default.Visibility,
-                            contentDescription = null
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction    = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { viewModel.submit() }
-                ),
-                singleLine = true,
-                shape      = RoundedCornerShape(12.dp)
-            )
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Next
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp)
+                )
 
-            // ── Password requirements checklist ───────────────────
-            if (state.password.isNotEmpty()) {
-                PasswordRequirements(password = state.password)
+                // Strength bar — only show when user has typed something
+                if (state.password.isNotEmpty()) {
+                    PasswordStrengthBar(strength = strength)
+                }
+
+                OutlinedTextField(
+                    value = state.confirmPassword,
+                    onValueChange = viewModel::onConfirmPasswordChanged,
+                    label = { Text("Confirm new password") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = state.confirmError != null,
+                    supportingText = state.confirmError?.let {
+                        { Text(it, color = MaterialTheme.colorScheme.error) }
+                    } ?: if (
+                        state.confirmPassword.isNotEmpty() &&
+                        state.password == state.confirmPassword
+                    ) {
+                        {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint     = Color(0xFF388E3C),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    "Passwords match",
+                                    color = Color(0xFF388E3C),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    } else null,
+                    visualTransformation = if (showConfirm)
+                        VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showConfirm = !showConfirm }) {
+                            Icon(
+                                if (showConfirm) Icons.Default.VisibilityOff
+                                else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction    = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = { viewModel.submit() }
+                    ),
+                    singleLine = true,
+                    shape      = RoundedCornerShape(12.dp)
+                )
+
+                // ── Password requirements checklist ───────────────────
+                if (state.password.isNotEmpty()) {
+                    PasswordRequirements(password = state.password)
+                }
             }
 
             // ── Error banner ──────────────────────────────────────
@@ -287,10 +333,14 @@ fun ChangePasswordScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                enabled  = !state.isLoading && strength != PasswordStrength.WEAK,
+                enabled  = !state.isLoading && (
+                    if (mode == Route.PasswordChangeMode.FORGOT) state.email.isNotEmpty()
+                    else passwordStrength(state.password) != PasswordStrength.WEAK
+                ),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00C853)
+                    containerColor = if (mode == Route.PasswordChangeMode.FORGOT)
+                        MaterialTheme.colorScheme.primary else Color(0xFF00C853)
                 )
             ) {
                 if (state.isLoading) {
@@ -301,13 +351,15 @@ fun ChangePasswordScreen(
                     )
                 } else {
                     Icon(
-                        Icons.Default.LockReset,
+                        if (mode == Route.PasswordChangeMode.FORGOT) Icons.Default.MarkEmailRead
+                        else Icons.Default.LockReset,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Change password",
+                        if (mode == Route.PasswordChangeMode.FORGOT) "Send reset instructions"
+                        else "Change password",
                         style      = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
