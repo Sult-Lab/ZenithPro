@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.auth.domain.repository
 
+import android.net.Uri
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignInResponseDto
@@ -8,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface AuthenticationRepository {
 
-    fun signUp(request: SignUpRequest): Flow<Resource<Unit>>
+    fun signUp(request: SignUpRequest, logoUri: Uri?): Flow<Resource<Unit>>
     fun login(request: SignInRequest): Flow<Resource<Boolean>>
     fun isUserLoggedIn(): Boolean
     fun logout(): Flow<Resource<Unit>>

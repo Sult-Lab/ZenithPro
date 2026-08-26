@@ -56,7 +56,8 @@ fun SignInScreen(
     viewModel: AuthViewModel = koinViewModel(),
     onLoginClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
-    onMustChangePassword: () -> Unit
+    onMustChangePassword: () -> Unit,
+    onForgotPasswordClick: (String) -> Unit
 ) {
     val state = viewModel.loginState.value
     val context = LocalContext.current
@@ -199,7 +200,7 @@ fun SignInScreen(
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold
                         ),
-                        modifier = Modifier.clickable { /* Handle Forgot Password */ }
+                        modifier = Modifier.clickable { onForgotPasswordClick(email) }
                     )
                 }
 
@@ -259,5 +260,10 @@ fun SignInScreen(
 @Preview
 @Composable
 fun SignInScreenPreview(){
-    SignInScreen(onLoginClick = {}, onCreateAccountClick = {}, onMustChangePassword = {})
+    SignInScreen(
+        onLoginClick = {},
+        onCreateAccountClick = {},
+        onMustChangePassword = {},
+        onForgotPasswordClick = {}
+    )
 }

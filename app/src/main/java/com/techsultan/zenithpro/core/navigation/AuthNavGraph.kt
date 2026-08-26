@@ -31,7 +31,15 @@ fun AuthGraph(
                 SignInScreen(
                     onLoginClick = navigateToDashboard,
                     onCreateAccountClick = { authBackStack.add(Route.Auth.SignUp) },
-                    onMustChangePassword = { authBackStack.add(Route.Auth.ChangePassword(isForced = true)) }
+                    onMustChangePassword = { 
+                        authBackStack.add(Route.Auth.ChangePassword(mode = Route.PasswordChangeMode.FORCED)) 
+                    },
+                    onForgotPasswordClick = { email ->
+                        authBackStack.add(Route.Auth.ChangePassword(
+                            mode = Route.PasswordChangeMode.FORGOT,
+                            email = email
+                        ))
+                    }
                 )
             }
             entry<Route.Auth.SignUp> {
@@ -42,7 +50,8 @@ fun AuthGraph(
             }
             entry<Route.Auth.ChangePassword> { route ->
                 ChangePasswordScreen(
-                    isForcedChange = route.isForced,
+                    mode = route.mode,
+                    initialEmail = route.email,
                     onChanged = navigateToDashboard,
                     onBack = { authBackStack.remove(route) }
                 )

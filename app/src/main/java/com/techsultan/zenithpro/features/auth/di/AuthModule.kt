@@ -14,7 +14,7 @@ import org.koin.dsl.module
 
 val authModule = module {
     single<AuthenticationRepository> {
-        AuthenticationRepositoryImpl(get(), get(), get(), get(), get())
+        AuthenticationRepositoryImpl(get(), get(), get(), get(), get(), get())
     }
 
     factory { SignUpUseCase(get()) }
@@ -28,6 +28,6 @@ val authModule = module {
     }
 
     viewModel {
-        ChangePasswordViewModel(get(), get())
+        ChangePasswordViewModel(get(), get(), get())
     }
 }

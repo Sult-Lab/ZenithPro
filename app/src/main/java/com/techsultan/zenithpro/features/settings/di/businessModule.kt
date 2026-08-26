@@ -4,7 +4,6 @@ import com.techsultan.zenithpro.features.settings.data.repository.BusinessReposi
 import com.techsultan.zenithpro.features.settings.domain.repository.BusinessRepository
 import com.techsultan.zenithpro.features.settings.domain.use_case.UpdateBusinessUseCase
 import com.techsultan.zenithpro.features.settings.presentation.EditBusinessViewModel
-import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -13,9 +12,7 @@ val businessModule = module {
         BusinessRepositoryImpl(
             functions = get(),
             imageUploadManager = get(),
-            sessionManager = get(),
-            storage = get(),
-            context = androidContext()
+            sessionManager = get()
         )
     }
     factory { UpdateBusinessUseCase(get()) }
