@@ -50,35 +50,44 @@ fun ZenithNavigationDrawer(
                         icon = { Icon(Icons.Default.People, contentDescription = null) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
-                    NavigationDrawerItem(
-                        label = { Text("Expenses") },
-                        selected = false,
-                        onClick = onExpensesClick,
-                        icon = { Icon(Icons.Default.Payments, contentDescription = null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                    NavigationDrawerItem(
-                        label = { Text("Branches") },
-                        selected = false,
-                        onClick = onBranchesClick,
-                        icon = { Icon(Icons.Default.Store, contentDescription = null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                    NavigationDrawerItem(
-                        label = { Text("Production") },
-                        selected = false,
-                        onClick = onProductionClick,
-                        icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
 
-                    NavigationDrawerItem(
-                        label = { Text("Material") },
-                        selected = false,
-                        onClick = onMaterialClick,
-                        icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
+                    if (session?.isManager == true) {
+                        NavigationDrawerItem(
+                            label = { Text("Expenses") },
+                            selected = false,
+                            onClick = onExpensesClick,
+                            icon = { Icon(Icons.Default.Payments, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
+
+                    if (session?.isAdmin == true) {
+                        NavigationDrawerItem(
+                            label = { Text("Branches") },
+                            selected = false,
+                            onClick = onBranchesClick,
+                            icon = { Icon(Icons.Default.Store, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
+
+                    if (session?.isManager == true) {
+                        NavigationDrawerItem(
+                            label = { Text("Production") },
+                            selected = false,
+                            onClick = onProductionClick,
+                            icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Material") },
+                            selected = false,
+                            onClick = onMaterialClick,
+                            icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
                     
                     Spacer(modifier = Modifier.weight(1f))
                     

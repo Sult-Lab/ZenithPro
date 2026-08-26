@@ -103,41 +103,50 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
 
-            if (state.session?.isAdmin == true) {
+            val session = state.session
+            if (session?.isManager == true) {
                 item {
-                    SettingsSectionHeader(title = "ADMIN")
+                    SettingsSectionHeader(title = if (session.isAdmin) "ADMIN" else "MANAGER")
                 }
 
                 item {
-                    SettingsNavSection(
-                        title = "GENERAL",
-                        items = listOf(
+                    val staffItem = SettingsNavItem(
+                        title = "Staff Management",
+                        icon = Icons.Default.People,
+                        onClick = onStaffManagement
+                    )
+
+                    val adminItems = if (session.isAdmin) {
+                        listOf(
+                            staffItem,
                             SettingsNavItem(
-                                title  = "Staff Management",
-                                icon   = Icons.Default.People,
-                                onClick = onStaffManagement
-                            ),
-                            SettingsNavItem(
-                                title  = "Category Management",
-                                icon   = Icons.Default.Category,
+                                title = "Category Management",
+                                icon = Icons.Default.Category,
                                 onClick = onCategoryManagement
                             ),
                             SettingsNavItem(
-                                title  = "Business Profile",
-                                icon   = Icons.Default.Store,
+                                title = "Business Profile",
+                                icon = Icons.Default.Store,
                                 onClick = onBusinessProfile
                             ),
                             SettingsNavItem(
-                                title  = "Business Information",
-                                icon   = Icons.Default.Store,
+                                title = "Business Information",
+                                icon = Icons.Default.Store,
                                 onClick = onBusinessInformation
                             ),
                             SettingsNavItem(
-                                title  = "Payment Settings",
-                                icon   = Icons.Default.Payments,
+                                title = "Payment Settings",
+                                icon = Icons.Default.Payments,
                                 onClick = onPaymentSettings
                             )
                         )
+                    } else {
+                        listOf(staffItem)
+                    }
+
+                    SettingsNavSection(
+                        title = "ADMINISTRATION",
+                        items = adminItems
                     )
                 }
             }

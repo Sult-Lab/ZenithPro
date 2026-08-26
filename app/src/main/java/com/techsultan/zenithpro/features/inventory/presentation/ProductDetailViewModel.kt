@@ -70,6 +70,10 @@ class ProductDetailViewModel(
 
     init {
         observeCategories()
+        val session = sessionManager.currentSession
+        _state.value = _state.value.copy(
+            isStaff = session?.isStaff ?: true
+        )
     }
 
     private fun observeCategories() {
@@ -85,7 +89,7 @@ class ProductDetailViewModel(
 
     fun getProduct(productId: String) {
         viewModelScope.launch {
-            _state.value = ProductDetailUiState(
+            _state.value = _state.value.copy(
                 isLoading = true,
                 product = null,
                 error = null
@@ -118,6 +122,12 @@ class ProductDetailViewModel(
         imageUris: List<Uri>,
         barcode: String? = null
     ) {
+        if (_state.value.isStaff) {
+            viewModelScope.launch {
+                _eventFlow.emit(UiEvent.Error("Staff cannot update products"))
+            }
+            return
+        }
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
 
@@ -196,5 +206,6 @@ data class ProductDetailUiState(
     val isLoading: Boolean = false,
     val product: ProductWithVariants? = null,
     val unitType: String = "UNIT",
-    val error: String? = null
+    val error: String? = null,
+    val isStaff: Boolean = true
 )

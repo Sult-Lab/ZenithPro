@@ -156,24 +156,29 @@ fun DashboardScreen(
                 item {
                     TodayKpiSection(
                         summary = state.summary,
-                        isLoading = state.isLoading
+                        isLoading = state.isLoading,
+                        showProfit = state.showProfit
                     )
                 }
 
-                item {
-                    ProfitMarginCard(summary = state.summary)
+                if (state.showProfit) {
+                    item {
+                        ProfitMarginCard(summary = state.summary)
+                    }
                 }
 
-                item {
-                    UrgentActionsSection(
-                        lowStockCount = state.lowStockCount,
-                        pendingOrderCount = state.pendingPurchaseOrderCount,
-                        onViewLowStock = onViewLowStock,
-                        onViewPurchaseOrders = onViewPurchaseOrders
-                    )
+                if (state.showInventoryAlerts) {
+                    item {
+                        UrgentActionsSection(
+                            lowStockCount = state.lowStockCount,
+                            pendingOrderCount = state.pendingPurchaseOrderCount,
+                            onViewLowStock = onViewLowStock,
+                            onViewPurchaseOrders = onViewPurchaseOrders
+                        )
+                    }
                 }
 
-                if (state.pendingDebts.debtCount > 0) {
+                if (state.pendingDebts.debtCount > 0 && state.showInventoryAlerts) {
                     item {
                         PendingDebtsBanner(
                             summary = state.pendingDebts,
@@ -185,7 +190,9 @@ fun DashboardScreen(
                 item {
                     QuickActionsRow(
                         onAddProduct = onAddProduct,
-                        onViewReports = onViewReports
+                        onViewReports = onViewReports,
+                        showAddProduct = state.showInventoryAlerts,
+                        showReports = state.showInventoryAlerts
                     )
                 }
 
@@ -257,6 +264,7 @@ private fun DashboardHero(onNewSale: () -> Unit) {
 private fun TodayKpiSection(
     summary: DashboardSummary,
     isLoading: Boolean,
+    showProfit: Boolean = true,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -277,14 +285,16 @@ private fun TodayKpiSection(
                 color = Color(0xFF1976D2),
                 isLoading = isLoading
             )
-            KpiCard(
-                modifier = Modifier.weight(1f),
-                label = "Profit",
-                value = "₦${summary.totalProfit.formatAmount()}",
-                icon = Icons.Default.AccountBalance,
-                color = Color(0xFF388E3C),
-                isLoading = isLoading
-            )
+            if (showProfit) {
+                KpiCard(
+                    modifier = Modifier.weight(1f),
+                    label = "Profit",
+                    value = "₦${summary.totalProfit.formatAmount()}",
+                    icon = Icons.Default.AccountBalance,
+                    color = Color(0xFF388E3C),
+                    isLoading = isLoading
+                )
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -600,27 +610,35 @@ private fun PendingDebtsBanner(
 private fun QuickActionsRow(
     onAddProduct: () -> Unit,
     onViewReports: () -> Unit,
+    showAddProduct: Boolean = true,
+    showReports: Boolean = true
 ) {
+    if (!showAddProduct && !showReports) return
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        ZenithButton(
-            text = "Add Product",
-            icon = Icons.Default.Add,
-            onClick = onAddProduct,
-            modifier = Modifier.weight(1f),
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-        ZenithButton(
-            text = "View Reports",
-            icon = Icons.Default.Assessment,
-            onClick = onViewReports,
-            modifier = Modifier.weight(1f),
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
+        if (showAddProduct) {
+            ZenithButton(
+                text = "Add Product",
+                icon = Icons.Default.Add,
+                onClick = onAddProduct,
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
+        if (showReports) {
+            ZenithButton(
+                text = "View Reports",
+                icon = Icons.Default.Assessment,
+                onClick = onViewReports,
+                modifier = Modifier.weight(1f),
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+        }
     }
 }
 

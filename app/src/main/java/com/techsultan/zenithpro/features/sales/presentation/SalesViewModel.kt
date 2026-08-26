@@ -67,8 +67,13 @@ class SalesListViewModel(
             businessId = session?.businessId
             if (session != null) {
 
-                if (session.hasBranch && !session.isManager) {
-                    _state.update { it.copy(filterBranchId = session.branchId) }
+                _state.update { 
+                    it.copy(
+                        filterBranchId = if (session.isAdmin) null else session.branchId,
+                        filterStaffId = if (session.isStaff) session.userId else null,
+                        isAdmin = session.isAdmin,
+                        isManager = session.isManager
+                    )
                 }
 
                 observeSales()
@@ -323,7 +328,9 @@ data class SalesListUiState(
     val filterBranchId: String? = null,
     val availableBranches: List<BranchEntity> = emptyList(),
     val availableStaff: List<StaffMember> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val isAdmin: Boolean = false,
+    val isManager: Boolean = false
 )
 
 data class SalesSummary(

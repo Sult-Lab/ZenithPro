@@ -45,7 +45,11 @@ class DashboardViewModel(
             val session = sessionManager.loadSession() ?: return@launch
             businessId = session.businessId
 
-            _state.update { it.copy(isAdmin = session.isAdmin) }
+            _state.update { it.copy(
+                isAdmin = session.isAdmin,
+                showProfit = session.isAdmin,
+                showInventoryAlerts = session.isManager
+            ) }
 
             if (session.isAdmin) {
                 val branches = branchDao.getActiveBranchesForBusiness(session.businessId)
@@ -71,8 +75,8 @@ class DashboardViewModel(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
 
-            // All three load from local Room — fast, no network needed
             val branchId = sessionManager.activeBranchId.value
+            
             val summaryJob = async { getDashboardSummaryUseCase(bId, branchId) }
             val chartJob   = async { getChartDataUseCase(bId, _state.value.selectedDays, branchId) }
             val debtJob    = async { getPendingDebtsUseCase(bId, branchId) }
@@ -108,6 +112,7 @@ class DashboardViewModel(
             _state.update { it.copy(isRefreshing = true) }
 
             val branchId = sessionManager.activeBranchId.value
+
             syncDashboardUseCase(bId)
             // Reload from Room after sync
             val summary = getDashboardSummaryUseCase(bId, branchId)
@@ -130,6 +135,7 @@ class DashboardViewModel(
     fun onChartPeriodChanged(days: Int) {
         val bId = businessId ?: return
         val branchId = sessionManager.activeBranchId.value
+
         _state.update { it.copy(selectedDays = days) }
         viewModelScope.launch {
             val chart = getChartDataUseCase(bId, days, branchId)
@@ -140,6 +146,7 @@ class DashboardViewModel(
     }
 
     fun onBranchSelected(branchId: String?, branchName: String?) {
+        if (!_state.value.isAdmin) return // Only admins can switch branches
         viewModelScope.launch {
             sessionManager.setActiveBranch(branchId, branchName)
         }
@@ -158,6 +165,7 @@ class DashboardViewModel(
         val bId = businessId ?: return
         viewModelScope.launch {
             val branchId = sessionManager.activeBranchId.value
+
             val result = syncDashboardUseCase(bId)
             if (result is Resource.Success) {
                 // Reload Room data after sync completes
@@ -190,6 +198,8 @@ data class DashboardUiState(
     val pendingPurchaseOrderCount: Int  = 0,
     val error: String? = null,
     val isAdmin: Boolean = false,
+    val showProfit: Boolean = false,
+    val showInventoryAlerts: Boolean = false,
     val branches: List<BranchEntity> = emptyList(),
     val activeBranchId: String? = null,
     val activeBranchName: String? = null,
