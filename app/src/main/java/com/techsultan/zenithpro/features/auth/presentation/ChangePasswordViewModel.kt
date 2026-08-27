@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.navigation.Route
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.functions.Functions
@@ -67,6 +69,7 @@ class ChangePasswordViewModel(
                 _events.emit(ChangePasswordEvent.ResetLinkSent)
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "forgotPassword: ${e.message}", e)
+                ZenithAnalytics.logError(e, context = "ChangePasswordViewModel.submitForgotPassword")
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }
@@ -98,10 +101,14 @@ class ChangePasswordViewModel(
                         session.copy(mustChangePassword = false)
                     )
                 }
+                ZenithAnalytics.trackEvent("password_changed", bundleOf(
+                    "is_forced_change" to (s.mode == Route.PasswordChangeMode.FORCED)
+                ))
                 _state.update { it.copy(isLoading = false) }
                 _events.emit(ChangePasswordEvent.Changed)
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "submit: ${e.message}", e)
+                ZenithAnalytics.logError(e, context = "ChangePasswordViewModel.submitChangePassword")
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }

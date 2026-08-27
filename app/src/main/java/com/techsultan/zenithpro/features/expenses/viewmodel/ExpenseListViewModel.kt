@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseFilter
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseStatsData
@@ -67,10 +69,14 @@ class ExpenseListViewModel(
     fun deleteExpense(expenseId: String) {
         viewModelScope.launch {
             when (val result = deleteExpenseUseCase(expenseId)) {
-                is Resource.Success ->
+                is Resource.Success -> {
+                    ZenithAnalytics.trackEvent("expense_deleted")
                     _events.emit(ExpenseListEvent.ShowMessage("Expense deleted"))
-                is Resource.Error ->
+                }
+                is Resource.Error -> {
+                    ZenithAnalytics.logError(Exception(result.message), context = "ExpenseListViewModel.deleteExpense")
                     _events.emit(ExpenseListEvent.ShowError(result.message ?: "Delete failed"))
+                }
                 else -> Unit
             }
         }
@@ -123,11 +129,16 @@ class ExpenseListViewModel(
         val bId = businessId ?: return
         viewModelScope.launch {
             when (val result = getExpenseStatsUseCase(bId, _state.value.filter)) {
-                is Resource.Success -> _state.update {
-                    it.copy(
-                        stats      = result.data,
-                        categories = result.data?.categories ?: emptyList()
-                    )
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(
+                            stats      = result.data,
+                            categories = result.data?.categories ?: emptyList()
+                        )
+                    }
+                    ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                        "report_type" to "expenses"
+                    ))
                 }
                 else -> Unit
             }

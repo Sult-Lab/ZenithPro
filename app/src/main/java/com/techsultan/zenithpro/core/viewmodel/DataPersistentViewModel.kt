@@ -10,6 +10,9 @@ import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
+import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,11 +28,14 @@ class DataPersistentViewModel(
     private val auth: Auth,
     private val sessionManager: SessionManager,
     private val logoutUseCase: LogoutUseCase,
-    private val postgrest: Postgrest
+    private val postgrest: Postgrest,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState
+
+    private var hasTrackedColdStart = false
 
     val session: StateFlow<UserSession?> = sessionManager.sessionFlow
         .stateIn(
@@ -40,6 +46,29 @@ class DataPersistentViewModel(
 
     init {
         observeSession()
+        observeNetwork()
+    }
+
+    private var offlineStartTime: Long? = null
+
+    private fun observeNetwork() {
+        viewModelScope.launch {
+            networkMonitor.isConnectedFlow.collect { isConnected ->
+                ZenithAnalytics.setKey("is_online", isConnected.toString())
+                if (isConnected) {
+                    offlineStartTime?.let { start ->
+                        val duration = (System.currentTimeMillis() - start) / 60000 // minutes
+                        ZenithAnalytics.trackEvent("online_mode_restored", bundleOf(
+                            "offline_duration_minutes" to duration
+                        ))
+                        offlineStartTime = null
+                    }
+                } else {
+                    offlineStartTime = System.currentTimeMillis()
+                    ZenithAnalytics.trackEvent("offline_mode_entered")
+                }
+            }
+        }
     }
 
     fun observeSession() {
@@ -54,6 +83,12 @@ class DataPersistentViewModel(
 
                     if (localSession != null) {
                         _authState.value = AuthState.Authenticated
+                        if (!hasTrackedColdStart) {
+                            ZenithAnalytics.trackEvent("app_cold_start", bundleOf(
+                                "session_restored" to true
+                            ))
+                            hasTrackedColdStart = true
+                        }
                         
                         // Background refresh to ensure session data is up to date
                         val supabaseSession = auth.currentSessionOrNull()
@@ -68,6 +103,13 @@ class DataPersistentViewModel(
                                 supabaseSession.user?.id ?: ""
                             )
 
+                            if (!hasTrackedColdStart) {
+                                ZenithAnalytics.trackEvent("app_cold_start", bundleOf(
+                                    "session_restored" to true
+                                ))
+                                hasTrackedColdStart = true
+                            }
+
                             _authState.value = if (result.isSuccess) {
                                 AuthState.Authenticated
                             } else {
@@ -75,6 +117,12 @@ class DataPersistentViewModel(
                             }
                         } else {
                             _authState.value = AuthState.Unauthenticated
+                            if (!hasTrackedColdStart) {
+                                ZenithAnalytics.trackEvent("app_cold_start", bundleOf(
+                                    "session_restored" to false
+                                ))
+                                hasTrackedColdStart = true
+                            }
                         }
                     }
 

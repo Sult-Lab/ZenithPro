@@ -2,7 +2,10 @@ package com.techsultan.zenithpro.core.worker
 
 import android.content.Context
 import android.util.Log
+import android.os.SystemClock
+import androidx.core.os.bundleOf
 import androidx.work.Constraints
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -50,77 +53,160 @@ class SyncWorker(
     override suspend fun doWork(): Result {
         if (!networkMonitor.isConnected()) return Result.retry()
 
+        val startTime = SystemClock.elapsedRealtime()
+        ZenithAnalytics.trackEvent("sync_started", bundleOf("trigger" to "auto"))
+        var totalSynced = 0
+
         return try {
             // 1. Products
-            productDao.getUnsyncedProducts().forEach { product ->
-                when (product.syncStatus) {
-                    Util.SyncStatus.PENDING -> productRepository.pushNewProduct(product.id)
-                    Util.SyncStatus.DIRTY -> productRepository.pushUpdate(product)
-                    Util.SyncStatus.DELETED -> productRepository.pushDelete(product.id)
-                    Util.SyncStatus.SYNCED -> Unit
+            val products = productDao.getUnsyncedProducts()
+            products.forEach { product ->
+                try {
+                    when (product.syncStatus) {
+                        Util.SyncStatus.PENDING -> productRepository.pushNewProduct(product.id)
+                        Util.SyncStatus.DIRTY -> productRepository.pushUpdate(product)
+                        Util.SyncStatus.DELETED -> productRepository.pushDelete(product.id)
+                        Util.SyncStatus.SYNCED -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Products")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "product",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 2. Expenses
-            expenseDao.getUnsyncedExpenses().forEach { expense ->
-                when (expense.syncStatus) {
-                    Util.SyncStatus.PENDING,
-                    Util.SyncStatus.DIRTY -> expenseRepository.pushExpense(expense)
-                    Util.SyncStatus.DELETED -> expenseRepository.pushDelete(expense.id)
-                    Util.SyncStatus.SYNCED -> Unit
+            val expenses = expenseDao.getUnsyncedExpenses()
+            expenses.forEach { expense ->
+                try {
+                    when (expense.syncStatus) {
+                        Util.SyncStatus.PENDING,
+                        Util.SyncStatus.DIRTY -> expenseRepository.pushExpense(expense)
+                        Util.SyncStatus.DELETED -> expenseRepository.pushDelete(expense.id)
+                        Util.SyncStatus.SYNCED -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Expenses")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "expense",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 3. Categories
-            categoryDao.getUnsyncedCategories().forEach { category ->
-                when (category.syncStatus) {
-                    Util.SyncStatus.PENDING,
-                    Util.SyncStatus.DIRTY -> categoryRepository.pushCategory(category)
-                    Util.SyncStatus.DELETED -> categoryRepository.pushDelete(category.id)
-                    Util.SyncStatus.SYNCED -> Unit
+            val categories = categoryDao.getUnsyncedCategories()
+            categories.forEach { category ->
+                try {
+                    when (category.syncStatus) {
+                        Util.SyncStatus.PENDING,
+                        Util.SyncStatus.DIRTY -> categoryRepository.pushCategory(category)
+                        Util.SyncStatus.DELETED -> categoryRepository.pushDelete(category.id)
+                        Util.SyncStatus.SYNCED -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Categories")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "category",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 4. Branches
-            branchDao.getUnsyncedBranches().forEach { branch ->
-                when (branch.syncStatus) {
-                    Util.SyncStatus.PENDING,
-                    Util.SyncStatus.DIRTY -> branchRepository.pushBranch(branch)
-                    Util.SyncStatus.DELETED -> branchRepository.pushDelete(branch.id)
-                    Util.SyncStatus.SYNCED -> Unit
+            val branches = branchDao.getUnsyncedBranches()
+            branches.forEach { branch ->
+                try {
+                    when (branch.syncStatus) {
+                        Util.SyncStatus.PENDING,
+                        Util.SyncStatus.DIRTY -> branchRepository.pushBranch(branch)
+                        Util.SyncStatus.DELETED -> branchRepository.pushDelete(branch.id)
+                        Util.SyncStatus.SYNCED -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Branches")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "branch",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 5. Customers
-            customerDao.getUnsyncedCustomers().forEach { customer ->
-                when (customer.syncStatus) {
-                    Util.SyncStatus.PENDING,
-                    Util.SyncStatus.DIRTY -> customerRepository.pushCustomer(customer)
-                    Util.SyncStatus.DELETED -> customerRepository.deleteCustomer(customer.id)
-                    Util.SyncStatus.SYNCED -> Unit
+            val customers = customerDao.getUnsyncedCustomers()
+            customers.forEach { customer ->
+                try {
+                    when (customer.syncStatus) {
+                        Util.SyncStatus.PENDING,
+                        Util.SyncStatus.DIRTY -> customerRepository.pushCustomer(customer)
+                        Util.SyncStatus.DELETED -> customerRepository.deleteCustomer(customer.id)
+                        Util.SyncStatus.SYNCED -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Customers")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "customer",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 6. Sales
-            saleDao.getUnsyncedSales().forEach { sale ->
-                // Sale sync is mostly PENDING (new sales)
-                if (sale.syncStatus == Util.SyncStatus.PENDING) {
-                    saleRepository.pushSale(sale.id)
+            val sales = saleDao.getUnsyncedSales()
+            sales.forEach { sale ->
+                try {
+                    // Sale sync is mostly PENDING (new sales)
+                    if (sale.syncStatus == Util.SyncStatus.PENDING) {
+                        saleRepository.pushSale(sale.id)
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.Sales")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "sale",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
             // 7. Production Orders
-            productionDao.getUnsyncedOrders().forEach { order ->
-                when (order.syncStatus) {
-                    Util.SyncStatus.PENDING,
-                    Util.SyncStatus.DIRTY -> productionRepository.pushOrder(order)
-                    else -> Unit
+            val orders = productionDao.getUnsyncedOrders()
+            orders.forEach { order ->
+                try {
+                    when (order.syncStatus) {
+                        Util.SyncStatus.PENDING,
+                        Util.SyncStatus.DIRTY -> productionRepository.pushOrder(order)
+                        else -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    ZenithAnalytics.logError(e, context = "SyncWorker.ProductionOrders")
+                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "production_order",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
                 }
             }
 
+            val duration = SystemClock.elapsedRealtime() - startTime
+            ZenithAnalytics.trackEvent("sync_completed", bundleOf(
+                "duration_ms" to duration,
+                "entities_synced" to totalSynced
+            ))
             Result.success()
         } catch (e: Exception) {
             Log.e("SyncWorker", "Sync failed", e)
+            ZenithAnalytics.logError(e, context = "SyncWorker.doWork")
+            ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                "error_reason" to (e.message ?: "unknown")
+            ))
             Result.retry()
         }
     }

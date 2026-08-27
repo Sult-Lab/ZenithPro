@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.customer.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
@@ -52,6 +53,9 @@ class CustomerListViewModel(
 
     fun onTabChanged(tab: CustomerTab) {
         _state.update { it.copy(selectedTab = tab) }
+        if (tab == CustomerTab.DEBTORS) {
+            ZenithAnalytics.trackEvent("customer_debt_viewed")
+        }
     }
 
     fun refresh() {

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.expenses.data.remote.UpsertExpenseRequest
@@ -100,10 +102,19 @@ class AddEditExpenseViewModel(
 
             _state.update { it.copy(isLoading = false) }
             when (result) {
-                is Resource.Success ->
+                is Resource.Success -> {
+                    if (!s.isEditMode) {
+                        ZenithAnalytics.trackEvent("expense_created", bundleOf(
+                            "category" to s.category,
+                            "amount_kobo" to (amountLong ?: 0L)
+                        ))
+                    }
                     _events.emit(AddEditExpenseEvent.Saved)
-                is Resource.Error ->
+                }
+                is Resource.Error -> {
+                    ZenithAnalytics.logError(Exception(result.message), context = "AddEditExpenseViewModel.save")
                     _events.emit(AddEditExpenseEvent.ShowError(result.message ?: "Save failed"))
+                }
                 else -> Unit
             }
         }

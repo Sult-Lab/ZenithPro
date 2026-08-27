@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
 import com.techsultan.zenithpro.features.customer.domain.use_case.CustomerReportData
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerReportsUseCase
@@ -40,11 +42,19 @@ class CustomerReportsViewModel(
                 customerRepository.pullFromServer(businessId)
             }
             when (val result = getCustomerReportsUseCase(businessId)) {
-                is Resource.Success -> _state.update {
-                    it.copy(isLoading = false, data = result.data)
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(isLoading = false, data = result.data)
+                    }
+                    ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                        "report_type" to "customers"
+                    ))
                 }
-                is Resource.Error -> _state.update {
-                    it.copy(isLoading = false, error = result.message)
+                is Resource.Error -> {
+                    _state.update {
+                        it.copy(isLoading = false, error = result.message)
+                    }
+                    ZenithAnalytics.logError(Exception(result.message), context = "CustomerReportsViewModel.load")
                 }
                 else -> Unit
             }

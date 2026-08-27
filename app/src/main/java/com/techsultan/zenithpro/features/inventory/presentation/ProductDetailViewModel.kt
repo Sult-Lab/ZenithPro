@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
 import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
@@ -170,16 +172,22 @@ class ProductDetailViewModel(
             when (val result = updateProductUseCase(requestWithIds, cachedLocalUris)) {
                 is Resource.Success -> {
                     _state.value = _state.value.copy(isLoading = false)
+                    ZenithAnalytics.trackEvent("product_edited", bundleOf(
+                        "category" to updateProductRequest.category,
+                        "branch_id" to (branchId ?: "unknown")
+                    ))
                     _eventFlow.emit(UiEvent.Success)
                     // Refresh product
                     getProduct(updateProductRequest.clientId)
                 }
                 is Resource.Error -> {
+                    val errorMessage = result.message ?: "An unexpected error occurred"
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = result.message ?: "An unexpected error occurred"
+                        error = errorMessage
                     )
-                    _eventFlow.emit(UiEvent.Error(result.message ?: "An unexpected error occurred"))
+                    ZenithAnalytics.logError(Exception(errorMessage), context = "ProductDetailViewModel.updateProduct")
+                    _eventFlow.emit(UiEvent.Error(errorMessage))
                 }
                 is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
             }

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,10 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
@@ -81,6 +85,15 @@ fun MainNavGraph(
     val currentStack = navigationState.backStacks[navigationState.topLevelRoute]
     val isAtRootOfStack = currentStack?.size == 1
     val gesturesEnabled = isBottomBarDestination && isAtRootOfStack
+
+    val currentRoute = currentStack?.lastOrNull()
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route ->
+            val screenName = route::class.simpleName ?: route.toString()
+            ZenithAnalytics.trackScreen(screenName = screenName)
+            ZenithAnalytics.setKey("active_screen", screenName)
+        }
+    }
 
     if (showLogoutDialog) {
         AlertDialog(

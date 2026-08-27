@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import com.techsultan.zenithpro.features.settings.domain.use_case.CreateStaffUseCase
@@ -40,14 +42,22 @@ class AuthViewModel(
     val events = _events.asSharedFlow()
 
     fun signUp(request: SignUpRequest, logoUri: Uri?) {
+        ZenithAnalytics.trackEvent("registration_started")
         signUpUseCase(request, logoUri).onEach { result ->
             when (result) {
                 is Resource.Success -> {
                     _signUpState.value = AuthState(isSuccess = true)
+                    ZenithAnalytics.trackEvent("registration_success", bundleOf(
+                        "business_name" to request.businessName
+                    ))
                     _events.emit(AuthEvent.SignUpSuccess)
                 }
                 is Resource.Error -> {
-                    _signUpState.value = AuthState(error = result.message ?: "An unexpected error occurred")
+                    val errorCode = result.message ?: "unknown"
+                    _signUpState.value = AuthState(error = errorCode)
+                    ZenithAnalytics.trackEvent("registration_failure", bundleOf(
+                        "error_code" to errorCode
+                    ))
                 }
                 is Resource.Loading -> {
                     _signUpState.value = AuthState(isLoading = true)
@@ -61,6 +71,7 @@ class AuthViewModel(
             when (result) {
                 is Resource.Success -> {
                     _loginState.value = AuthState(isSuccess = true)
+                    // Note: login_success with role/business_id is tracked in SessionManager.initSessionFromServer
                     val event = if (result.data == true)
                         AuthEvent.LoginSuccessMustChangePassword
                     else
@@ -68,7 +79,11 @@ class AuthViewModel(
                     _events.emit(event)
                 }
                 is Resource.Error -> {
-                    _loginState.value = AuthState(error = result.message ?: "An unexpected error occurred")
+                    val errorCode = result.message ?: "unknown"
+                    _loginState.value = AuthState(error = errorCode)
+                    ZenithAnalytics.trackEvent("login_failure", bundleOf(
+                        "error_code" to errorCode
+                    ))
                 }
                 is Resource.Loading -> {
                     _loginState.value = AuthState(isLoading = true)
