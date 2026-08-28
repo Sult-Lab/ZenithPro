@@ -31,12 +31,11 @@ fun RootNavGraph(dataPersistentViewModel: DataPersistentViewModel){
                 rootBackStack.remove(Route.Auth)
                 if (Route.Home !in rootBackStack) rootBackStack.add(Route.Home)
             }
-            AuthState.Unauthenticated -> {
+            AuthState.Unauthenticated, AuthState.MustChangePassword -> {
                 rootBackStack.remove(Route.Home)
                 if (Route.Auth !in rootBackStack) rootBackStack.add(Route.Auth)
             }
             AuthState.Loading -> Unit
-            else -> {}
         }
     }
 
@@ -50,6 +49,7 @@ fun RootNavGraph(dataPersistentViewModel: DataPersistentViewModel){
         entryProvider = entryProvider {
             entry<Route.Auth> {
                 AuthGraph(
+                    dataPersistentViewModel = dataPersistentViewModel,
                     navigateToDashboard = {
                         rootBackStack.remove(Route.Auth)
                         rootBackStack.add(Route.Home)

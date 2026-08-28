@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class DataPersistentViewModel(
     private val authRepository: AuthenticationRepository,
@@ -40,45 +41,98 @@ class DataPersistentViewModel(
 
     init {
         observeSession()
+        observeSessionFlow()
+    }
+
+    private fun observeSessionFlow() {
+        viewModelScope.launch {
+            sessionManager.sessionFlow.collect { session ->
+                val currentAuth = _authState.value
+                if (session != null && currentAuth != AuthState.Loading) {
+                    if (session.mustChangePassword) {
+                        if (currentAuth != AuthState.MustChangePassword) {
+                            _authState.value = AuthState.MustChangePassword
+                        }
+                    } else if (currentAuth == AuthState.MustChangePassword || currentAuth == AuthState.Unauthenticated) {
+                        // If we were forced to change password and now it's done, OR if we just logged in
+                        // Check if we are actually authenticated with Supabase
+                        if (auth.currentSessionOrNull() != null) {
+                            _authState.value = AuthState.Authenticated
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun observeSession() {
         viewModelScope.launch {
+            // 1. Quick check for local session to dismiss splash screen immediately if possible
+            val immediateSession = sessionManager.loadSession()
+            if (immediateSession != null) {
+                Log.d("DataPersistentViewModel", "Immediate local session found, dismiss splash")
+                _authState.value = if (immediateSession.mustChangePassword) {
+                    AuthState.MustChangePassword
+                } else {
+                    AuthState.Authenticated
+                }
+            }
 
-            auth.awaitInitialization()
+            try {
+                // 2. Wait for Supabase to initialize (with timeout)
+                withTimeoutOrNull(3000) {
+                    auth.awaitInitialization()
+                }
 
-            authRepository.sessionState.collect { isAuthenticated ->
+                // 3. Observe auth status for changes
+                authRepository.sessionState.collect { isAuthenticated ->
+                    Log.d("DataPersistentViewModel", "Auth state changed: isAuthenticated=$isAuthenticated")
 
-                if (isAuthenticated) {
-                    val localSession = sessionManager.loadSession()
-
-                    if (localSession != null) {
-                        _authState.value = AuthState.Authenticated
+                    if (isAuthenticated) {
+                        val localSession = sessionManager.loadSession()
                         
-                        // Background refresh to ensure session data is up to date
-                        val supabaseSession = auth.currentSessionOrNull()
-                        if (supabaseSession != null) {
-                            sessionManager.initSessionFromServer(supabaseSession.user?.id ?: "")
-                        }
-                    } else {
-                        val supabaseSession = auth.currentSessionOrNull()
-
-                        if (supabaseSession != null) {
-                            val result = sessionManager.initSessionFromServer(
-                                supabaseSession.user?.id ?: ""
-                            )
-
-                            _authState.value = if (result.isSuccess) {
-                                AuthState.Authenticated
+                        if (localSession != null) {
+                            _authState.value = if (localSession.mustChangePassword) {
+                                AuthState.MustChangePassword
                             } else {
-                                AuthState.Unauthenticated
+                                AuthState.Authenticated
+                            }
+                            
+                            // Background refresh to ensure session data is up to date
+                            val supabaseSession = auth.currentSessionOrNull()
+                            if (supabaseSession != null) {
+                                sessionManager.initSessionFromServer(supabaseSession.user?.id ?: "")
                             }
                         } else {
-                            _authState.value = AuthState.Unauthenticated
-                        }
-                    }
+                            // Supabase authenticated but local data missing
+                            val supabaseSession = auth.currentSessionOrNull()
+                            if (supabaseSession != null) {
+                                val result = sessionManager.initSessionFromServer(
+                                    supabaseSession.user?.id ?: ""
+                                )
 
-                } else {
+                                if (result.isSuccess) {
+                                    val session = result.getOrNull()
+                                    _authState.value = if (session?.mustChangePassword == true) {
+                                        AuthState.MustChangePassword
+                                    } else {
+                                        AuthState.Authenticated
+                                    }
+                                } else {
+                                    _authState.value = AuthState.Unauthenticated
+                                }
+                            } else {
+                                _authState.value = AuthState.Unauthenticated
+                            }
+                        }
+                    } else {
+                        Log.d("DataPersistentViewModel", "User is unauthenticated")
+                        _authState.value = AuthState.Unauthenticated
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("DataPersistentViewModel", "observeSession failed: ${e.message}")
+                if (_authState.value == AuthState.Loading) {
                     _authState.value = AuthState.Unauthenticated
                 }
             }

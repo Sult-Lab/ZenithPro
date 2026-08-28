@@ -61,8 +61,7 @@ class AuthViewModel(
             when (result) {
                 is Resource.Success -> {
                     _loginState.value = AuthState(isSuccess = true)
-                    val event = if (result.data == true)
-                        AuthEvent.LoginSuccessMustChangePassword
+                    val event = if (result.data == true) AuthEvent.LoginSuccessMustChangePassword
                     else
                         AuthEvent.LoginSuccess
                     _events.emit(event)
