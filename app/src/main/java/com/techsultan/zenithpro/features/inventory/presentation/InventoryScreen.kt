@@ -207,13 +207,15 @@ fun InventoryScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { onAddProductClick() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Product")
+            if (!state.isStaff) {
+                FloatingActionButton(
+                    onClick = { onAddProductClick() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Product")
+                }
             }
         }
     ) { paddingValues ->

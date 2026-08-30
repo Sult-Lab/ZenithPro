@@ -61,6 +61,12 @@ class AddEditExpenseViewModel(
     fun onDateChanged(date: LocalDate)      { _state.update { it.copy(expenseDate = date) } }
 
     fun save(businessId: String, staffId: String) {
+        if (sessionManager.currentSession?.isStaff == true) {
+            viewModelScope.launch {
+                _events.emit(AddEditExpenseEvent.ShowError("Staff cannot add or edit expenses"))
+            }
+            return
+        }
         val s = _state.value
 
         // Validate

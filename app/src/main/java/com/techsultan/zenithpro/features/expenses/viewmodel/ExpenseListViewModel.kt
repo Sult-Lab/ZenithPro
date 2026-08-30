@@ -65,6 +65,12 @@ class ExpenseListViewModel(
     }
 
     fun deleteExpense(expenseId: String) {
+        if (sessionManager.currentSession?.isAdmin != true) {
+            viewModelScope.launch {
+                _events.emit(ExpenseListEvent.ShowError("Only admins can delete expenses"))
+            }
+            return
+        }
         viewModelScope.launch {
             when (val result = deleteExpenseUseCase(expenseId)) {
                 is Resource.Success ->
@@ -101,6 +107,12 @@ class ExpenseListViewModel(
 
     private fun observeExpenses() {
         val bId = businessId ?: return
+        val session = sessionManager.currentSession
+        if (session?.isStaff == true) {
+            _state.update { it.copy(isLoading = false, expenses = emptyList()) }
+            return
+        }
+
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
             getExpensesUseCase(bId, _state.value.filter).collect { result ->
@@ -108,8 +120,14 @@ class ExpenseListViewModel(
                     is Resource.Loading -> _state.update {
                         it.copy(isLoading = it.expenses.isEmpty())
                     }
-                    is Resource.Success -> _state.update {
-                        it.copy(isLoading = false, expenses = result.data ?: emptyList(), error = null)
+                    is Resource.Success -> {
+                        val allExpenses = result.data ?: emptyList()
+                        val filtered = if (session?.isAdmin == true) {
+                            allExpenses
+                        } else {
+                            allExpenses.filter { it.branchId == session?.branchId }
+                        }
+                        _state.update { it.copy(isLoading = false, expenses = filtered, error = null) }
                     }
                     is Resource.Error -> _state.update {
                         it.copy(isLoading = false, error = result.message)
@@ -121,6 +139,9 @@ class ExpenseListViewModel(
 
     private fun loadStats() {
         val bId = businessId ?: return
+        val session = sessionManager.currentSession
+        if (session?.isStaff == true) return
+
         viewModelScope.launch {
             when (val result = getExpenseStatsUseCase(bId, _state.value.filter)) {
                 is Resource.Success -> _state.update {

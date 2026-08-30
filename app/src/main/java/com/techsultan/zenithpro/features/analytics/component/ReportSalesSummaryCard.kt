@@ -22,7 +22,10 @@ import com.techsultan.zenithpro.features.analytics.data.ReportSalesSummary
 import com.techsultan.zenithpro.features.sales.formatAmount
 
 @Composable
-fun ReportSalesSummaryCard(summary: ReportSalesSummary) {
+fun ReportSalesSummaryCard(
+    summary: ReportSalesSummary,
+    showProfit: Boolean = true
+) {
     Card(
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
@@ -39,13 +42,18 @@ fun ReportSalesSummaryCard(summary: ReportSalesSummary) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                listOf(
+                val stats = mutableListOf(
                     Triple("Revenue",  "₦${summary.totalRevenue.formatAmount()}", Color(0xFF1976D2)),
-                    Triple("Profit", "₦${summary.totalProfit.formatAmount()}",  Color(0xFF388E3C)),
                     Triple("Orders", summary.totalOrders.toString(),             Color(0xFF7B1FA2)),
-                    Triple("Margin", "${String.format("%.1f", summary.profitMargin)}%",
-                        if (summary.profitMargin >= 20f) Color(0xFF388E3C) else Color(0xFFF57C00))
-                ).forEach { (label, value, color) ->
+                )
+
+                if (showProfit) {
+                    stats.add(1, Triple("Profit", "₦${summary.totalProfit.formatAmount()}",  Color(0xFF388E3C)))
+                    stats.add(Triple("Margin", "${String.format("%.1f", summary.profitMargin)}%",
+                        if (summary.profitMargin >= 20f) Color(0xFF388E3C) else Color(0xFFF57C00)))
+                }
+
+                stats.forEach { (label, value, color) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(value,
                             style      = MaterialTheme.typography.titleSmall,

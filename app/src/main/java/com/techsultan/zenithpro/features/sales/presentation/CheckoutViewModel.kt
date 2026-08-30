@@ -95,8 +95,11 @@ class CheckoutViewModel(
 
     init {
         viewModelScope.launch {
-            sessionManager.loadSession()
-            
+            val session = sessionManager.loadSession()
+            _state.update { it.copy(
+                isStaff = session?.isStaff ?: true
+            ) }
+
             getSettingsUseCase(currentSession?.businessId ?: "").collect { settings ->
                 _state.update { it.copy(
                     footerMessage = settings?.receiptFooter ?: "",
@@ -272,6 +275,7 @@ class CheckoutViewModel(
     }
 
     fun setDiscount(amount: Long) {
+        if (_state.value.isStaff) return
         _state.update { it.copy(discountAmount = amount) }
     }
 
@@ -542,4 +546,5 @@ data class NewSaleUiState(
 
     val selectedBranchId: String?         = null,
     val selectedBranchName: String?       = null,
+    val isStaff: Boolean = true
 )

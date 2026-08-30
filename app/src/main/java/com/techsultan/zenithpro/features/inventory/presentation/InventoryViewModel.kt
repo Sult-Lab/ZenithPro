@@ -55,6 +55,7 @@ class InventoryViewModel(
                 isAdmin = sessionManager.isAdmin
                 _state.update { it.copy(
                     isAdmin = isAdmin,
+                    isStaff = sessionManager.currentSession?.isStaff ?: true,
                     selectedBranchId = id,
                 )}
                 observeProducts()
@@ -135,6 +136,12 @@ class InventoryViewModel(
     }
 
     fun deleteProduct(productId: String) {
+        if (!isAdmin) {
+            viewModelScope.launch {
+                _events.emit(InventoryEvent.ShowError("Only admins can delete products"))
+            }
+            return
+        }
         viewModelScope.launch {
             val result = deleteProductUseCase(productId)
             if (result is Resource.Error) {
@@ -244,4 +251,5 @@ data class InventoryUiState(
     val branches: List<BranchEntity> = emptyList(),
     val selectedBranchId: String? = null,   // null = all branches
     val isAdmin: Boolean = false,
+    val isStaff: Boolean = true,
 )
