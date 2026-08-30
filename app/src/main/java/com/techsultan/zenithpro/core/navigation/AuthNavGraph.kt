@@ -24,7 +24,7 @@ fun AuthGraph(
 ){
 
     val authState by dataPersistentViewModel.authState.collectAsStateWithLifecycle()
-    val initialRoute = remember(authState) {
+    val initialRoute = remember {
         if (authState == AuthState.MustChangePassword) {
             Route.Auth.ChangePassword(mode = Route.PasswordChangeMode.FORCED)
         } else {
@@ -35,7 +35,7 @@ fun AuthGraph(
 
     LaunchedEffect(authState) {
         if (authState == AuthState.MustChangePassword) {
-            if (Route.Auth.ChangePassword(mode = Route.PasswordChangeMode.FORCED) !in authBackStack) {
+            if (authBackStack.lastOrNull() !is Route.Auth.ChangePassword) {
                 authBackStack.add(Route.Auth.ChangePassword(mode = Route.PasswordChangeMode.FORCED))
             }
         }

@@ -72,7 +72,8 @@ class SalesListViewModel(
                         filterBranchId = if (session.isAdmin) null else session.branchId,
                         filterStaffId = if (session.isStaff) session.userId else null,
                         isAdmin = session.isAdmin,
-                        isManager = session.isManager
+                        isManager = session.isManager,
+                        isStaff = session.isStaff
                     )
                 }
 
@@ -330,16 +331,17 @@ data class SalesListUiState(
     val availableStaff: List<StaffMember> = emptyList(),
     val error: String? = null,
     val isAdmin: Boolean = false,
-    val isManager: Boolean = false
+    val isManager: Boolean = false,
+    val isStaff: Boolean = false
 )
 
 data class SalesSummary(
-    val totalRevenue: Long      = 0L,
-    val cashRevenue: Long       = 0L,
-    val transferRevenue: Long   = 0L,
-    val cardRevenue: Long       = 0L,
-    val totalCollected: Long    = 0L,
-    val totalDebt: Long         = 0L,
-    val totalOrders: Int        = 0,
+    val totalRevenue: Long = 0L,
+    val cashRevenue: Long = 0L,
+    val transferRevenue: Long = 0L,
+    val cardRevenue: Long = 0L,
+    val totalCollected: Long = 0L,
+    val totalDebt: Long = 0L,
+    val totalOrders: Int = 0,
     val averageOrderValue: Long = 0L,
 )

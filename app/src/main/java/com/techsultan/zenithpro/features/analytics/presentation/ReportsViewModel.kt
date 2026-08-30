@@ -48,14 +48,13 @@ class ReportsViewModel(
             }
             return
         }
-
-        // Managers are locked to their own branch
+        // Managers are locked to their own branch if assigned
         if (session?.isAdmin == false) {
             _state.update {
                 it.copy(
                     filterBranchId = session.branchId,
-                    canFilterBranch = false,
-                    canFilterStaff  = true, // Can see staff in their branch
+                    canFilterBranch = session.branchId == null,
+                    canFilterStaff  = true, // Can see staff in their branch(es)
                     showProfit = false,
                     canExport = false
                 )

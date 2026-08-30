@@ -49,14 +49,14 @@ class DataPersistentViewModel(
             sessionManager.sessionFlow.collect { session ->
                 val currentAuth = _authState.value
                 if (session != null && currentAuth != AuthState.Loading) {
-                    if (session.mustChangePassword) {
-                        if (currentAuth != AuthState.MustChangePassword) {
-                            _authState.value = AuthState.MustChangePassword
-                        }
-                    } else if (currentAuth == AuthState.MustChangePassword || currentAuth == AuthState.Unauthenticated) {
-                        // If we were forced to change password and now it's done, OR if we just logged in
-                        // Check if we are actually authenticated with Supabase
-                        if (auth.currentSessionOrNull() != null) {
+                    val supabaseSession = auth.currentSessionOrNull()
+                    // Only update authState if the session belongs to the current Supabase user
+                    if (session.userId == supabaseSession?.user?.id) {
+                        if (session.mustChangePassword) {
+                            if (currentAuth != AuthState.MustChangePassword) {
+                                _authState.value = AuthState.MustChangePassword
+                            }
+                        } else if (currentAuth == AuthState.MustChangePassword || currentAuth == AuthState.Unauthenticated) {
                             _authState.value = AuthState.Authenticated
                         }
                     }
@@ -70,7 +70,7 @@ class DataPersistentViewModel(
             // 1. Quick check for local session to dismiss splash screen immediately if possible
             val immediateSession = sessionManager.loadSession()
             if (immediateSession != null) {
-                Log.d("DataPersistentViewModel", "Immediate local session found, dismiss splash")
+                Log.d("DataPersistentViewModel", "Immediate local session found")
                 _authState.value = if (immediateSession.mustChangePassword) {
                     AuthState.MustChangePassword
                 } else {
@@ -89,9 +89,12 @@ class DataPersistentViewModel(
                     Log.d("DataPersistentViewModel", "Auth state changed: isAuthenticated=$isAuthenticated")
 
                     if (isAuthenticated) {
+                        val supabaseSession = auth.currentSessionOrNull()
                         val localSession = sessionManager.loadSession()
-                        
-                        if (localSession != null) {
+                        val supabaseUserId = supabaseSession?.user?.id
+
+                        if (localSession != null && localSession.userId == supabaseUserId) {
+                            Log.d("DataPersistentViewModel", "Valid session found: mustChangePassword=${localSession.mustChangePassword}")
                             _authState.value = if (localSession.mustChangePassword) {
                                 AuthState.MustChangePassword
                             } else {
@@ -99,17 +102,12 @@ class DataPersistentViewModel(
                             }
                             
                             // Background refresh to ensure session data is up to date
-                            val supabaseSession = auth.currentSessionOrNull()
-                            if (supabaseSession != null) {
-                                sessionManager.initSessionFromServer(supabaseSession.user?.id ?: "")
-                            }
+                            sessionManager.initSessionFromServer(supabaseUserId)
                         } else {
-                            // Supabase authenticated but local data missing
-                            val supabaseSession = auth.currentSessionOrNull()
-                            if (supabaseSession != null) {
-                                val result = sessionManager.initSessionFromServer(
-                                    supabaseSession.user?.id ?: ""
-                                )
+                            // Supabase authenticated but local data missing, mismatch, or stale
+                            Log.d("DataPersistentViewModel", "Session mismatch or missing, initializing from server")
+                            if (supabaseUserId != null) {
+                                val result = sessionManager.initSessionFromServer(supabaseUserId)
 
                                 if (result.isSuccess) {
                                     val session = result.getOrNull()

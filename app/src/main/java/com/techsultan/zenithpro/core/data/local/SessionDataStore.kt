@@ -33,6 +33,7 @@ object SessionKeys {
     val TERMINAL_ID = stringPreferencesKey("terminal_id")
     val SELECTED_BRANCH_ID = stringPreferencesKey("selected_branch_id")
     val SELECTED_BRANCH_NAME = stringPreferencesKey("selected_branch_name")
+    val MUST_CHANGE_PASSWORD = stringPreferencesKey("must_change_password")
 }
 
 class SessionDataStore(private val context: Context) {
@@ -59,6 +60,7 @@ class SessionDataStore(private val context: Context) {
                 prefs[SessionKeys.BUSINESS_LOGO_URL] = session.businessLogoUrl ?: ""
                 prefs[SessionKeys.CURRENCY_CODE]     = session.currencyCode
                 prefs[SessionKeys.TERMINAL_ID]       = session.terminalId ?: ""
+                prefs[SessionKeys.MUST_CHANGE_PASSWORD] = session.mustChangePassword.toString()
             }
             Log.d("SessionDataStore", "Session saved successfully for user: ${session.userId}")
         } catch (e: Exception) {
@@ -119,7 +121,8 @@ class SessionDataStore(private val context: Context) {
             businessEmail = prefs[SessionKeys.BUSINESS_EMAIL]?.ifBlank { null },
             businessLogoUrl = prefs[SessionKeys.BUSINESS_LOGO_URL]?.ifBlank { null },
             currencyCode = prefs[SessionKeys.CURRENCY_CODE] ?: "NGN",
-            terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null }
+            terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null },
+            mustChangePassword = prefs[SessionKeys.MUST_CHANGE_PASSWORD]?.toBoolean() ?: false
         )
     }
 
@@ -151,7 +154,8 @@ class SessionDataStore(private val context: Context) {
                 businessEmail = prefs[SessionKeys.BUSINESS_EMAIL]?.ifBlank { null },
                 businessLogoUrl = prefs[SessionKeys.BUSINESS_LOGO_URL]?.ifBlank { null },
                 currencyCode = prefs[SessionKeys.CURRENCY_CODE] ?: "NGN",
-                terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null }
+                terminalId = prefs[SessionKeys.TERMINAL_ID]?.ifBlank { null },
+                mustChangePassword = prefs[SessionKeys.MUST_CHANGE_PASSWORD]?.toBoolean() ?: false
             )
         }
 }
