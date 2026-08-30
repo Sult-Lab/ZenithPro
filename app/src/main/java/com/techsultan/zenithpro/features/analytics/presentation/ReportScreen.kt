@@ -156,14 +156,21 @@ fun ReportsScreen(
                 }
 
                 // ── Sales summary ────────────────────────────────────
-                item { ReportSalesSummaryCard(summary = data.salesSummary) }
+                item { 
+                    ReportSalesSummaryCard(
+                        summary = data.salesSummary,
+                        showProfit = state.showProfit
+                    ) 
+                }
 
                 // ── Profit vs expenses ───────────────────────────────
-                item {
-                    ReportComparisonCard(
-                        totalProfit   = data.salesSummary.totalProfit,
-                        totalExpenses = data.expenseSummary.totalAmount
-                    )
+                if (state.showProfit) {
+                    item {
+                        ReportComparisonCard(
+                            totalProfit   = data.salesSummary.totalProfit,
+                            totalExpenses = data.expenseSummary.totalAmount
+                        )
+                    }
                 }
 
                 // ── Sales trend chart ────────────────────────────────

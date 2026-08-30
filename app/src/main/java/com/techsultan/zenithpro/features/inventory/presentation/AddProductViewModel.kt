@@ -107,6 +107,12 @@ class AddProductViewModel(
         imageUris: List<Uri>,
         barcode: String? = null
     ) {
+        if (sessionManager.currentSession?.isStaff == true) {
+            viewModelScope.launch {
+                _eventFlow.emit(UiEvent.Error("Staff cannot add products"))
+            }
+            return
+        }
         viewModelScope.launch {
             _state.value = state.value.copy(isLoading = true)
 

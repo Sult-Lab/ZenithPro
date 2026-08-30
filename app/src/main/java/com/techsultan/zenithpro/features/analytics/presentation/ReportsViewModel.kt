@@ -41,20 +41,34 @@ class ReportsViewModel(
         this.businessId = businessId
         val session = sessionManager.currentSession
 
-        // Staff without manager rights are locked to their own branch
-        // and cannot view other staff's performance
-        if (session != null && !session.isManager) {
+        if (session?.isStaff == true) {
+            _state.update {
+                it.copy(
+                    error = "You don't have permission to view reports",
+                    isLoading = false
+                )
+            }
+            return
+        }
+        // Managers are locked to their own branch if assigned
+        if (session?.isAdmin == false) {
             _state.update {
                 it.copy(
                     filterBranchId = session.branchId,
-                    filterStaffId  = session.userId,
-                    canFilterBranch = false,
-                    canFilterStaff  = false
+                    canFilterBranch = session.branchId == null,
+                    canFilterStaff  = true, // Can see staff in their branch(es)
+                    showProfit = false,
+                    canExport = false
                 )
             }
         } else {
             _state.update {
-                it.copy(canFilterBranch = true, canFilterStaff = true)
+                it.copy(
+                    canFilterBranch = true,
+                    canFilterStaff = true,
+                    showProfit = true,
+                    canExport = true
+                )
             }
         }
 
@@ -167,7 +181,9 @@ data class ReportsUiState(
     val canFilterStaff: Boolean = true,
     val branches: List<BranchEntity> = emptyList(),
     val data: ReportsData? = null,
-    val error: String? = null
+    val error: String? = null,
+    val showProfit: Boolean = false,
+    val canExport: Boolean = false
 ) {
     val hasActiveFilters: Boolean get() = filterBranchId != null || filterStaffId != null
 }

@@ -72,8 +72,7 @@ class AuthViewModel(
                 is Resource.Success -> {
                     _loginState.value = AuthState(isSuccess = true)
                     // Note: login_success with role/business_id is tracked in SessionManager.initSessionFromServer
-                    val event = if (result.data == true)
-                        AuthEvent.LoginSuccessMustChangePassword
+                    val event = if (result.data == true) AuthEvent.LoginSuccessMustChangePassword
                     else
                         AuthEvent.LoginSuccess
                     _events.emit(event)

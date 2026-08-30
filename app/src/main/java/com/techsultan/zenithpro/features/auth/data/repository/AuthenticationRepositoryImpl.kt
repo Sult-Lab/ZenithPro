@@ -65,11 +65,14 @@ class AuthenticationRepositoryImpl(
             val session = auth.currentSessionOrNull()
             if (session != null) {
                 val result = sessionManager.initSessionFromServer(session.user?.id ?: "")
+                Log.d("AuthenticationRepositoryImpl", "login: $result")
                 result.fold(
                     onSuccess = { userSession ->
+                        Log.d("AuthenticationRepositoryImpl", "login: $userSession")
                         emit(Resource.Success(userSession.mustChangePassword))
                     },
                     onFailure = { e ->
+                        Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
                         emit(Resource.Error(e.localizedMessage ?: "Failed to load session"))
                     }
                 )
@@ -77,7 +80,7 @@ class AuthenticationRepositoryImpl(
                 emit(Resource.Error("No session found after login"))
             }
         } catch (e: Exception) {
-            Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
+            Log.e("AuthenticationRepositoryImpl", "login: ${e.localizedMessage}")
             emit(Resource.Error(e.localizedMessage ?: "Login failed"))
         }
     }
@@ -103,7 +106,7 @@ class AuthenticationRepositoryImpl(
             when (status) {
                 is SessionStatus.Authenticated -> true
                 is SessionStatus.NotAuthenticated -> false
-                is SessionStatus.RefreshFailure -> true
+                is SessionStatus.RefreshFailure -> false // Treat refresh failure as unauthenticated
                 is SessionStatus.Initializing  -> null // Still loading
             }
         }

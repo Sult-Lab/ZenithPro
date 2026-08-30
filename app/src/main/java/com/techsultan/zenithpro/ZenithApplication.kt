@@ -89,9 +89,9 @@ class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
             )
         }
 
-        applicationScope.launch {
-            auth.awaitInitialization()
-        }
+//        applicationScope.launch {
+//            auth.awaitInitialization()
+//        }
 
         SyncWorker.schedule(this)
     }
