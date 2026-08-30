@@ -9,6 +9,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
@@ -171,14 +173,33 @@ class AddProductViewModel(
             when (val result = addProductUseCase(requestWithIds, cachedUris)) {
                 is Resource.Success -> {
                     _state.value = state.value.copy(isLoading = false)
+                    ZenithAnalytics.trackEvent("product_created", bundleOf(
+                        "category" to addProductRequest.category,
+                        "unit_type" to addProductRequest.unitType,
+                        "has_variants" to !addProductRequest.variants.isNullOrEmpty(),
+                        "has_image" to imageUris.isNotEmpty(),
+                        "branch_id" to (resolvedBranchId ?: "unknown")
+                    ))
+                    if (imageUris.isNotEmpty()) {
+                        ZenithAnalytics.trackEvent("image_upload_success", bundleOf(
+                            "image_count" to imageUris.size
+                        ))
+                    }
                     _eventFlow.emit(UiEvent.Success)
                 }
                 is Resource.Error -> {
+                    val errorMessage = result.message ?: "An unexpected error occurred"
                     _state.value = state.value.copy(
                         isLoading = false,
-                        error = result.message ?: "An unexpected error occurred"
+                        error = errorMessage
                     )
-                    _eventFlow.emit(UiEvent.Error(result.message ?: "An unexpected error occurred"))
+                    ZenithAnalytics.logError(Exception(errorMessage), context = "AddProductViewModel.addProduct")
+                    if (imageUris.isNotEmpty()) {
+                        ZenithAnalytics.trackEvent("image_upload_failure", bundleOf(
+                            "error_reason" to errorMessage
+                        ))
+                    }
+                    _eventFlow.emit(UiEvent.Error(errorMessage))
                 }
                 is Resource.Loading -> _state.value = state.value.copy(isLoading = true)
             }

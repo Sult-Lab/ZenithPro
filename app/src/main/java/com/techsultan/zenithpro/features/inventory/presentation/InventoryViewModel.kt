@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.DeleteProductUseCase
@@ -58,6 +60,11 @@ class InventoryViewModel(
                     isStaff = sessionManager.currentSession?.isStaff ?: true,
                     selectedBranchId = id,
                 )}
+                if (isAdmin && id != null) {
+                    ZenithAnalytics.trackEvent("branch_switched", bundleOf(
+                        "branch_id" to id
+                    ))
+                }
                 observeProducts()
             }
         }
@@ -70,6 +77,14 @@ class InventoryViewModel(
                 minPrice = minPrice,
                 maxPrice = maxPrice
             )
+        }
+        if (stockStatus == "Low Stock") {
+            viewModelScope.launch {
+                val lowStockCount = filteredProducts.value.size
+                ZenithAnalytics.trackEvent("low_stock_alert_viewed", bundleOf(
+                    "product_count" to lowStockCount
+                ))
+            }
         }
     }
 
@@ -143,10 +158,15 @@ class InventoryViewModel(
             return
         }
         viewModelScope.launch {
+            val product = state.value.products.find { it.product.id == productId }
             val result = deleteProductUseCase(productId)
             if (result is Resource.Error) {
+                ZenithAnalytics.logError(Exception(result.message), context = "InventoryViewModel.deleteProduct")
                 _events.emit(InventoryEvent.ShowError(result.message ?: "Delete failed"))
             } else {
+                ZenithAnalytics.trackEvent("product_deleted", bundleOf(
+                    "category" to (product?.product?.category ?: "none")
+                ))
                 _events.emit(InventoryEvent.ProductDeleted)
             }
         }

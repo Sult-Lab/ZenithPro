@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.analytics.data.ReportPeriod
 import com.techsultan.zenithpro.features.analytics.data.remote.ReportsData
 import com.techsultan.zenithpro.features.analytics.domain.ReportsRepository
@@ -151,8 +153,13 @@ class ReportsViewModel(
         )
 
         when (result) {
-            is Resource.Success -> _state.update {
-                it.copy(isLoading = false, data = result.data, error = null)
+            is Resource.Success -> {
+                _state.update {
+                    it.copy(isLoading = false, data = result.data, error = null)
+                }
+                ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                    "report_type" to "sales"
+                ))
             }
             is Resource.Error -> _state.update {
                 it.copy(isLoading = false, error = result.message)

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.data.remote.CustomerRequest
 import com.techsultan.zenithpro.features.customer.domain.use_case.UpsertCustomerUseCase
@@ -90,6 +91,9 @@ class AddEditCustomerViewModel(
             when (result) {
                 is Resource.Success -> {
                     _state.update { it.copy(isLoading = false) }
+                    if (!s.isEditMode) {
+                        ZenithAnalytics.trackEvent("customer_created")
+                    }
                     _events.emit(AddEditCustomerEvent.Saved(result.data?.id ?: ""))
                 }
                 is Resource.Error -> {

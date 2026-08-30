@@ -7,6 +7,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.techsultan.zenithpro.MainActivity
@@ -23,6 +25,10 @@ class ZenithFirebaseMessagingService : FirebaseMessagingService() {
         val amount = data["amount"] ?: ""
         val sender = data["sender"] ?: ""
         val bank   = data["bank"]   ?: ""
+
+        ZenithAnalytics.trackEvent("nomba_transfer_notification_received", bundleOf(
+            "amount_kobo" to (amount.toDoubleOrNull()?.times(100)?.toLong() ?: 0L)
+        ))
 
         showNotification(title, body, amount, sender, bank)
     }

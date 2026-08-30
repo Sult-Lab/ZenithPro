@@ -12,6 +12,8 @@ import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
 import com.techsultan.zenithpro.features.settings.data.mapper.toEntity
 import com.techsultan.zenithpro.features.settings.data.remote.TerminalDto
 import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
+import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import androidx.core.os.bundleOf
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.SignOutScope
@@ -233,10 +235,28 @@ class SessionManager(
                 }
             }
 
+            ZenithAnalytics.setUser(
+                userId = session.userId,
+                businessId = session.businessId,
+                role = session.role,
+                businessName = session.businessName
+            )
+            ZenithAnalytics.trackEvent("session_started", bundleOf(
+                "role" to session.role,
+                "branch_id" to (session.branchId ?: "all")
+            ))
+
+            ZenithFcmTokenManager.registerTokenForTerminal(
+                postgrest  = postgrest,
+                terminalId = terminal?.id ?: "",
+                businessId = profile.businessId,
+            )
+            Log.d("SessionManager", "FCM token registered for terminal ${terminal?.id}")
             Result.success(session)
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)
+            ZenithAnalytics.logError(e, context = "SessionManager.initSessionFromServer")
             Result.failure(e)
         }
     }
@@ -263,12 +283,15 @@ class SessionManager(
         try {
             // Sign out globally first
             auth.signOut()
+            ZenithAnalytics.clearUser()
         } catch (e: Exception) {
             Log.w("SessionManager", "Supabase global sign out failed: ${e.message}, forcing local sign out")
             try {
                 auth.signOut(scope = SignOutScope.LOCAL)
             } catch (localEx: Exception) {
                 Log.e("SessionManager", "Local sign out failed: ${localEx.message}")
+                Log.w("SessionManager", "Supabase sign out failed: ${e.message}")
+                ZenithAnalytics.logError(e, context = "SessionManager.signOut")
             }
         } finally {
             sessionDataStore.clearSession()
