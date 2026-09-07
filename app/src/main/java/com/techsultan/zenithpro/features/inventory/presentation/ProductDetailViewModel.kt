@@ -14,9 +14,11 @@ import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
 import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductAuditLogUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.UpdateProductUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,10 +38,14 @@ class ProductDetailViewModel(
     val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
+    private val getProductAuditLogUseCase: GetProductAuditLogUseCase,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductDetailUiState())
     val state: State<ProductDetailUiState> = _state
+
+    private val _auditLogs = MutableStateFlow<List<ProductAuditLogEntity>>(emptyList())
+    val auditLogs: StateFlow<List<ProductAuditLogEntity>> = _auditLogs.asStateFlow()
 
     private val _categories = MutableStateFlow<List<CategoryEntity>>(emptyList())
     val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
@@ -49,6 +55,15 @@ class ProductDetailViewModel(
 
     private val _scannedBarcode = mutableStateOf<String?>(null)
     val scannedBarcode: State<String?> = _scannedBarcode
+
+    val canEdit: Boolean
+        get() = sessionManager.currentSession?.isManager ?: false
+
+    val canDelete: Boolean
+        get() = sessionManager.currentSession?.isAdmin ?: false
+
+    val canViewAudit: Boolean
+        get() = sessionManager.currentSession?.isManager ?: false
 
     val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
     val branchId: String? get() = try { sessionManager.currentSession?.branchId } catch (e: Exception) { null }
@@ -200,6 +215,16 @@ class ProductDetailViewModel(
                     _eventFlow.emit(UiEvent.Error(errorMessage))
                 }
                 is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
+            }
+        }
+    }
+
+    fun loadAuditLogs(productId: String) {
+        viewModelScope.launch {
+            getProductAuditLogUseCase(productId).collectLatest { result ->
+                if (result is Resource.Success) {
+                    _auditLogs.value = result.data ?: emptyList()
+                }
             }
         }
     }

@@ -14,10 +14,12 @@ import java.util.Date
 import java.util.Locale
 import androidx.core.graphics.scale
 import com.techsultan.zenithpro.core.domain.domain.UnitType
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 object Util {
     fun convertLongToFullDate(time: Long): String {
@@ -175,4 +177,23 @@ object Util {
         // → "50 pcs in stock", "12.5 kg in stock"
     }
 
+    fun formatRelativeTime(isoTime: String): String = runCatching {
+        val then = Instant.parse(isoTime)
+        val now = Instant.now()
+        val diffSeconds = ChronoUnit.SECONDS.between(then, now)
+        val diffMinutes = ChronoUnit.MINUTES.between(then, now)
+        val diffHours = ChronoUnit.HOURS.between(then, now)
+        val diffDays = ChronoUnit.DAYS.between(then, now)
+
+        when {
+            diffSeconds < 60 -> "just now"
+            diffMinutes < 60 -> "$diffMinutes min${if (diffMinutes > 1) "s" else ""} ago"
+            diffHours < 24 -> "$diffHours hr${if (diffHours > 1) "s" else ""} ago"
+            diffDays < 7 -> "$diffDays day${if (diffDays > 1) "s" else ""} ago"
+            else -> {
+                val formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+                then.atZone(ZoneId.systemDefault()).format(formatter)
+            }
+        }
+    }.getOrElse { "unknown time" }
 }

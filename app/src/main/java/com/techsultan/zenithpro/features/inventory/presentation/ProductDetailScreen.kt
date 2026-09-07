@@ -45,6 +45,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -72,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.rememberAsyncImagePainter
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.QuantityInput
@@ -81,7 +83,10 @@ import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
 import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatPrice
+import com.techsultan.zenithpro.core.util.Util.formatRelativeTime
 import com.techsultan.zenithpro.features.category.presentation.CategoryPickerSheet
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
+import com.techsultan.zenithpro.features.inventory.data.local.ProductEntity
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.StockCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
@@ -124,10 +129,12 @@ fun ProductDetailScreen(
     var showVariationsSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val categories by viewModel.categories.collectAsState()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val auditLogs by viewModel.auditLogs.collectAsStateWithLifecycle()
 
     LaunchedEffect(productId) {
         viewModel.getProduct(productId)
+        viewModel.loadAuditLogs(productId)
     }
 
     LaunchedEffect(state.product) {
@@ -773,6 +780,11 @@ fun ProductDetailScreen(
                                     }
                                 }
                             }
+                            ProductAuditSection(
+                                product = product,
+                                auditLogs = auditLogs,
+                                canViewAudit = viewModel.canViewAudit
+                            )
                         }
                     }
                 }
@@ -807,6 +819,120 @@ fun ProductDetailScreen(
                 showCategorySheet = false
             },
             onDismiss = { showCategorySheet = false }
+        )
+    }
+}
+
+@Composable
+fun ProductAuditSection(
+    product: ProductEntity,
+    auditLogs: List<ProductAuditLogEntity>,
+    canViewAudit: Boolean,  // isManager or isAdmin
+) {
+    if (!canViewAudit) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Last updated by
+        if (product.updatedByName != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Column {
+                        Text(
+                            text = "Last updated by",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = product.updatedByName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Text(
+                    text = formatRelativeTime(product.updatedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Price change history — admin only
+        if (auditLogs.isNotEmpty()) {
+            HorizontalDivider()
+
+            Text(
+                text = "Change history",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            auditLogs.take(5).forEach { log ->
+                AuditLogItem(log = log)
+            }
+        }
+    }
+}
+
+@Composable
+fun AuditLogItem(log: ProductAuditLogEntity) {
+    val description = when (log.changeType) {
+        "PRODUCT_CREATED" -> "Product created"
+        "PRODUCT_EDITED"  -> "Product details updated"
+        "PRICE_CHANGE"    -> buildString {
+            val field = if (log.fieldChanged == "sales_price") "Selling price" else "Cost price"
+            val oldFormatted = log.oldValue?.toLongOrNull()?.let { "₦${it / 100}" } ?: log.oldValue
+            val newFormatted = log.newValue?.toLongOrNull()?.let { "₦${it / 100}" } ?: log.newValue
+            append("$field changed")
+            if (log.variantSku != null) append(" (${log.variantSku})")
+            append(": $oldFormatted → $newFormatted")
+        }
+        "VARIANT_ADDED"   -> "Variant added: ${log.variantSku}"
+        "VARIANT_REMOVED" -> "Variant removed: ${log.variantSku}"
+        "STOCK_ADJUSTMENT"-> "Stock adjusted"
+        else -> log.changeType
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = "by ${log.changedByName}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Text(
+            text = formatRelativeTime(log.createdAt),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

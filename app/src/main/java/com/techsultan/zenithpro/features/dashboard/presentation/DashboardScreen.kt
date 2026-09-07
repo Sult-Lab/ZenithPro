@@ -39,6 +39,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,21 +61,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.compose.cartesian.data.CartesianValueFormatter
-import com.patrykandpatrick.vico.compose.cartesian.data.columnModel
-import com.patrykandpatrick.vico.compose.cartesian.data.lineModel
-import com.patrykandpatrick.vico.compose.cartesian.layer.ColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.common.Fill
-import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.techsultan.zenithpro.features.analytics.component.SalesChartCard
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
@@ -81,6 +70,7 @@ import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummar
 import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBar
 import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBottomSheet
 import com.techsultan.zenithpro.features.sales.formatAmount
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -100,8 +90,11 @@ fun DashboardScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showBranchSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             ZenithTopAppBar(
                 title = "Dashboard",
@@ -150,7 +143,23 @@ fun DashboardScreen(
                 }
 
                 item {
-                    DashboardHero(onNewSale = onNewSale)
+                    DashboardHero(
+                        onNewSale = {
+                            if (state.activeBranchId == null) {
+                                scope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = "Please select a branch first",
+                                        actionLabel = "Select Branch"
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        showBranchSheet = true
+                                    }
+                                }
+                            } else {
+                                onNewSale()
+                            }
+                        }
+                    )
                 }
 
                 item {
@@ -247,7 +256,7 @@ private fun DashboardHero(onNewSale: () -> Unit) {
         Button(
             onClick = onNewSale,
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853))
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Icon(
                 imageVector = Icons.Default.Add,

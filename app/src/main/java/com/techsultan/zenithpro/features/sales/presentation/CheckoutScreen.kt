@@ -115,6 +115,10 @@ fun CheckoutScreen(
                     onReceiptPreview(event.receipt)
                     snackbarHost.showSnackbar("Payment successful")
                 }
+                is CheckoutViewModel.CheckoutEvent.BranchRequired -> {
+                    snackbarHost.showSnackbar("Please select a branch first")
+                    onBack()
+                }
                 is CheckoutViewModel.CheckoutEvent.ShowError -> {
                     snackbarHost.showSnackbar(event.message)
                 }

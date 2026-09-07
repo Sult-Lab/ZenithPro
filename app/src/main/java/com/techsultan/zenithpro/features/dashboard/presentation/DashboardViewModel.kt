@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.category.domain.use_case.PullCategoriesUseCase
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
@@ -32,6 +33,7 @@ class DashboardViewModel(
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
     private val branchDao: BranchDao,
+    private val pullCategoriesUseCase: PullCategoriesUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
@@ -81,11 +83,12 @@ class DashboardViewModel(
             val chartJob   = async { getChartDataUseCase(bId, _state.value.selectedDays, branchId) }
             val debtJob    = async { getPendingDebtsUseCase(bId, branchId) }
             val urgentJob  = async { getUrgentActionUseCase(bId, branchId) }
-
+            val pullCategoriesJob = async { pullCategoriesUseCase(sessionManager.businessId) }
             val summary = summaryJob.await()
             val chart   = chartJob.await()
             val debt    = debtJob.await()
             val urgent  = urgentJob.await()
+            val pullCategory = pullCategoriesJob.await()
 
             _state.update { s ->
                 s.copy(
@@ -119,6 +122,7 @@ class DashboardViewModel(
             val chart   = getChartDataUseCase(bId, _state.value.selectedDays, branchId)
             val debt    = getPendingDebtsUseCase(bId, branchId)
             val urgent  = getUrgentActionUseCase(bId, branchId)
+            val pullCategoriesJob = async { pullCategoriesUseCase(sessionManager.businessId) }
             _state.update { s ->
                 s.copy(
                     isRefreshing = false,

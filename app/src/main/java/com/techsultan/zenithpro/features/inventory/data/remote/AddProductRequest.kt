@@ -18,7 +18,9 @@ data class AddProductRequest(
     @SerialName("variants") val variants: List<ProductVariantCreateRequest>? = emptyList(),
     @SerialName("businessId") val businessId: String,
     @SerialName("imageUrls") val imageUrls: List<String> = emptyList(),
-    @SerialName("defaultStock") val defaultStock: List<StockCreateRequest> = emptyList()
+    @SerialName("defaultStock") val defaultStock: List<StockCreateRequest> = emptyList(),
+    val updatedBy: String? = null,      // ADD — staffId from session
+    val updatedByName: String? = null,
 )
 
 @Serializable
