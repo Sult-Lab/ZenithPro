@@ -56,12 +56,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -265,17 +264,27 @@ fun SignUpScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                val annotatedString = buildAnnotatedString {
+                    append("By clicking Create Account, you agree to our ")
+                    withLink(LinkAnnotation.Url("https://zenithpro-web.vercel.app/terms")) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
+                            append("Terms")
+                        }
+                    }
+                    append(" and ")
+                    withLink(LinkAnnotation.Url("https://zenithpro-web.vercel.app/privacy")) {
+                        withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
+                            append("privacy policy")
+                        }
+                    }
+                    append("\nyour default currency will be the ")
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                        append("Nigerian Naira (N).")
+                    }
+                }
+
                 Text(
-                    text = buildAnnotatedString {
-                        append("By clicking Create Account, you agree to our ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                            append("Terms and that")
-                        }
-                        append("\nyour default currency will be the ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                            append("Nigerian Naira (N).")
-                        }
-                    },
+                    text = annotatedString,
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray,
                     textAlign = TextAlign.Center,

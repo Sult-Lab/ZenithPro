@@ -54,6 +54,7 @@ import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SaleDetailScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
+import com.techsultan.zenithpro.features.settings.presentation.AboutAppScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
 import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
@@ -227,7 +228,7 @@ fun MainNavGraph(
                                 onBack = {},
                                 onAccountSettings = {},
                                 onNotifications = {},
-                                onAbout = {},
+                                onAbout = { navigator.navigate(Route.Home.AboutApp) },
                                 onLogout = { showLogoutDialog = true },
                                 onPrinterSettings = { navigator.navigate(Route.Home.PrinterSettings) },
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
@@ -412,6 +413,11 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.NombaTransferScreen> {
                             NombaTransferScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.AboutApp> {
+                            AboutAppScreen(
                                 onBack = { navigator.goBack() }
                             )
                         }

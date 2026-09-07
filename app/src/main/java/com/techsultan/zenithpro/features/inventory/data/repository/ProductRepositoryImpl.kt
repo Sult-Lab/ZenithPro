@@ -8,6 +8,8 @@ import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
 import com.techsultan.zenithpro.features.inventory.data.local.ProductEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductStockDao
@@ -20,6 +22,7 @@ import com.techsultan.zenithpro.features.inventory.data.mapper.toEntity
 import com.techsultan.zenithpro.features.inventory.data.mapper.toProductDto
 import com.techsultan.zenithpro.features.inventory.data.mapper.toProductEntity
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
+import com.techsultan.zenithpro.features.inventory.data.remote.ProductAuditLogDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductStockDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
@@ -53,7 +56,8 @@ class ProductRepositoryImpl(
     private val productDao: ProductDao,
     private val variantDao: ProductVariantDao,
     private val stockDao: ProductStockDao,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val auditLogDao: ProductAuditLogDao
 ) : ProductRepository {
 
     override fun getProducts(businessId: String): Flow<Resource<List<ProductWithVariants>>> =
@@ -813,6 +817,33 @@ class ProductRepositoryImpl(
         }
     }
 
+    override fun getProductAuditLogs(productId: String): Flow<Resource<List<ProductAuditLogEntity>>> = flow {
+        emit(Resource.Loading())
+
+        // 1. Emit local cache first
+        auditLogDao.observeLogsForProduct(productId).collect { localLogs ->
+            emit(Resource.Success(localLogs))
+
+            // 2. Then try to pull from server if connected
+            if (networkMonitor.isConnected()) {
+                try {
+                    val remoteLogs = postgrest
+                        .from("product_audit_log")
+                        .select {
+                            filter { eq("product_id", productId) }
+                            order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                            limit(50)
+                        }
+                        .decodeList<ProductAuditLogDto>()
+
+                    auditLogDao.insertAll(remoteLogs.map { it.toEntity() })
+                } catch (e: Exception) {
+                    Log.e("ProductRepo", "Failed to pull audit logs: ${e.message}")
+                    // We don't emit error here because we already emitted local data
+                }
+            }
+        }
+    }.catch { emit(Resource.Error(it.message ?: "Failed to load audit logs")) }
 
 }
 

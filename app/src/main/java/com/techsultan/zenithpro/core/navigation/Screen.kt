@@ -78,6 +78,9 @@ sealed interface Route: NavKey {
         data object PaymentSettings : Route, NavKey
 
         @Serializable
+        data object AboutApp : Route, NavKey
+
+        @Serializable
         data class SaleDetail(val saleId: String) : Route, NavKey
 
         @Serializable

@@ -116,8 +116,12 @@ class CheckoutViewModel(
                     selectedBranchId = id,
                     selectedBranchName = sessionManager.activeBranchName.value
                 ) }
-                loadTerminalForCurrentBranch()
-                loadProducts(id) 
+                if (id == null) {
+                    _events.emit(CheckoutEvent.BranchRequired)
+                } else {
+                    loadTerminalForCurrentBranch()
+                    loadProducts(id)
+                }
             }
         }
     }
@@ -353,7 +357,6 @@ class CheckoutViewModel(
 
         val s = _state.value
         if (s.isLoading) return
-        Log.d("CheckoutVM", "Terminal ID: ${_currentTerminal.value}")
 
         ZenithAnalytics.trackEvent("checkout_started", bundleOf(
             "item_count" to cartItemCount.value,
@@ -405,8 +408,13 @@ class CheckoutViewModel(
                 PaymentMethod.POS,
                 PaymentMethod.USSD -> if (s.amountPaid <= 0L) total else s.amountPaid
             }
-
-            if (s.selectedBranchId == null) return@launch
+            Log.d("CheckoutVM", "Effective paid: $effectivePaid")
+            Log.d("CheckoutVM", "Total: $total")
+            Log.d("checkoutVM", "Selected branch ID: ${s.selectedBranchId}")
+            if (s.selectedBranchId == null) {
+                _events.emit(CheckoutEvent.BranchRequired)
+                return@launch
+            }
             val result = processSaleUseCase(
                 cart = cartItemsList,
                 customerId = s.selectedCustomerId,
@@ -523,6 +531,7 @@ class CheckoutViewModel(
     }
 
     sealed class CheckoutEvent {
+        data object BranchRequired : CheckoutEvent()
         data class ShowError(val message: String) : CheckoutEvent()
 
         data class ReceiptReady(

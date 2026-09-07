@@ -167,7 +167,9 @@ class AddProductViewModel(
             val requestWithIds = addProductRequest.copy(
                 clientId  = productClientId,
                 branchId  = resolvedBranchId,
-                variants  = variants
+                variants  = variants,
+                updatedBy = sessionManager.currentSession?.userId,
+                updatedByName = sessionManager.currentSession?.fullName,
             )
 
             when (val result = addProductUseCase(requestWithIds, cachedUris)) {
