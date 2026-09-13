@@ -85,7 +85,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SignUpScreen(
     viewModel: AuthViewModel = koinViewModel(),
-    onCreateAccountSuccess: () -> Unit,
+    onCreateAccountSuccess: (String) -> Unit,
     onLoginClick: () -> Unit
 ) {
     var businessName by remember { mutableStateOf("") }
@@ -115,9 +115,9 @@ fun SignUpScreen(
         }
     )
 
-    LaunchedEffect(key1 = state.isSuccess) {
-        if (state.isSuccess) {
-            onCreateAccountSuccess()
+    LaunchedEffect(key1 = state.registrationComplete) {
+        if (state.registrationComplete) {
+            state.email?.let { onCreateAccountSuccess(it) }
         }
     }
 

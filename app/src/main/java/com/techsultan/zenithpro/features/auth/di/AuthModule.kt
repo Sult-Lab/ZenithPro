@@ -9,6 +9,7 @@ import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.SignUpUseCase
 import com.techsultan.zenithpro.features.auth.presentation.AuthViewModel
 import com.techsultan.zenithpro.features.auth.presentation.ChangePasswordViewModel
+import com.techsultan.zenithpro.features.auth.presentation.EmailConfirmedViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -29,5 +30,9 @@ val authModule = module {
 
     viewModel {
         ChangePasswordViewModel(get(), get(), get())
+    }
+
+    viewModel {
+        EmailConfirmedViewModel(get(), get())
     }
 }
