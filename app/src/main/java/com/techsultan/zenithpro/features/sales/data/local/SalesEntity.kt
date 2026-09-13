@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.sales.data.local
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.sales.PaymentMethod
@@ -10,6 +11,7 @@ import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
 
 @Entity(
     tableName = "sales",
+    indices = [Index(value = ["clientTransactionId"], unique = true)],
     foreignKeys = [
         ForeignKey(
             entity = TerminalEntity::class,

@@ -93,7 +93,7 @@ class SaleRepositoryImpl(
     ): Resource<ProcessSaleResponse> = withContext(Dispatchers.IO) {
         try {
             // 1. Save sale locally first with PENDING status
-            val saleId = UUID.randomUUID().toString()
+            val saleId = request.clientTransactionId
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
             val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
@@ -343,6 +343,11 @@ class SaleRepositoryImpl(
 
             val saleIds = remoteSales.map { it.id }
 
+            // Also pull items for these sales. 
+            // The UNIQUE(clientTransactionId) REPLACE above should have handled local items 
+            // via CASCADE delete if the sale was replaced. 
+            // But if the sale wasn't replaced (e.g. ID matched), we should ensure items are fresh.
+            
             val remoteItems = postgrest
                 .from("sale_items")
                 .select {
