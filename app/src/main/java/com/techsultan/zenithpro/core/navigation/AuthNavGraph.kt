@@ -14,6 +14,8 @@ import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.auth.presentation.ChangePasswordScreen
+import com.techsultan.zenithpro.features.auth.presentation.EmailConfirmedScreen
+import com.techsultan.zenithpro.features.auth.presentation.RegistrationSuccessScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignInScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignUpScreen
 
@@ -21,6 +23,8 @@ import com.techsultan.zenithpro.features.auth.presentation.SignUpScreen
 fun AuthGraph(
     dataPersistentViewModel: DataPersistentViewModel,
     navigateToDashboard: () -> Unit,
+    initialDeepLink: Route? = null,
+    onDeepLinkConsumed: () -> Unit = {}
 ){
 
     val authState by dataPersistentViewModel.authState.collectAsStateWithLifecycle()
@@ -38,6 +42,15 @@ fun AuthGraph(
             if (authBackStack.lastOrNull() !is Route.Auth.ChangePassword) {
                 authBackStack.add(Route.Auth.ChangePassword(mode = Route.PasswordChangeMode.FORCED))
             }
+        }
+    }
+
+    LaunchedEffect(initialDeepLink) {
+        initialDeepLink?.let {
+            if (authBackStack.lastOrNull() != it) {
+                authBackStack.add(it)
+            }
+            onDeepLinkConsumed()
         }
     }
 
@@ -66,15 +79,49 @@ fun AuthGraph(
             }
             entry<Route.Auth.SignUp> {
                 SignUpScreen(
-                    onCreateAccountSuccess = navigateToDashboard,
+                    onCreateAccountSuccess = { email ->
+                        authBackStack.add(Route.Auth.RegistrationSuccess(email))
+                    },
                     onLoginClick = { authBackStack.add(Route.Auth.SignIn) },
+                )
+            }
+            entry<Route.Auth.RegistrationSuccess> { route ->
+                RegistrationSuccessScreen(
+                    email = route.email,
+                    onNavigateToLogin = {
+                        authBackStack.remove(route)
+                        if (Route.Auth.SignIn !in authBackStack) {
+                            authBackStack.add(Route.Auth.SignIn)
+                        }
+                    }
+                )
+            }
+            entry<Route.Auth.EmailConfirmed> { route ->
+                EmailConfirmedScreen(
+                    token = route.token,
+                    onNavigateToLogin = {
+                        authBackStack.remove(route)
+                        if (Route.Auth.SignIn !in authBackStack) {
+                            authBackStack.add(Route.Auth.SignIn)
+                        }
+                    }
                 )
             }
             entry<Route.Auth.ChangePassword> { route ->
                 ChangePasswordScreen(
                     mode = route.mode,
                     initialEmail = route.email,
-                    onChanged = navigateToDashboard,
+                    onChanged = {
+                        if (route.mode == Route.PasswordChangeMode.FORCED) {
+                            navigateToDashboard()
+                        } else {
+                            // If it was a recovery link or forgot password flow, return to login
+                            authBackStack.remove(route)
+                            if (Route.Auth.SignIn !in authBackStack) {
+                                authBackStack.add(Route.Auth.SignIn)
+                            }
+                        }
+                    },
                     onBack = { authBackStack.remove(route) }
                 )
             }

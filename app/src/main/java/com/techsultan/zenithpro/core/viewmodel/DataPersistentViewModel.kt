@@ -138,24 +138,10 @@ class DataPersistentViewModel(
                             // Background refresh to ensure session data is up to date
                             sessionManager.initSessionFromServer(supabaseUserId)
                         } else {
-                            // Supabase authenticated but local data missing, mismatch, or stale
-                            Log.d("DataPersistentViewModel", "Session mismatch or missing, initializing from server")
-                            if (supabaseUserId != null) {
-                                val result = sessionManager.initSessionFromServer(supabaseUserId)
-
-                                if (result.isSuccess) {
-                                    val session = result.getOrNull()
-                                    _authState.value = if (session?.mustChangePassword == true) {
-                                        AuthState.MustChangePassword
-                                    } else {
-                                        AuthState.Authenticated
-                                    }
-                                } else {
-                                    _authState.value = AuthState.Unauthenticated
-                                }
-                            } else {
-                                _authState.value = AuthState.Unauthenticated
-                            }
+                            // Supabase authenticated but local data missing or mismatched (e.g. from a password recovery link).
+                            // Do not automatically sign the user into the dashboard unless they explicitly log in.
+                            Log.d("DataPersistentViewModel", "Session mismatch or missing. Treating as unauthenticated.")
+                            _authState.value = AuthState.Unauthenticated
                         }
                     } else {
                         Log.d("DataPersistentViewModel", "User is unauthenticated")

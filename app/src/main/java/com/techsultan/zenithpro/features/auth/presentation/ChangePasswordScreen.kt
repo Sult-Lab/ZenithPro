@@ -173,35 +173,79 @@ fun ChangePasswordScreen(
                 }
             }
 
-            if (mode == Route.PasswordChangeMode.FORGOT) {
-                Text(
-                    "Enter your email address and we'll send you a link to reset your password.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (mode == Route.PasswordChangeMode.FORGOT && !state.isOtpVerified) {
+                if (!state.isOtpSent) {
+                    Text(
+                        "Enter your email address and we'll send you a 6-digit OTP code to reset your password.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-                OutlinedTextField(
-                    value = state.email,
-                    onValueChange = viewModel::onEmailChanged,
-                    label = { Text("Email address") },
-                    modifier = Modifier.fillMaxWidth(),
-                    isError = state.emailError != null,
-                    supportingText = state.emailError?.let {
-                        { Text(it, color = MaterialTheme.colorScheme.error) }
-                    },
-                    leadingIcon = {
-                        Icon(Icons.Default.Email, contentDescription = null)
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { viewModel.submit() }
-                    ),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    OutlinedTextField(
+                        value = state.email,
+                        onValueChange = viewModel::onEmailChanged,
+                        label = { Text("Email address") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = state.emailError != null,
+                        supportingText = state.emailError?.let {
+                            { Text(it, color = MaterialTheme.colorScheme.error) }
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null)
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { viewModel.submit() }
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                } else {
+                    Text(
+                        "Enter the 6-digit verification code sent to ${state.email}.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    com.techsultan.zenithpro.core.components.OtpTextField(
+                        otpText = state.otpCode,
+                        otpCount = 8,
+                        onOtpTextChange = { text, isComplete ->
+                            viewModel.onOtpChanged(text)
+                            if (isComplete) {
+                                viewModel.submit()
+                            }
+                        },
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    val otpError = state.otpError
+                    if (otpError != null) {
+                        Text(
+                            text = otpError,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+
+                    if (state.resendCountdown > 0) {
+                        Text(
+                            "Resend code in ${state.resendCountdown}s",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        TextButton(
+                            onClick = { viewModel.submitForgotPassword(state.email) }
+                        ) {
+                            Text("Resend code")
+                        }
+                    }
+                }
             } else {
                 Spacer(Modifier.height(8.dp))
 
@@ -334,12 +378,15 @@ fun ChangePasswordScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 enabled  = !state.isLoading && (
-                    if (mode == Route.PasswordChangeMode.FORGOT) state.email.isNotEmpty()
-                    else passwordStrength(state.password) != PasswordStrength.WEAK
+                    if (mode == Route.PasswordChangeMode.FORGOT) {
+                        if (!state.isOtpSent) state.email.isNotEmpty() && state.resendCountdown == 0
+                        else if (!state.isOtpVerified) state.otpCode.length == 6
+                        else passwordStrength(state.password) != PasswordStrength.WEAK
+                    } else passwordStrength(state.password) != PasswordStrength.WEAK
                 ),
                 shape    = RoundedCornerShape(12.dp),
                 colors   = ButtonDefaults.buttonColors(
-                    containerColor = if (mode == Route.PasswordChangeMode.FORGOT)
+                    containerColor = if (mode == Route.PasswordChangeMode.FORGOT && !state.isOtpVerified)
                         MaterialTheme.colorScheme.primary else Color(0xFF00C853)
                 )
             ) {
@@ -351,15 +398,23 @@ fun ChangePasswordScreen(
                     )
                 } else {
                     Icon(
-                        if (mode == Route.PasswordChangeMode.FORGOT) Icons.Default.MarkEmailRead
+                        if (mode == Route.PasswordChangeMode.FORGOT && !state.isOtpVerified) Icons.Default.MarkEmailRead
                         else Icons.Default.LockReset,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (mode == Route.PasswordChangeMode.FORGOT) "Send reset instructions"
-                        else "Change password",
+                        if (mode == Route.PasswordChangeMode.FORGOT) {
+                            if (!state.isOtpSent) {
+                                if (state.resendCountdown > 0) "Resend in ${state.resendCountdown}s"
+                                else "Send OTP code"
+                            } else if (!state.isOtpVerified) {
+                                "Verify OTP code"
+                            } else {
+                                "Change password"
+                            }
+                        } else "Change password",
                         style      = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )

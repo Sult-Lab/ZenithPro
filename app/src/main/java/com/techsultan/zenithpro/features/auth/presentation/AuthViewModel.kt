@@ -46,7 +46,13 @@ class AuthViewModel(
         signUpUseCase(request, logoUri).onEach { result ->
             when (result) {
                 is Resource.Success -> {
-                    _signUpState.value = AuthState(isSuccess = true)
+                    val normalizedEmail = request.email.trim().lowercase()
+                    _signUpState.value = _signUpState.value.copy(
+                        isLoading = false,
+                        registrationComplete = true,
+                        email = normalizedEmail,
+                        isSuccess = true
+                    )
                     ZenithAnalytics.trackEvent("registration_success", bundleOf(
                         "business_name" to request.businessName
                     ))
@@ -54,13 +60,22 @@ class AuthViewModel(
                 }
                 is Resource.Error -> {
                     val errorCode = result.message ?: "unknown"
-                    _signUpState.value = AuthState(error = errorCode)
+                    val errorMessage = when {
+                        errorCode.contains("429") -> "Too many requests. Please try again later."
+                        errorCode.contains("422") || errorCode.contains("already registered") ->
+                            "This email is already registered. Please log in."
+                        else -> errorCode
+                    }
+                    _signUpState.value = _signUpState.value.copy(
+                        isLoading = false,
+                        error = errorMessage
+                    )
                     ZenithAnalytics.trackEvent("registration_failure", bundleOf(
                         "error_code" to errorCode
                     ))
                 }
                 is Resource.Loading -> {
-                    _signUpState.value = AuthState(isLoading = true)
+                    _signUpState.value = _signUpState.value.copy(isLoading = true)
                 }
             }
         }.launchIn(viewModelScope)

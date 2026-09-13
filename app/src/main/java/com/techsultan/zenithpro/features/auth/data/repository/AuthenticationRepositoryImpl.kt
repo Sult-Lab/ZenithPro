@@ -12,6 +12,7 @@ import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.functions.Functions
@@ -100,6 +101,19 @@ class AuthenticationRepositoryImpl(
             emit(Resource.Error(e.localizedMessage ?: "Logout failed"))
         }
     }.flowOn(Dispatchers.IO)
+
+    override fun verifyEmail(token: String): Flow<Resource<Unit>> = flow {
+        emit(Resource.Loading())
+        try {
+            auth.verifyEmailOtp(
+                type = OtpType.Email.SIGNUP,
+                tokenHash = token,
+            )
+            emit(Resource.Success(Unit))
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Verification failed"))
+        }
+    }
 
     override val sessionState: Flow<Boolean> = auth.sessionStatus
         .map { status ->
