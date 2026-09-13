@@ -142,14 +142,14 @@ fun SalesScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onNombaClick() }) {
+                    /*IconButton(onClick = { onNombaClick() }) {
                         Icon(
                             imageVector = Icons.Default.AccountBalanceWallet,
                             contentDescription = "Nomba",
                             tint = Color.Unspecified,
                             modifier = Modifier
                         )
-                    }
+                    }*/
                 }
             )
         },

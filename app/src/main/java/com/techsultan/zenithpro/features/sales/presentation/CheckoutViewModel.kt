@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.sales.presentation
 
 import android.util.Log
+import java.util.UUID
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.data.local.ReceiptData
@@ -344,7 +345,8 @@ class CheckoutViewModel(
             selectedCustomerId = null,
             selectedCustomer = null,
             paymentMethod = PaymentMethod.CASH,
-            showCustomerSelector = false
+            showCustomerSelector = false,
+            clientTransactionId = UUID.randomUUID().toString()
         ) }
         _splitCashAmount.value = 0L
         _splitTransferAmount.value = 0L
@@ -425,6 +427,7 @@ class CheckoutViewModel(
                 notes = notes,
                 staffId = sessionManager.userId,
                 taxAmount = taxAmount,
+                clientTransactionId = s.clientTransactionId,
             )
 
             when (result) {
@@ -571,5 +574,6 @@ data class NewSaleUiState(
 
     val selectedBranchId: String?         = null,
     val selectedBranchName: String?       = null,
-    val isStaff: Boolean = true
+    val isStaff: Boolean = true,
+    val clientTransactionId: String = UUID.randomUUID().toString()
 )
