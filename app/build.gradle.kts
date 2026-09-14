@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -175,4 +176,19 @@ dependencies {
 
     //vico
     implementation(libs.vico.compose.m3)
+
+    // test
+
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
+    mockitoAgent(libs.mockito.core) { isTransitive = false }
+}
+
+tasks.withType<Test> {
+    doFirst {
+        jvmArgs("-javaagent:${mockitoAgent.asPath}")
+    }
 }

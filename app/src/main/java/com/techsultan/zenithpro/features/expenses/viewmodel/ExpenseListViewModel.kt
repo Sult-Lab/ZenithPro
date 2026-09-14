@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseFilter
@@ -32,7 +32,8 @@ class ExpenseListViewModel(
     private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ExpenseListUiState())
@@ -76,11 +77,11 @@ class ExpenseListViewModel(
         viewModelScope.launch {
             when (val result = deleteExpenseUseCase(expenseId)) {
                 is Resource.Success -> {
-                    ZenithAnalytics.trackEvent("expense_deleted")
+                    analytics.trackEvent("expense_deleted")
                     _events.emit(ExpenseListEvent.ShowMessage("Expense deleted"))
                 }
                 is Resource.Error -> {
-                    ZenithAnalytics.logError(Exception(result.message), context = "ExpenseListViewModel.deleteExpense")
+                    analytics.logError(Exception(result.message), "ExpenseListViewModel.deleteExpense")
                     _events.emit(ExpenseListEvent.ShowError(result.message ?: "Delete failed"))
                 }
                 else -> Unit
@@ -157,7 +158,7 @@ class ExpenseListViewModel(
                             categories = result.data?.categories ?: emptyList()
                         )
                     }
-                    ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                    analytics.trackEvent("report_viewed", bundleOf(
                         "report_type" to "expenses"
                     ))
                 }

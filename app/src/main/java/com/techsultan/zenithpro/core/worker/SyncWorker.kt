@@ -5,7 +5,7 @@ import android.util.Log
 import android.os.SystemClock
 import androidx.core.os.bundleOf
 import androidx.work.Constraints
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -48,13 +48,14 @@ class SyncWorker(
     private val saleDao: SaleDao,
     private val productionDao: ProductionOrderDao,
     private val networkMonitor: NetworkMonitor,
+    private val analytics: AnalyticsHelper,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         if (!networkMonitor.isConnected()) return Result.retry()
 
         val startTime = SystemClock.elapsedRealtime()
-        ZenithAnalytics.trackEvent("sync_started", bundleOf("trigger" to "auto"))
+        analytics.trackEvent("sync_started", bundleOf("trigger" to "auto"))
         var totalSynced = 0
 
         return try {
@@ -70,8 +71,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Products")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Products")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "product",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -90,8 +91,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Expenses")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Expenses")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "expense",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -110,8 +111,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Categories")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Categories")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "category",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -130,8 +131,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Branches")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Branches")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "branch",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -150,8 +151,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Customers")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Customers")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "customer",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -168,8 +169,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.Sales")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.Sales")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "sale",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -187,8 +188,8 @@ class SyncWorker(
                     }
                     totalSynced++
                 } catch (e: Exception) {
-                    ZenithAnalytics.logError(e, context = "SyncWorker.ProductionOrders")
-                    ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+                    analytics.logError(e, "SyncWorker.ProductionOrders")
+                    analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "production_order",
                         "error_reason" to (e.message ?: "unknown")
                     ))
@@ -196,15 +197,15 @@ class SyncWorker(
             }
 
             val duration = SystemClock.elapsedRealtime() - startTime
-            ZenithAnalytics.trackEvent("sync_completed", bundleOf(
+            analytics.trackEvent("sync_completed", bundleOf(
                 "duration_ms" to duration,
                 "entities_synced" to totalSynced
             ))
             Result.success()
         } catch (e: Exception) {
             Log.e("SyncWorker", "Sync failed", e)
-            ZenithAnalytics.logError(e, context = "SyncWorker.doWork")
-            ZenithAnalytics.trackEvent("sync_failed", bundleOf(
+            analytics.logError(e, "SyncWorker.doWork")
+            analytics.trackEvent("sync_failed", bundleOf(
                 "error_reason" to (e.message ?: "unknown")
             ))
             Result.retry()

@@ -25,11 +25,11 @@ val authModule = module {
     factory { CreateStaffUseCase(get()) }
 
     viewModel {
-        AuthViewModel(get(), get(), get(), get(), get())
+        AuthViewModel(get(), get(), get(), get(), get(), get())
     }
 
     viewModel {
-        ChangePasswordViewModel(get(), get(), get())
+        ChangePasswordViewModel(get(), get(), get(), get())
     }
 
     viewModel {

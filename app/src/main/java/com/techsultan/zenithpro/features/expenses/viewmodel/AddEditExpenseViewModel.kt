@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
@@ -24,7 +24,8 @@ import java.util.UUID
 class AddEditExpenseViewModel(
     private val upsertExpenseUseCase: UpsertExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddEditExpenseUiState())
@@ -110,7 +111,7 @@ class AddEditExpenseViewModel(
             when (result) {
                 is Resource.Success -> {
                     if (!s.isEditMode) {
-                        ZenithAnalytics.trackEvent("expense_created", bundleOf(
+                        analytics.trackEvent("expense_created", bundleOf(
                             "category" to s.category,
                             "amount_kobo" to (amountLong ?: 0L)
                         ))
@@ -118,7 +119,7 @@ class AddEditExpenseViewModel(
                     _events.emit(AddEditExpenseEvent.Saved)
                 }
                 is Resource.Error -> {
-                    ZenithAnalytics.logError(Exception(result.message), context = "AddEditExpenseViewModel.save")
+                    analytics.logError(Exception(result.message), "AddEditExpenseViewModel.save")
                     _events.emit(AddEditExpenseEvent.ShowError(result.message ?: "Save failed"))
                 }
                 else -> Unit

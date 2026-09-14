@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import androidx.core.os.bundleOf
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
 import com.techsultan.zenithpro.features.customer.domain.use_case.CustomerReportData
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerReportsUseCase
@@ -20,7 +20,8 @@ class CustomerReportsViewModel(
     private val getCustomerReportsUseCase: GetCustomerReportsUseCase,
     private val customerRepository: CustomerRepository,
     private val networkMonitor: NetworkMonitor,
-    val sessionManager: SessionManager
+    val sessionManager: SessionManager,
+    val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerReportsUiState())
@@ -46,7 +47,7 @@ class CustomerReportsViewModel(
                     _state.update {
                         it.copy(isLoading = false, data = result.data)
                     }
-                    ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                    analytics.trackEvent("report_viewed", bundleOf(
                         "report_type" to "customers"
                     ))
                 }
@@ -54,7 +55,7 @@ class CustomerReportsViewModel(
                     _state.update {
                         it.copy(isLoading = false, error = result.message)
                     }
-                    ZenithAnalytics.logError(Exception(result.message), context = "CustomerReportsViewModel.load")
+                    analytics.logError(Exception(result.message), context = "CustomerReportsViewModel.load")
                 }
                 else -> Unit
             }

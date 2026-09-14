@@ -65,6 +65,7 @@ val productModule = module {
             saleDao = get(),
             productionDao = get(),
             networkMonitor = get(),
+            analytics = get()
         )
     }
 
@@ -80,8 +81,8 @@ val productModule = module {
     factory { DeleteProductUseCase(get()) }
     factory { GetProductAuditLogUseCase(get()) }
 
-    viewModel { AddProductViewModel(get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ProductDetailViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { AddProductViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ProductDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     viewModel {
         InventoryViewModel(
@@ -89,7 +90,8 @@ val productModule = module {
             syncProductsUseCase = get(),
             deleteProductUseCase = get(),
             networkMonitor = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            analytics = get()
         )
     }
 

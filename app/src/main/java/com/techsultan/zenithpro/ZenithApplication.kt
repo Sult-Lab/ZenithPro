@@ -22,7 +22,7 @@ import com.techsultan.zenithpro.features.settings.di.businessModule
 import com.techsultan.zenithpro.features.settings.di.paymentModule
 import com.techsultan.zenithpro.features.payment.di.paymentProcessingModule
 import com.techsultan.zenithpro.features.settings.di.settingsModule
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +46,7 @@ class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
     }
 
     private val auth: Auth by inject()
+    private val analytics: AnalyticsHelper by inject()
 
     val applicationScope = CoroutineScope(
         SupervisorJob() + Dispatchers.Default
@@ -59,7 +60,6 @@ class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         appContext = this
-        ZenithAnalytics.log("App cold start")
 
         startKoin {
             androidLogger()
@@ -88,6 +88,8 @@ class ZenithApplication : Application(), KoinComponent, Configuration.Provider {
                 paymentProcessingModule
             )
         }
+
+        analytics.log("App cold start")
 
 //        applicationScope.launch {
 //            auth.awaitInitialization()

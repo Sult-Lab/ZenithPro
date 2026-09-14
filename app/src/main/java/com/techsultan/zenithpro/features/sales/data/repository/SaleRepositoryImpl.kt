@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
@@ -28,7 +29,6 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.data.remote.SaleItemDto
 import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
 import androidx.core.os.bundleOf
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
@@ -54,6 +54,7 @@ class SaleRepositoryImpl(
     private val sessionManager: SessionManager,
     private val debtPaymentDao: DebtPaymentDao,
     private val branchDao: BranchDao,
+    private val analytics: AnalyticsHelper,
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -166,7 +167,7 @@ class SaleRepositoryImpl(
             val remoteResult = pushSale(saleId)
 
             if (remoteResult != null) {
-                ZenithAnalytics.trackEvent("sale_completed", bundleOf(
+                analytics.trackEvent("sale_completed", bundleOf(
                     "payment_method" to request.paymentMethod,
                     "total_amount_kobo" to request.totalAmount,
                     "item_count" to cart.size,
@@ -175,14 +176,14 @@ class SaleRepositoryImpl(
                     "branch_id" to (request.branchId ?: "unknown")
                 ))
                 if (debtAmount > 0) {
-                    ZenithAnalytics.trackEvent("debt_sale_created", bundleOf(
+                    analytics.trackEvent("debt_sale_created", bundleOf(
                         "debt_amount_kobo" to debtAmount,
                         "customer_id" to (request.customerId?.hashCode()?.toString() ?: "none")
                     ))
                 }
                 Resource.Success(remoteResult)
             } else {
-                ZenithAnalytics.trackEvent("sale_failed", bundleOf(
+                analytics.trackEvent("sale_failed", bundleOf(
                     "error_reason" to "Sync failed",
                     "payment_method" to request.paymentMethod,
                     "branch_id" to (request.branchId ?: "unknown")
@@ -198,8 +199,8 @@ class SaleRepositoryImpl(
             }
         } catch (e: Exception) {
             Log.e("SaleRepo", "processSale failed: ${e.message}", e)
-            ZenithAnalytics.logError(e, context = "SaleRepositoryImpl.processSale")
-            ZenithAnalytics.trackEvent("sale_failed", bundleOf(
+            analytics.logError(e, "SaleRepositoryImpl.processSale")
+            analytics.trackEvent("sale_failed", bundleOf(
                 "error_reason" to (e.message ?: "Unknown error"),
                 "payment_method" to request.paymentMethod,
                 "branch_id" to (request.branchId ?: "unknown")
@@ -253,8 +254,8 @@ class SaleRepositoryImpl(
             return result
         } catch (e: Exception) {
             Log.e("SaleRepo", "pushSale failed for $saleId: ${e.message}")
-            ZenithAnalytics.logError(e, context = "SaleRepositoryImpl.pushSale")
-            ZenithAnalytics.log("Sale push failed: saleId=$saleId")
+            analytics.logError(e, "SaleRepositoryImpl.pushSale")
+            analytics.log("Sale push failed: saleId=$saleId")
             return null
         }
     }
@@ -287,7 +288,7 @@ class SaleRepositoryImpl(
                 )
             )
 
-            ZenithAnalytics.trackEvent("debt_payment_recorded", bundleOf(
+            analytics.trackEvent("debt_payment_recorded", bundleOf(
                 "amount_kobo" to amountKobo
             ))
 
@@ -311,7 +312,7 @@ class SaleRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("SaleRepo", "recordDebtPayment failed: ${e.message}", e)
-            ZenithAnalytics.logError(e, context = "SaleRepositoryImpl.recordDebtPayment")
+            analytics.logError(e, "SaleRepositoryImpl.recordDebtPayment")
             Resource.Error(e.message ?: "Payment failed")
         }
     }

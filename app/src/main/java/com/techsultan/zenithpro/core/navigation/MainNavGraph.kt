@@ -26,7 +26,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
@@ -65,11 +65,13 @@ import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun MainNavGraph(
     dataPersistentViewModel: DataPersistentViewModel
 ) {
+    val analytics: AnalyticsHelper = koinInject()
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
         topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys
@@ -91,8 +93,8 @@ fun MainNavGraph(
     LaunchedEffect(currentRoute) {
         currentRoute?.let { route ->
             val screenName = route::class.simpleName ?: route.toString()
-            ZenithAnalytics.trackScreen(screenName = screenName)
-            ZenithAnalytics.setKey("active_screen", screenName)
+            analytics.trackScreen(screenName = screenName)
+            analytics.setKey("active_screen", screenName)
         }
     }
 

@@ -1,18 +1,14 @@
 package com.techsultan.zenithpro.core.util
 
+import android.content.Context
 import android.os.Bundle
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.techsultan.zenithpro.ZenithApplication
 import com.techsultan.zenithpro.BuildConfig
 
-object ZenithAnalytics {
-    private val analytics: FirebaseAnalytics by lazy {
-        FirebaseAnalytics.getInstance(ZenithApplication.appContext)
-    }
-    private val crashlytics: FirebaseCrashlytics by lazy {
-        FirebaseCrashlytics.getInstance()
-    }
+class ZenithAnalyticsImpl(context: Context) : AnalyticsHelper {
+    private val analytics = FirebaseAnalytics.getInstance(context)
+    private val crashlytics = FirebaseCrashlytics.getInstance()
 
     init {
         // Only enable Crashlytics in release builds
@@ -21,7 +17,7 @@ object ZenithAnalytics {
     }
 
     // Set user context — call after login
-    fun setUser(userId: String, businessId: String, role: String, businessName: String) {
+    override fun setUser(userId: String, businessId: String, role: String, businessName: String) {
         analytics.setUserId(userId)
         crashlytics.setUserId(userId)
         
@@ -34,29 +30,29 @@ object ZenithAnalytics {
     }
 
     // Clear user context — call after logout
-    fun clearUser() {
+    override fun clearUser() {
         analytics.setUserId(null)
         crashlytics.setUserId("")
     }
 
     // Log non-fatal errors — call in catch blocks
-    fun logError(throwable: Throwable, context: String? = null) {
+    override fun logError(throwable: Throwable, context: String?) {
         context?.let { crashlytics.setCustomKey("error_context", it) }
         crashlytics.recordException(throwable)
     }
 
     // Log custom key-value pairs to crash reports
-    fun setKey(key: String, value: String) {
+    override fun setKey(key: String, value: String) {
         crashlytics.setCustomKey(key, value)
     }
 
     // Log a breadcrumb message
-    fun log(message: String) {
+    override fun log(message: String) {
         crashlytics.log(message)
     }
 
     // Track screen views
-    fun trackScreen(screenName: String, screenClass: String? = null) {
+    override fun trackScreen(screenName: String, screenClass: String?) {
         val bundle = Bundle().apply {
             putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
             screenClass?.let { putString(FirebaseAnalytics.Param.SCREEN_CLASS, it) }
@@ -65,7 +61,7 @@ object ZenithAnalytics {
     }
 
     // Track events
-    fun trackEvent(name: String, params: Bundle? = null) {
+    override fun trackEvent(name: String, params: Bundle?) {
         analytics.logEvent(name, params)
     }
 }

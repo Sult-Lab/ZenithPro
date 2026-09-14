@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
@@ -38,6 +38,7 @@ class AddProductViewModel(
     private val sessionManager: SessionManager,
     private val branchDao: BranchDao,
     private val getBranchesUseCase: GetBranchesUseCase,
+    private val analytics: AnalyticsHelper,
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductUiState())
@@ -175,7 +176,7 @@ class AddProductViewModel(
             when (val result = addProductUseCase(requestWithIds, cachedUris)) {
                 is Resource.Success -> {
                     _state.value = state.value.copy(isLoading = false)
-                    ZenithAnalytics.trackEvent("product_created", bundleOf(
+                    analytics.trackEvent("product_created", bundleOf(
                         "category" to addProductRequest.category,
                         "unit_type" to addProductRequest.unitType,
                         "has_variants" to !addProductRequest.variants.isNullOrEmpty(),
@@ -183,7 +184,7 @@ class AddProductViewModel(
                         "branch_id" to (resolvedBranchId ?: "unknown")
                     ))
                     if (imageUris.isNotEmpty()) {
-                        ZenithAnalytics.trackEvent("image_upload_success", bundleOf(
+                        analytics.trackEvent("image_upload_success", bundleOf(
                             "image_count" to imageUris.size
                         ))
                     }
@@ -195,9 +196,9 @@ class AddProductViewModel(
                         isLoading = false,
                         error = errorMessage
                     )
-                    ZenithAnalytics.logError(Exception(errorMessage), context = "AddProductViewModel.addProduct")
+                    analytics.logError(Exception(errorMessage), "AddProductViewModel.addProduct")
                     if (imageUris.isNotEmpty()) {
-                        ZenithAnalytics.trackEvent("image_upload_failure", bundleOf(
+                        analytics.trackEvent("image_upload_failure", bundleOf(
                             "error_reason" to errorMessage
                         ))
                     }

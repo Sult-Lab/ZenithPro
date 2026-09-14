@@ -13,7 +13,8 @@ val sessionModule = module {
             postgrest = get(),
             auth = get(),
             logoManager = get(),
-            terminalDao = get()
+            terminalDao = get(),
+            analytics = get()
         )
     }
 }
