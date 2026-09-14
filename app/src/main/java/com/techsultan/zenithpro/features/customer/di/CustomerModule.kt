@@ -32,8 +32,8 @@ val customerModule = module {
     factory { GetCustomerReportsUseCase(get()) }
     factory { RecordDebtPaymentUseCase(get()) }
 
-    viewModel { CustomerListViewModel(get(), get(), get(), get()) }
-    viewModel { AddEditCustomerViewModel(get(), get()) }
+    viewModel { CustomerListViewModel(get(), get(), get(), get(), get()) }
+    viewModel { AddEditCustomerViewModel(get(), get(), get()) }
     viewModel { CustomerDetailViewModel(
         getCustomerDetailUseCase = get(),
         recordDebtPaymentUseCase = get(),
@@ -41,5 +41,5 @@ val customerModule = module {
         debtPaymentDao = get(),
         saleDao = get()
     ) }
-    viewModel { CustomerReportsViewModel(get(), get(), get(), get()) }
+    viewModel { CustomerReportsViewModel(get(), get(), get(), get(), get()) }
 }

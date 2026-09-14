@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
@@ -31,6 +31,7 @@ class InventoryViewModel(
     private val deleteProductUseCase: DeleteProductUseCase,
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InventoryUiState())
@@ -61,7 +62,7 @@ class InventoryViewModel(
                     selectedBranchId = id,
                 )}
                 if (isAdmin && id != null) {
-                    ZenithAnalytics.trackEvent("branch_switched", bundleOf(
+                    analytics.trackEvent("branch_switched", bundleOf(
                         "branch_id" to id
                     ))
                 }
@@ -81,7 +82,7 @@ class InventoryViewModel(
         if (stockStatus == "Low Stock") {
             viewModelScope.launch {
                 val lowStockCount = filteredProducts.value.size
-                ZenithAnalytics.trackEvent("low_stock_alert_viewed", bundleOf(
+                analytics.trackEvent("low_stock_alert_viewed", bundleOf(
                     "product_count" to lowStockCount
                 ))
             }
@@ -161,10 +162,10 @@ class InventoryViewModel(
             val product = state.value.products.find { it.product.id == productId }
             val result = deleteProductUseCase(productId)
             if (result is Resource.Error) {
-                ZenithAnalytics.logError(Exception(result.message), context = "InventoryViewModel.deleteProduct")
+                analytics.logError(Exception(result.message), "InventoryViewModel.deleteProduct")
                 _events.emit(InventoryEvent.ShowError(result.message ?: "Delete failed"))
             } else {
-                ZenithAnalytics.trackEvent("product_deleted", bundleOf(
+                analytics.trackEvent("product_deleted", bundleOf(
                     "category" to (product?.product?.category ?: "none")
                 ))
                 _events.emit(InventoryEvent.ProductDeleted)

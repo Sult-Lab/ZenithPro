@@ -4,7 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.navigation.Route
 import io.github.jan.supabase.auth.Auth
@@ -22,6 +22,7 @@ class ChangePasswordViewModel(
     private val auth: Auth,
     private val functions: Functions,
     private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChangePasswordUiState())
@@ -81,7 +82,7 @@ class ChangePasswordViewModel(
                 startCountdown()
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "forgotPassword: ${e.message}", e)
-                ZenithAnalytics.logError(e, context = "ChangePasswordViewModel.submitForgotPassword")
+                analytics.logError(e, "ChangePasswordViewModel.submitForgotPassword")
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }
@@ -152,14 +153,14 @@ class ChangePasswordViewModel(
                         session.copy(mustChangePassword = false)
                     )
                 }
-                ZenithAnalytics.trackEvent("password_changed", bundleOf(
+                analytics.trackEvent("password_changed", bundleOf(
                     "is_forced_change" to (s.mode == Route.PasswordChangeMode.FORCED)
                 ))
                 _state.update { it.copy(isLoading = false) }
                 _events.emit(ChangePasswordEvent.Changed)
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "submit: ${e.message}", e)
-                ZenithAnalytics.logError(e, context = "ChangePasswordViewModel.submitChangePassword")
+                analytics.logError(e, "ChangePasswordViewModel.submitChangePassword")
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }

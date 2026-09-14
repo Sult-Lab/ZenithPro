@@ -9,7 +9,7 @@ import com.techsultan.zenithpro.core.data.local.SplitPayment
 import com.techsultan.zenithpro.core.manager.ReceiptNumberGenerator
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDetailUseCase
@@ -47,6 +47,7 @@ class CheckoutViewModel(
     private val receiptNumberGenerator: ReceiptNumberGenerator,
     private val getSettingsUseCase: GetSettingsUseCase,
     private val getTerminalsUseCase: GetTerminalsUseCase,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewSaleUiState())
@@ -231,7 +232,7 @@ class CheckoutViewModel(
                     quantity = 1.0
                 )
             }
-            ZenithAnalytics.trackEvent("cart_item_added", bundleOf(
+            analytics.trackEvent("cart_item_added", bundleOf(
                 "product_category" to (product.product.category ?: "none"),
                 "unit_type" to product.product.unitType
             ))
@@ -266,7 +267,7 @@ class CheckoutViewModel(
             } else {
                 updatedCart.remove(productId)
             }
-            ZenithAnalytics.trackEvent("cart_item_removed")
+            analytics.trackEvent("cart_item_removed")
             updatedCart
         }
     }
@@ -336,7 +337,7 @@ class CheckoutViewModel(
 
     fun clearCart() {
         if (_cart.value.isNotEmpty()) {
-            ZenithAnalytics.trackEvent("checkout_abandoned", bundleOf("step" to "cart"))
+            analytics.trackEvent("checkout_abandoned", bundleOf("step" to "cart"))
         }
         _cart.value = emptyMap()
         _state.update { it.copy(
@@ -360,7 +361,7 @@ class CheckoutViewModel(
         val s = _state.value
         if (s.isLoading) return
 
-        ZenithAnalytics.trackEvent("checkout_started", bundleOf(
+        analytics.trackEvent("checkout_started", bundleOf(
             "item_count" to cartItemCount.value,
             "cart_value_kobo" to cartTotal.value
         ))
@@ -449,7 +450,7 @@ class CheckoutViewModel(
                 }
                 is Resource.Error -> {
                     _state.update { it.copy(isLoading = false, error = result.message) }
-                    ZenithAnalytics.logError(Exception(result.message), context = "CheckoutViewModel.checkout")
+                    analytics.logError(Exception(result.message), context = "CheckoutViewModel.checkout")
                     _events.emit(CheckoutEvent.ShowError(result.message ?: "Sale failed"))
                 }
                 else -> {

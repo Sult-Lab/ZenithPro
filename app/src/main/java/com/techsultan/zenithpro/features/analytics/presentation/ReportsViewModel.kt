@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.analytics.data.ReportPeriod
 import com.techsultan.zenithpro.features.analytics.data.remote.ReportsData
@@ -22,6 +22,7 @@ class ReportsViewModel(
     private val reportsRepository: ReportsRepository,
     private val branchRepository: BranchRepository,
     private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ReportsUiState())
@@ -157,7 +158,7 @@ class ReportsViewModel(
                 _state.update {
                     it.copy(isLoading = false, data = result.data, error = null)
                 }
-                ZenithAnalytics.trackEvent("report_viewed", bundleOf(
+                analytics.trackEvent("report_viewed", bundleOf(
                     "report_type" to "sales"
                 ))
             }

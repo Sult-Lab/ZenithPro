@@ -11,7 +11,7 @@ import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import com.techsultan.zenithpro.core.network.NetworkMonitor
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.postgrest.Postgrest
@@ -30,7 +30,8 @@ class DataPersistentViewModel(
     private val sessionManager: SessionManager,
     private val logoutUseCase: LogoutUseCase,
     private val postgrest: Postgrest,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -77,18 +78,18 @@ class DataPersistentViewModel(
     private fun observeNetwork() {
         viewModelScope.launch {
             networkMonitor.isConnectedFlow.collect { isConnected ->
-                ZenithAnalytics.setKey("is_online", isConnected.toString())
+                analytics.setKey("is_online", isConnected.toString())
                 if (isConnected) {
                     offlineStartTime?.let { start ->
                         val duration = (System.currentTimeMillis() - start) / 60000 // minutes
-                        ZenithAnalytics.trackEvent("online_mode_restored", bundleOf(
+                        analytics.trackEvent("online_mode_restored", bundleOf(
                             "offline_duration_minutes" to duration
                         ))
                         offlineStartTime = null
                     }
                 } else {
                     offlineStartTime = System.currentTimeMillis()
-                    ZenithAnalytics.trackEvent("offline_mode_entered")
+                    analytics.trackEvent("offline_mode_entered")
                 }
             }
         }
@@ -130,7 +131,7 @@ class DataPersistentViewModel(
                                 AuthState.Authenticated
                             }
                             if (!hasTrackedColdStart) {
-                                ZenithAnalytics.trackEvent("app_cold_start", bundleOf(
+                                analytics.trackEvent("app_cold_start", bundleOf(
                                     "session_restored" to true
                                 ))
                                 hasTrackedColdStart = true

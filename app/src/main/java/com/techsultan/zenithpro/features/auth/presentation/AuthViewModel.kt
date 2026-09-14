@@ -6,7 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
@@ -26,7 +26,8 @@ class AuthViewModel(
     private val loginUseCase: LoginUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val isUserLoggedInUseCase: IsUserLoggedInUseCase,
-    private val createStaffUseCase: CreateStaffUseCase
+    private val createStaffUseCase: CreateStaffUseCase,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _signUpState = mutableStateOf(AuthState())
@@ -42,7 +43,7 @@ class AuthViewModel(
     val events = _events.asSharedFlow()
 
     fun signUp(request: SignUpRequest, logoUri: Uri?) {
-        ZenithAnalytics.trackEvent("registration_started")
+        analytics.trackEvent("registration_started")
         signUpUseCase(request, logoUri).onEach { result ->
             when (result) {
                 is Resource.Success -> {
@@ -53,7 +54,7 @@ class AuthViewModel(
                         email = normalizedEmail,
                         isSuccess = true
                     )
-                    ZenithAnalytics.trackEvent("registration_success", bundleOf(
+                    analytics.trackEvent("registration_success", bundleOf(
                         "business_name" to request.businessName
                     ))
                     _events.emit(AuthEvent.SignUpSuccess)
@@ -70,7 +71,7 @@ class AuthViewModel(
                         isLoading = false,
                         error = errorMessage
                     )
-                    ZenithAnalytics.trackEvent("registration_failure", bundleOf(
+                    analytics.trackEvent("registration_failure", bundleOf(
                         "error_code" to errorCode
                     ))
                 }
@@ -95,7 +96,7 @@ class AuthViewModel(
                 is Resource.Error -> {
                     val errorCode = result.message ?: "unknown"
                     _loginState.value = AuthState(error = errorCode)
-                    ZenithAnalytics.trackEvent("login_failure", bundleOf(
+                    analytics.trackEvent("login_failure", bundleOf(
                         "error_code" to errorCode
                     ))
                 }

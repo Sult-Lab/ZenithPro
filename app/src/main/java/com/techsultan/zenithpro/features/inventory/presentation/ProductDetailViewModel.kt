@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
@@ -39,6 +39,7 @@ class ProductDetailViewModel(
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
     private val getProductAuditLogUseCase: GetProductAuditLogUseCase,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductDetailUiState())
@@ -197,7 +198,7 @@ class ProductDetailViewModel(
             when (val result = updateProductUseCase(requestWithIds, cachedLocalUris)) {
                 is Resource.Success -> {
                     _state.value = _state.value.copy(isLoading = false)
-                    ZenithAnalytics.trackEvent("product_edited", bundleOf(
+                    analytics.trackEvent("product_edited", bundleOf(
                         "category" to updateProductRequest.category,
                         "branch_id" to (branchId ?: "unknown")
                     ))
@@ -211,7 +212,7 @@ class ProductDetailViewModel(
                         isLoading = false,
                         error = errorMessage
                     )
-                    ZenithAnalytics.logError(Exception(errorMessage), context = "ProductDetailViewModel.updateProduct")
+                    analytics.logError(Exception(errorMessage), "ProductDetailViewModel.updateProduct")
                     _eventFlow.emit(UiEvent.Error(errorMessage))
                 }
                 is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)

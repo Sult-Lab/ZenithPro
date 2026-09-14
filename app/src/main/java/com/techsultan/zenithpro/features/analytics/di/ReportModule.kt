@@ -20,5 +20,5 @@ val reportsModule = module {
             networkMonitor = get()
         )
     }
-    viewModel { ReportsViewModel(get(), get(), get()) }
+    viewModel { ReportsViewModel(get(), get(), get(), get()) }
 }

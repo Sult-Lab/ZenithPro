@@ -13,5 +13,5 @@ val paymentProcessingModule = module {
     // If you prefer to use the interface PaymentGateway in your code:
     // single<PaymentGateway> { get<PaymentRepository>() }
 
-    viewModel { TransferPaymentViewModel(get()) }
+    viewModel { TransferPaymentViewModel(get(), get()) }
 }

@@ -2,7 +2,7 @@ package com.techsultan.zenithpro.features.payment.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.techsultan.zenithpro.core.util.ZenithAnalytics
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.payment.data.repository.PaymentRepository
 import com.techsultan.zenithpro.features.payment.domain.repository.TransferPaymentDetails
@@ -20,6 +20,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 class TransferPaymentViewModel(
     private val paymentRepository: PaymentRepository,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<TransferPaymentUiState>(
@@ -55,7 +56,7 @@ class TransferPaymentViewModel(
             amount = amount,
         ).fold(
             onSuccess = { details ->
-                ZenithAnalytics.trackEvent("transfer_payment_selected", bundleOf(
+                analytics.trackEvent("transfer_payment_selected", bundleOf(
                     "transfer_type" to "NOMBA"
                 ))
                 _uiState.value = TransferPaymentUiState.AwaitingNombaPayment(details)
@@ -76,7 +77,7 @@ class TransferPaymentViewModel(
             paymentRepository.confirmManualPayment(paymentId, saleId)
                 .fold(
                     onSuccess = {
-                        ZenithAnalytics.trackEvent("transfer_payment_selected", bundleOf(
+                        analytics.trackEvent("transfer_payment_selected", bundleOf(
                             "transfer_type" to "MANUAL"
                         ))
                         _uiState.value = TransferPaymentUiState.Confirmed
@@ -103,7 +104,7 @@ class TransferPaymentViewModel(
                     val status = PaymentStatus.valueOf(payment.status)
                     when {
                         status.isSuccess -> {
-                            ZenithAnalytics.trackEvent("nomba_transfer_confirmed", bundleOf(
+                            analytics.trackEvent("nomba_transfer_confirmed", bundleOf(
                                 "amount_kobo" to (payment.amount)
                             ))
                             _uiState.value = TransferPaymentUiState.Confirmed
