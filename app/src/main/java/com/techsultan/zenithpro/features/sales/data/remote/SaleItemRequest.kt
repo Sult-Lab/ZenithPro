@@ -8,6 +8,7 @@ data class SaleItemRequest(
     val productId: String,
     val productName: String,
     val variantSku: String,
+    val unitType: String,
     val unitPrice: Long,
     val costPrice: Long,
     val quantity: Double,

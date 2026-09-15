@@ -38,6 +38,7 @@ fun SaleItemDto.toEntity() = SaleItemEntity(
     productId = productId,
     productName = productName,
     variantSku = variantSku,
+    unitType = unitType,
     unitPrice = unitPrice,
     costPrice = costPrice,
     quantity = quantity,
