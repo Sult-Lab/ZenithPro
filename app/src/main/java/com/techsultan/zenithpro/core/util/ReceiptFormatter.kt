@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.core.util
 
 import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatDateTime
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 
@@ -11,7 +12,13 @@ class ReceiptFormatter {
     ): String {
 
         val itemsText = receipt.items.joinToString("\n") { item ->
-            "[L]${item.name}\n[L]${item.qty} x NGN ${item.price.formatPrice()}[R] NGN ${item.total.formatPrice()}"
+            val uType = UnitType.fromString(item.unitType)
+            val qtyDisplay = if (uType == UnitType.UNIT) {
+                Util.formatQuantity(item.qty, uType)
+            } else {
+                "${Util.formatQuantity(item.qty, uType)} ${uType.abbreviation}"
+            }
+            "[L]${item.name}\n[L]$qtyDisplay x NGN ${item.price.formatPrice()}[R] NGN ${item.total.formatPrice()}"
         }
 
         val splitText = if (receipt.splitPayments.isNotEmpty()) {
