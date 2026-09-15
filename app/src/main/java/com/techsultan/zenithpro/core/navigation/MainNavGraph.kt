@@ -72,19 +72,25 @@ fun MainNavGraph(
     dataPersistentViewModel: DataPersistentViewModel
 ) {
     val analytics: AnalyticsHelper = koinInject()
+    val session by dataPersistentViewModel.session.collectAsStateWithLifecycle()
+
+    val topLevelDestinations = remember(session) {
+        TOP_LEVEL_DESTINATIONS.keys.filter {
+            if (session?.isStaff == true) it != Route.Home.Reports else true
+        }.toSet()
+    }
+
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
-        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys
+        topLevelDestinations = topLevelDestinations
     )
     val navigator = remember { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val session by dataPersistentViewModel.session.collectAsStateWithLifecycle()
-
     // Gesture and Bottom Bar visibility logic
-    val isBottomBarDestination = navigationState.topLevelRoute in TOP_LEVEL_DESTINATIONS.keys
+    val isBottomBarDestination = navigationState.topLevelRoute in topLevelDestinations
     val currentStack = navigationState.backStacks[navigationState.topLevelRoute]
     val isAtRootOfStack = currentStack?.size == 1
     val gesturesEnabled = isBottomBarDestination && isAtRootOfStack
@@ -168,6 +174,7 @@ fun MainNavGraph(
                 if (isBottomBarDestination && isAtRootOfStack) {
                     ZenithBottomNavigation(
                         currentRoute = navigationState.topLevelRoute,
+                        isStaff = session?.isStaff == true,
                         onNavigate = { navigator.navigate(it) }
                     )
                 }

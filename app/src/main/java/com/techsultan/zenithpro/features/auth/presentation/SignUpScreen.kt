@@ -274,13 +274,13 @@ fun SignUpScreen(
 
                 val annotatedString = buildAnnotatedString {
                     append("By clicking Create Account, you agree to our ")
-                    withLink(LinkAnnotation.Url("https://zenithpro.name.com/terms")) {
+                    withLink(LinkAnnotation.Url("https://zenithpro.name.ng/terms")) {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
                             append("Terms")
                         }
                     }
                     append(" and ")
-                    withLink(LinkAnnotation.Url("https://zenithpro.name.com/privacy")) {
+                    withLink(LinkAnnotation.Url("https://zenithpro.name.ng/privacy")) {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
                             append("privacy policy")
                         }

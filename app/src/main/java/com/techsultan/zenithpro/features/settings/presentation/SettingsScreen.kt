@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.BuildConfig
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import org.koin.androidx.compose.koinViewModel
 
@@ -157,21 +158,21 @@ fun SettingsScreen(
                 SettingsNavSection(
                     title = "GENERAL",
                     items = listOf(
-                        SettingsNavItem(
+                       /* SettingsNavItem(
                             title  = "Account settings",
                             icon   = Icons.Default.Person,
                             onClick = onAccountSettings
-                        ),
+                        ),*/
                         SettingsNavItem(
                             title  = "Printer settings",
                             icon   = Icons.Default.Print,
                             onClick = onPrinterSettings
                         ),
-                        SettingsNavItem(
+                       /* SettingsNavItem(
                             title  = "Notifications",
                             icon   = Icons.Default.Notifications,
                             onClick = onNotifications
-                        ),
+                        ),*/
                         SettingsNavItem(
                             title  = "About app",
                             icon   = Icons.Default.Info,
@@ -199,20 +200,20 @@ fun SettingsScreen(
                         )
                     ) {
                         Icon(
-                            imageVector        = Icons.Default.Logout,
+                            imageVector = Icons.Default.Logout,
                             contentDescription = null,
-                            modifier           = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text       = "Log out",
-                            style      = MaterialTheme.typography.titleSmall,
+                            text = "Log out",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
 
                     Text(
-                        text  = "Version 1.0.0",
+                        text  = BuildConfig.VERSION_NAME,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

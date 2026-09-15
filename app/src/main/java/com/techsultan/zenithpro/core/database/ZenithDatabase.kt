@@ -58,7 +58,7 @@ import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
         PaymentEntity::class,
         ProductAuditLogEntity::class
                ],
-    version = 21,
+    version = 1,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

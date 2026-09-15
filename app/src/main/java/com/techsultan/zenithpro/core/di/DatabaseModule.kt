@@ -12,7 +12,6 @@ val databaseModule = module {
             name = ZenithDatabase.DATABASE_NAME,
             klass = ZenithDatabase::class.java
         )
-            .fallbackToDestructiveMigration(true)
             .build()
     }
 
