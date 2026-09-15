@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import kotlinx.coroutines.delay
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -54,8 +55,18 @@ fun RootNavGraph(
                 }
             }
             AuthState.Unauthenticated, AuthState.MustChangePassword -> {
-                rootBackStack.remove(Route.Home)
-                if (Route.Auth !in rootBackStack) rootBackStack.add(Route.Auth)
+                // Avoid flickering by introducing a small delay.
+                // This allows the app to restore/refresh the session in the background
+                // without showing the login screen for a few milliseconds.
+                if (authState == AuthState.Unauthenticated) {
+                    delay(700)
+                }
+
+                // Check if the state hasn't changed back to Authenticated during the delay
+                if (dataPersistentViewModel.authState.value == authState) {
+                    rootBackStack.remove(Route.Home)
+                    if (Route.Auth !in rootBackStack) rootBackStack.add(Route.Auth)
+                }
             }
             AuthState.Loading -> Unit
         }

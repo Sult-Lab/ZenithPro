@@ -123,7 +123,10 @@ fun ReceiptPreviewScreen(
 
                     ZenithButton(
                         text = stringResource(R.string.print_receipt),
-                        onClick = { viewModel.printReceipt(r) },
+                        onClick = {
+                            viewModel.printReceipt(r)
+                            onBack()
+                                  },
                         containerColor = MaterialTheme.colorScheme.primary,
                         icon = Icons.Default.Print
                     )

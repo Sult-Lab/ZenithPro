@@ -369,7 +369,7 @@ fun SaleProductItemCard(
                 model = product.imageUrls.firstOrNull(),
                 contentDescription = product.name,
                 modifier = Modifier
-                    .size(64.dp)
+                    .size(70.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentScale = ContentScale.Crop
@@ -377,7 +377,10 @@ fun SaleProductItemCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
                     text = product.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -393,25 +396,24 @@ fun SaleProductItemCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (totalStock > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
                 )
-            }
-
-            if (cartItem != null && cartItem.quantity > 0) {
-                QuantityInput(
-                    quantity = cartItem.quantity,
-                    unitType = UnitType.fromString(cartItem.unitType),
-                    onQuantityChange = onQuantityChange,
-                    maxQuantity = totalStock, // prevent overselling
-                    modifier = Modifier.width(180.dp)
-                )
-            } else {
-                Button(
-                    onClick = onAdd,
-                    enabled = totalStock > 0,
-                    modifier = Modifier.height(36.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp)
-                ) {
-                    Text("Add")
+                if (cartItem != null && cartItem.quantity > 0) {
+                    QuantityInput(
+                        quantity = cartItem.quantity,
+                        unitType = UnitType.fromString(cartItem.unitType),
+                        onQuantityChange = onQuantityChange,
+                        maxQuantity = totalStock, // prevent overselling
+                        modifier = Modifier.width(180.dp)
+                    )
+                } else {
+                    Button(
+                        onClick = onAdd,
+                        enabled = totalStock > 0,
+                        modifier = Modifier.height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Text("Add")
+                    }
                 }
             }
         }

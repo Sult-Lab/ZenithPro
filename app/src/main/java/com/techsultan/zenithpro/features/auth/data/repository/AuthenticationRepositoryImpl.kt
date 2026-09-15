@@ -120,10 +120,10 @@ class AuthenticationRepositoryImpl(
             when (status) {
                 is SessionStatus.Authenticated -> true
                 is SessionStatus.NotAuthenticated -> false
-                is SessionStatus.RefreshFailure -> false // Treat refresh failure as unauthenticated
+                is SessionStatus.RefreshFailure -> null // Don't trigger logout on transient refresh failures (e.g. offline)
                 is SessionStatus.Initializing  -> null // Still loading
             }
         }
-        .filterNotNull() // Only emit when we have a definite state
+        .filterNotNull()
         .distinctUntilChanged()
 }

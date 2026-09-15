@@ -35,7 +35,9 @@ fun ZenithNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = gesturesEnabled,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                modifier = Modifier.fillMaxWidth(0.8f)
+            ) {
                 Column(
                     modifier = Modifier.fillMaxHeight()
                 ) {

@@ -126,6 +126,14 @@ object Util {
 
     fun String.trimOrNull(): String? = trim().ifBlank { null }
 
+    val emailRegex = Regex(
+        "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+    )
+
+    val phoneRegex = Regex("^234[789][01][0-9]{8}$")
+
+    val nigerianLocalPhoneRegex = Regex("^[789][01][0-9]{8}$")
+
     fun vibrate(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =

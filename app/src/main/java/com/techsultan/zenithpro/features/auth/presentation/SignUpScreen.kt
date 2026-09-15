@@ -79,6 +79,8 @@ import com.techsultan.zenithpro.core.components.ZenithLogoSection
 import com.techsultan.zenithpro.core.components.ZenithPhoneNumberField
 import com.techsultan.zenithpro.core.components.checkAndRequestStoragePermission
 import com.techsultan.zenithpro.core.components.rememberStoragePermissionLauncher
+import com.techsultan.zenithpro.core.util.Util.emailRegex
+import com.techsultan.zenithpro.core.util.Util.nigerianLocalPhoneRegex
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import org.koin.androidx.compose.koinViewModel
 
@@ -194,7 +196,13 @@ fun SignUpScreen(
                 ZenithPhoneNumberField(
                     label = "BUSINESS PHONE NUMBER",
                     value = businessPhone,
-                    onValueChange = { businessPhone = it },
+                    onValueChange = { newValue ->
+                        val digitsOnly = newValue.filter { it.isDigit() }
+
+                        if (digitsOnly.length <= 10) {
+                            businessPhone = digitsOnly
+                        }
+                    },
                     placeholder = "800 000 0000"
                 )
 
@@ -266,13 +274,13 @@ fun SignUpScreen(
 
                 val annotatedString = buildAnnotatedString {
                     append("By clicking Create Account, you agree to our ")
-                    withLink(LinkAnnotation.Url("https://zenithpro-web.vercel.app/terms")) {
+                    withLink(LinkAnnotation.Url("https://zenithpro.name.com/terms")) {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
                             append("Terms")
                         }
                     }
                     append(" and ")
-                    withLink(LinkAnnotation.Url("https://zenithpro-web.vercel.app/privacy")) {
+                    withLink(LinkAnnotation.Url("https://zenithpro.name.com/privacy")) {
                         withStyle(style = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)) {
                             append("privacy policy")
                         }
@@ -295,7 +303,39 @@ fun SignUpScreen(
 
                 ZenithButton(
                     text = "Create Account",
+                    enabled = email.isNotBlank() && password.isNotBlank()
+                            && confirmPassword.isNotBlank() && businessName.isNotBlank()
+                            && businessPhone.isNotBlank() && businessAddress.isNotBlank()
+                            && adminFirstName.isNotBlank() && adminLastName.isNotBlank(),
                     onClick = {
+                        val phone = businessPhone.trim()
+                        val trimmedEmail = email.trim()
+
+                        when {
+                            !emailRegex.matches(trimmedEmail) -> {
+                                Toast.makeText(context, "Invalid email address", Toast.LENGTH_LONG).show()
+                                return@ZenithButton
+                            }
+
+                            !nigerianLocalPhoneRegex.matches(phone) -> {
+                                Toast.makeText(context, "Invalid phone number", Toast.LENGTH_LONG).show()
+                                return@ZenithButton
+                            }
+                            password.length < 8 -> {
+                                Toast.makeText(
+                                    context,
+                                    "Password must be at least 8 characters",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@ZenithButton
+                            }
+                            password != confirmPassword -> {
+                                Toast.makeText(context, "Passwords do not match", Toast.LENGTH_LONG).show()
+                                return@ZenithButton
+                            }
+                        }
+
+                        val backendPhone = "234$phone"
                         viewModel.signUp(
                             request = SignUpRequest(
                                 email = email.trim(),
@@ -304,7 +344,7 @@ fun SignUpScreen(
                                 adminFirstName = adminFirstName,
                                 adminLastName = adminLastName,
                                 businessName = businessName,
-                                businessPhone = businessPhone.trim(),
+                                businessPhone = backendPhone,
                                 businessAddress = businessAddress.trim(),
                                 acceptTerms = true
                             ),

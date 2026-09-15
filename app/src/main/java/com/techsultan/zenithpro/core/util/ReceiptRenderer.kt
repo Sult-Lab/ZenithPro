@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import com.techsultan.zenithpro.core.data.local.ReceiptData
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.core.util.Util.formatDateTime
 import androidx.core.graphics.toColorInt
@@ -306,8 +307,15 @@ class ReceiptRenderer(
 
             y += 40
 
+            val uType = UnitType.fromString(item.unitType)
+            val qtyText = if (uType == UnitType.UNIT) {
+                Util.formatQuantity(item.qty, uType)
+            } else {
+                "${Util.formatQuantity(item.qty, uType)} ${uType.abbreviation}"
+            }
+
             canvas.drawText(
-                "${item.qty} x ₦${item.price.formatPrice()}",
+                "$qtyText x ₦${item.price.formatPrice()}",
                 60f,
                 y,
                 bodyPaint
