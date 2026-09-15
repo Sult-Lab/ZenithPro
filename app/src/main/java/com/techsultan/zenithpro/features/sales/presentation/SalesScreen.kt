@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -129,6 +130,7 @@ fun SalesScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             ZenithTopAppBar(
@@ -142,14 +144,14 @@ fun SalesScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onNombaClick() }) {
+                    /*IconButton(onClick = { onNombaClick() }) {
                         Icon(
                             imageVector = Icons.Default.AccountBalanceWallet,
                             contentDescription = "Nomba",
                             tint = Color.Unspecified,
                             modifier = Modifier
                         )
-                    }
+                    }*/
                 }
             )
         },
@@ -192,14 +194,14 @@ fun SalesScreen(
 
                             item {
                                 SalesFilterRow(
-                                    state                      = state,
-                                    onDatePresetSelected       = { from, to ->
+                                    state = state,
+                                    onDatePresetSelected = { from, to ->
                                         viewModel.onDateRangeChanged(from, to)
                                     },
-                                    onPaymentMethodSelected    = viewModel::onPaymentMethodFilterChanged,
-                                    onStaffSelected            = viewModel::onStaffFilterChanged,
-                                    onBranchSelected           = viewModel::onBranchFilterChanged,
-                                    onClearFilters             = viewModel::clearFilters
+                                    onPaymentMethodSelected = viewModel::onPaymentMethodFilterChanged,
+                                    onStaffSelected = viewModel::onStaffFilterChanged,
+                                    onBranchSelected = viewModel::onBranchFilterChanged,
+                                    onClearFilters = viewModel::clearFilters
                                 )
                             }
 
@@ -459,59 +461,77 @@ private fun SalesFilterRow(
                 }
             }
 
-            item {
-
-                Box {
-                    FilterChip(
-                        selected     = state.filterStaffId != null,
-                        onClick      = { showStaffMenu = true },
-                        label        = {
-                            Text(
-                                text  = if (state.filterStaffId != null) "Staff active" else "Staff",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        trailingIcon = {
-                            Icon(
-                                imageVector        = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                modifier           = Modifier.size(14.dp)
-                            )
-                        },
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    DropdownMenu(
-                        expanded         = showStaffMenu,
-                        onDismissRequest = { showStaffMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text    = { Text("All staff", style = MaterialTheme.typography.bodySmall) },
-                            onClick = {
-                                onStaffSelected(null)
-                                showStaffMenu = false
+            if (!state.isStaff) {
+                item {
+                    Box {
+                        FilterChip(
+                            selected = state.filterStaffId != null,
+                            onClick = { showStaffMenu = true },
+                            label = {
+                                Text(
+                                    text = if (state.filterStaffId != null) "Staff active" else "Staff",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             },
-                            leadingIcon = if (state.filterStaffId == null) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                            } else null
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            },
+                            shape = RoundedCornerShape(20.dp)
                         )
-                        HorizontalDivider()
-                        state.availableStaff.forEach { staff ->
+                        DropdownMenu(
+                            expanded = showStaffMenu,
+                            onDismissRequest = { showStaffMenu = false }
+                        ) {
                             DropdownMenuItem(
-                                text    = { Text(staff.firstName, style = MaterialTheme.typography.bodySmall) },
+                                text = { Text("All staff", style = MaterialTheme.typography.bodySmall) },
                                 onClick = {
-                                    onStaffSelected(staff.id)
+                                    onStaffSelected(null)
                                     showStaffMenu = false
                                 },
-                                leadingIcon = if (state.filterStaffId == staff.id) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                leadingIcon = if (state.filterStaffId == null) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 } else null
                             )
+                            HorizontalDivider()
+                            state.availableStaff.forEach { staff ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            staff.firstName,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    },
+                                    onClick = {
+                                        onStaffSelected(staff.id)
+                                        showStaffMenu = false
+                                    },
+                                    leadingIcon = if (state.filterStaffId == staff.id) {
+                                        {
+                                            Icon(
+                                                Icons.Default.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    } else null
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            if (state.availableBranches.size > 1) {
+            if (state.isAdmin || (state.isManager && state.filterBranchId == null && state.availableBranches.size > 1)) {
                 item {
                     Box {
                         FilterChip(

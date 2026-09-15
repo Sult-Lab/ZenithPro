@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -41,13 +40,10 @@ import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -81,14 +77,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
-import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,9 +100,6 @@ fun PaymentDialog(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val splitCashAmount by viewModel.splitCashAmount.collectAsStateWithLifecycle()
     val splitTransferAmount by viewModel.splitTransferAmount.collectAsStateWithLifecycle()
-
-    val needsBranchSelection = state.availableBranches.size > 1 &&
-            state.selectedBranchId == null && state.canSelectBranch
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -160,58 +151,7 @@ fun PaymentDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                if (state.availableBranches.size > 1) {
-                    BranchSelectorRow(
-                        selectedBranchName = state.selectedBranchName,
-                        isRequired = needsBranchSelection,
-                        canSelect = state.canSelectBranch,
-                        onSelect = { viewModel.onShowBranchPicker() }
-                    )
-                    Spacer(Modifier.height(12.dp))
-                } else if (state.selectedBranchName != null) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color(0xFF1976D2).copy(alpha = 0.08f),
-                        border = BorderStroke(1.dp, Color(0xFF1976D2).copy(alpha = 0.2f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Store,
-                                contentDescription = null,
-                                tint = Color(0xFF1976D2),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                state.selectedBranchName!!,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF1976D2),
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = Color(0xFF1976D2).copy(alpha = 0.12f)
-                            ) {
-                                Text(
-                                    "Auto-selected",
-                                    modifier = Modifier.padding(
-                                        horizontal = 6.dp, vertical = 2.dp
-                                    ),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF1976D2)
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PaymentOption(
                         title = "Cash",
@@ -394,8 +334,6 @@ fun PaymentDialog(
                         if (splitCashAmount + splitTransferAmount > 0) {
                             HorizontalDivider(
                                 modifier = Modifier.padding(vertical = 4.dp),
-                                thickness = DividerDefaults.Thickness,
-                                color = DividerDefaults.color
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -446,26 +384,14 @@ fun PaymentDialog(
                 ZenithButton(
                     text = if (selectedMethod == PaymentMethod.SPLIT) "Continue to Split Payment" else "Confirm Payment",
                     onClick = {
-                        when (selectedMethod) {
-                            PaymentMethod.SPLIT -> {
+                        when {
+                            selectedMethod == PaymentMethod.SPLIT -> {
                                 showSplitDialog = true
                             }
-                            PaymentMethod.DEBT -> {
-                                if (state.selectedCustomer == null){
-                                    showCustomerSelector = true
-                                    return@ZenithButton
-                                }
-                                if (needsBranchSelection){
-                                    viewModel.onShowBranchPicker()
-                                    return@ZenithButton
-                                }
-                                onConfirm(selectedMethod)
+                            selectedMethod == PaymentMethod.DEBT && state.selectedCustomer == null -> {
+                                showCustomerSelector = true
                             }
                             else -> {
-                                if (needsBranchSelection) {
-                                    viewModel.onShowBranchPicker()
-                                    return@ZenithButton
-                                }
                                 onConfirm(selectedMethod)
                             }
                         }
@@ -499,23 +425,6 @@ fun PaymentDialog(
                 viewModel.setCustomer(customer.id, customer)
                 showCustomerSelector = false
             },
-        )
-    }
-
-    if (state.showBranchPicker) {
-        BranchPickerSheet(
-            branches   = state.availableBranches,
-            selectedId = state.selectedBranchId,
-            onSelect   = { branch ->
-                viewModel.onBranchSelected(branch)
-                // After selecting branch, auto-confirm if method was already chosen
-                if (selectedMethod != PaymentMethod.SPLIT &&
-                    (selectedMethod != PaymentMethod.DEBT ||
-                            state.selectedCustomer != null)) {
-                    onConfirm(selectedMethod)
-                }
-            },
-            onDismiss  = { viewModel.onDismissBranchPicker() }
         )
     }
 }
@@ -1092,70 +1001,6 @@ fun PaymentOption(
                 color = if (selected) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-@Composable
-private fun BranchSelectorRow(
-    selectedBranchName: String?,
-    isRequired: Boolean,
-    canSelect: Boolean,
-    onSelect: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = canSelect, onClick = onSelect),
-        shape  = RoundedCornerShape(10.dp),
-        color  = when {
-            selectedBranchName != null -> Color(0xFF1976D2).copy(alpha = 0.08f)
-            isRequired  -> MaterialTheme.colorScheme.errorContainer
-                .copy(alpha = 0.5f)
-            else -> MaterialTheme.colorScheme.surfaceVariant
-        },
-        border = BorderStroke(
-            width = 1.dp,
-            color = when {
-                selectedBranchName != null -> Color(0xFF1976D2).copy(alpha = 0.3f)
-                isRequired -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-            }
-        )
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Store,
-                contentDescription = null,
-                tint = when {
-                    selectedBranchName != null -> Color(0xFF1976D2)
-                    isRequired -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                selectedBranchName ?: if (isRequired) "Select branch (required)" else "Select branch",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (selectedBranchName != null) FontWeight.SemiBold
-                else FontWeight.Normal,
-                color = when {
-                    selectedBranchName != null -> Color(0xFF1976D2)
-                    isRequired -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.weight(1f)
-            )
-            if (canSelect) {
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
     }
 }

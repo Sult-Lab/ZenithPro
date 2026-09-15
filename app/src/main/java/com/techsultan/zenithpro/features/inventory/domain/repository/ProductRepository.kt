@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.inventory.domain.repository
 
 import android.net.Uri
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
@@ -20,4 +21,8 @@ interface ProductRepository {
         request: UpdateProductRequest,
         newImageUris: List<Uri>
     ): Resource<Unit>
+
+    fun getProductsForBranch(businessId: String, branchId: String): Flow<Resource<List<ProductWithVariants>>>
+
+    fun getProductAuditLogs(productId: String): Flow<Resource<List<ProductAuditLogEntity>>>
 }

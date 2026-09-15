@@ -1,9 +1,10 @@
 package com.techsultan.zenithpro.features.auth.data.repository
 
+import android.net.Uri
 import android.util.Log
 import com.techsultan.zenithpro.core.database.ZenithDatabase
 import com.techsultan.zenithpro.core.manager.SessionManager
-import com.techsultan.zenithpro.core.manager.ZenithFcmTokenManager
+import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffResponse
@@ -11,6 +12,7 @@ import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import com.techsultan.zenithpro.features.auth.data.remote.SignUpRequest
 import com.techsultan.zenithpro.features.auth.domain.repository.AuthenticationRepository
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.functions.Functions
@@ -29,15 +31,23 @@ class AuthenticationRepositoryImpl(
     private val postgrest: Postgrest,
     private val functions: Functions,
     private val sessionManager: SessionManager,
-    private val database: ZenithDatabase
+    private val database: ZenithDatabase,
+    private val imageUploadManager: ImageUploadManager
 ) : AuthenticationRepository {
 
-    override fun signUp(request: SignUpRequest): Flow<Resource<Unit>> = flow {
+    override fun signUp(request: SignUpRequest, logoUri: Uri?): Flow<Resource<Unit>> = flow {
         emit(Resource.Loading())
         try {
+            val finalRequest = if (logoUri != null) {
+                val logoUrl = imageUploadManager.uploadBusinessLogo(logoUri, request.businessName)
+                request.copy(businessLogoUrl = logoUrl)
+            } else {
+                request
+            }
+
             functions.invoke(
                 function = "signup",
-                body = request
+                body = finalRequest
             )
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
@@ -56,11 +66,14 @@ class AuthenticationRepositoryImpl(
             val session = auth.currentSessionOrNull()
             if (session != null) {
                 val result = sessionManager.initSessionFromServer(session.user?.id ?: "")
+                Log.d("AuthenticationRepositoryImpl", "login: $result")
                 result.fold(
                     onSuccess = { userSession ->
+                        Log.d("AuthenticationRepositoryImpl", "login: $userSession")
                         emit(Resource.Success(userSession.mustChangePassword))
                     },
                     onFailure = { e ->
+                        Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
                         emit(Resource.Error(e.localizedMessage ?: "Failed to load session"))
                     }
                 )
@@ -68,7 +81,7 @@ class AuthenticationRepositoryImpl(
                 emit(Resource.Error("No session found after login"))
             }
         } catch (e: Exception) {
-            Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
+            Log.e("AuthenticationRepositoryImpl", "login: ${e.localizedMessage}")
             emit(Resource.Error(e.localizedMessage ?: "Login failed"))
         }
     }
@@ -89,15 +102,28 @@ class AuthenticationRepositoryImpl(
         }
     }.flowOn(Dispatchers.IO)
 
+    override fun verifyEmail(token: String): Flow<Resource<Unit>> = flow {
+        emit(Resource.Loading())
+        try {
+            auth.verifyEmailOtp(
+                type = OtpType.Email.SIGNUP,
+                tokenHash = token,
+            )
+            emit(Resource.Success(Unit))
+        } catch (e: Exception) {
+            emit(Resource.Error(e.localizedMessage ?: "Verification failed"))
+        }
+    }
+
     override val sessionState: Flow<Boolean> = auth.sessionStatus
         .map { status ->
             when (status) {
                 is SessionStatus.Authenticated -> true
                 is SessionStatus.NotAuthenticated -> false
-                is SessionStatus.RefreshFailure -> true
+                is SessionStatus.RefreshFailure -> null // Don't trigger logout on transient refresh failures (e.g. offline)
                 is SessionStatus.Initializing  -> null // Still loading
             }
         }
-        .filterNotNull() // Only emit when we have a definite state
+        .filterNotNull()
         .distinctUntilChanged()
 }

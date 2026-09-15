@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.expenses.data.remote.UpsertExpenseRequest
@@ -22,7 +24,8 @@ import java.util.UUID
 class AddEditExpenseViewModel(
     private val upsertExpenseUseCase: UpsertExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AddEditExpenseUiState())
@@ -61,6 +64,12 @@ class AddEditExpenseViewModel(
     fun onDateChanged(date: LocalDate)      { _state.update { it.copy(expenseDate = date) } }
 
     fun save(businessId: String, staffId: String) {
+        if (sessionManager.currentSession?.isStaff == true) {
+            viewModelScope.launch {
+                _events.emit(AddEditExpenseEvent.ShowError("Staff cannot add or edit expenses"))
+            }
+            return
+        }
         val s = _state.value
 
         // Validate
@@ -100,10 +109,19 @@ class AddEditExpenseViewModel(
 
             _state.update { it.copy(isLoading = false) }
             when (result) {
-                is Resource.Success ->
+                is Resource.Success -> {
+                    if (!s.isEditMode) {
+                        analytics.trackEvent("expense_created", bundleOf(
+                            "category" to s.category,
+                            "amount_kobo" to (amountLong ?: 0L)
+                        ))
+                    }
                     _events.emit(AddEditExpenseEvent.Saved)
-                is Resource.Error ->
+                }
+                is Resource.Error -> {
+                    analytics.logError(Exception(result.message), "AddEditExpenseViewModel.save")
                     _events.emit(AddEditExpenseEvent.ShowError(result.message ?: "Save failed"))
+                }
                 else -> Unit
             }
         }

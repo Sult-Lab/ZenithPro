@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
@@ -366,7 +367,7 @@ private fun CustomerTransactionCard(
             Spacer(Modifier.height(4.dp))
             Text(
                 text  = saleWithItems.items.joinToString(", ") {
-                    "${it.productName} ×${it.quantity}"
+                    "${it.productName} ×${com.techsultan.zenithpro.core.util.Util.formatQuantity(it.quantity, UnitType.fromString(it.unitType))}"
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

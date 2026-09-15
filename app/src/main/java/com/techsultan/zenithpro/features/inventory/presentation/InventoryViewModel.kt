@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.DeleteProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
@@ -27,7 +30,8 @@ class InventoryViewModel(
     private val syncProductsUseCase: SyncProductsUseCase,
     private val deleteProductUseCase: DeleteProductUseCase,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(InventoryUiState())
@@ -37,14 +41,50 @@ class InventoryViewModel(
     val events = _events.asSharedFlow()
 
     private var businessId: String? = null
+    private var sessionBranchId: String? = null
+    private var isAdmin: Boolean = false
 
     init {
         viewModelScope.launch {
-            businessId = sessionManager.loadSession()?.businessId
-            if (businessId != null) {
+            val session = sessionManager.loadSession() ?: return@launch
+            businessId = session.businessId
+
+            observeConnectivity()
+            syncOnStart()
+
+            // Observe branch changes and reload products
+            sessionManager.activeBranchId.collect { id ->
+                sessionBranchId = id
+                isAdmin = sessionManager.isAdmin
+                _state.update { it.copy(
+                    isAdmin = isAdmin,
+                    isStaff = sessionManager.currentSession?.isStaff ?: true,
+                    selectedBranchId = id,
+                )}
+                if (isAdmin && id != null) {
+                    analytics.trackEvent("branch_switched", bundleOf(
+                        "branch_id" to id
+                    ))
+                }
                 observeProducts()
-                observeConnectivity()
-                syncOnStart()
+            }
+        }
+    }
+
+    fun onFilterChanged(stockStatus: String, minPrice: Long?, maxPrice: Long?) {
+        _state.update {
+            it.copy(
+                selectedStockStatus = stockStatus,
+                minPrice = minPrice,
+                maxPrice = maxPrice
+            )
+        }
+        if (stockStatus == "Low Stock") {
+            viewModelScope.launch {
+                val lowStockCount = filteredProducts.value.size
+                analytics.trackEvent("low_stock_alert_viewed", bundleOf(
+                    "product_count" to lowStockCount
+                ))
             }
         }
     }
@@ -52,15 +92,30 @@ class InventoryViewModel(
     private fun observeProducts() {
         val bId = businessId ?: return
         viewModelScope.launch {
-            getProductsUseCase(bId).collect { result ->
+            // Determine which branch to scope to
+            val branchId = when {
+                !isAdmin -> sessionBranchId          // Staff/Manager — their branch
+                _state.value.selectedBranchId != null -> _state.value.selectedBranchId // Admin filtered
+                else -> null                          // Admin all branches
+            }
+
+            val productsFlow = if (branchId != null) {
+                getProductsUseCase(bId, branchId)    // branch scoped
+            } else {
+                getProductsUseCase(bId)              // all branches (admin only)
+            }
+
+            productsFlow.collect { result ->
                 when (result) {
-                    is Resource.Loading -> _state.update { it.copy(isLoading = it.products.isEmpty()) }
+                    is Resource.Loading -> _state.update {
+                        it.copy(isLoading = it.products.isEmpty())
+                    }
                     is Resource.Success -> _state.update {
                         it.copy(
                             isLoading = false,
-                            products = result.data ?: emptyList(),
-                            isEmpty = result.data?.isEmpty() ?: true,
-                            error = null
+                            products  = result.data ?: emptyList(),
+                            isEmpty   = result.data?.isEmpty() ?: true,
+                            error     = null
                         )
                     }
                     is Resource.Error -> _state.update {
@@ -97,11 +152,22 @@ class InventoryViewModel(
     }
 
     fun deleteProduct(productId: String) {
+        if (!isAdmin) {
+            viewModelScope.launch {
+                _events.emit(InventoryEvent.ShowError("Only admins can delete products"))
+            }
+            return
+        }
         viewModelScope.launch {
+            val product = state.value.products.find { it.product.id == productId }
             val result = deleteProductUseCase(productId)
             if (result is Resource.Error) {
+                analytics.logError(Exception(result.message), "InventoryViewModel.deleteProduct")
                 _events.emit(InventoryEvent.ShowError(result.message ?: "Delete failed"))
             } else {
+                analytics.trackEvent("product_deleted", bundleOf(
+                    "category" to (product?.product?.category ?: "none")
+                ))
                 _events.emit(InventoryEvent.ProductDeleted)
             }
         }
@@ -117,16 +183,6 @@ class InventoryViewModel(
 
     fun onCategoryFilterChanged(category: String?) {
         _state.update { it.copy(selectedCategory = category) }
-    }
-
-    fun onFilterChanged(stockStatus: String, minPrice: Long?, maxPrice: Long?) {
-        _state.update {
-            it.copy(
-                selectedStockStatus = stockStatus,
-                minPrice = minPrice,
-                maxPrice = maxPrice
-            )
-        }
     }
 
     fun resetFilters() {
@@ -152,7 +208,7 @@ class InventoryViewModel(
                 val matchesStockStatus = when (s.selectedStockStatus) {
                     "In Stock" -> totalStock > 0
                     "Low Stock" -> p.variants.any { v -> v.stock.any { it.quantity <= (it.lowStockAlert ?: 5) && it.quantity > 0 } }
-                    "Out of Stock" -> totalStock == 0
+                    "Out of Stock" -> totalStock == 0.0
                     else -> true
                 }
 
@@ -211,5 +267,10 @@ data class InventoryUiState(
     val minPrice: Long? = null,
     val maxPrice: Long? = null,
     val sortOption: SortOption = SortOption.RECENTLY_ADDED,
-    val error: String? = null
+    val error: String? = null,
+    // Branch filter — only relevant for ADMIN
+    val branches: List<BranchEntity> = emptyList(),
+    val selectedBranchId: String? = null,   // null = all branches
+    val isAdmin: Boolean = false,
+    val isStaff: Boolean = true,
 )

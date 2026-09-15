@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
@@ -28,6 +29,7 @@ import com.techsultan.zenithpro.features.sales.data.remote.SaleFilter
 import com.techsultan.zenithpro.features.sales.data.remote.SaleItemDto
 import com.techsultan.zenithpro.features.sales.data.remote.SaleItemRequest
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
+import androidx.core.os.bundleOf
 import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.Order
@@ -52,6 +54,7 @@ class SaleRepositoryImpl(
     private val sessionManager: SessionManager,
     private val debtPaymentDao: DebtPaymentDao,
     private val branchDao: BranchDao,
+    private val analytics: AnalyticsHelper,
 ) : SaleRepository {
 
     override fun getSales(businessId: String) =
@@ -91,7 +94,7 @@ class SaleRepositoryImpl(
     ): Resource<ProcessSaleResponse> = withContext(Dispatchers.IO) {
         try {
             // 1. Save sale locally first with PENDING status
-            val saleId = UUID.randomUUID().toString()
+            val saleId = request.clientTransactionId
             val now = Instant.now().toString()
             val businessId = sessionManager.businessId
             val debtAmount = maxOf(0L, request.totalAmount - request.amountPaid)
@@ -140,11 +143,12 @@ class SaleRepositoryImpl(
                         productId = item.productId,
                         productName = item.productName,
                         variantSku = item.variantSku,
-                        unitPrice = item.unitPrice * 100,
-                        costPrice = item.costPrice * 100,
+                        unitType = item.unitType,
+                        unitPrice = item.unitPrice,
+                        costPrice = item.costPrice,
                         quantity = item.quantity,
-                        discount = item.discount * 100,
-                        totalPrice = item.totalPrice * 100
+                        discount = item.discount,
+                        totalPrice = item.totalPrice
                     )
                 }
             )
@@ -163,8 +167,27 @@ class SaleRepositoryImpl(
             val remoteResult = pushSale(saleId)
 
             if (remoteResult != null) {
+                analytics.trackEvent("sale_completed", bundleOf(
+                    "payment_method" to request.paymentMethod,
+                    "total_amount_kobo" to request.totalAmount,
+                    "item_count" to cart.size,
+                    "has_discount" to (request.discountAmount > 0),
+                    "has_customer" to (request.customerId != null),
+                    "branch_id" to (request.branchId ?: "unknown")
+                ))
+                if (debtAmount > 0) {
+                    analytics.trackEvent("debt_sale_created", bundleOf(
+                        "debt_amount_kobo" to debtAmount,
+                        "customer_id" to (request.customerId?.hashCode()?.toString() ?: "none")
+                    ))
+                }
                 Resource.Success(remoteResult)
             } else {
+                analytics.trackEvent("sale_failed", bundleOf(
+                    "error_reason" to "Sync failed",
+                    "payment_method" to request.paymentMethod,
+                    "branch_id" to (request.branchId ?: "unknown")
+                ))
                 Resource.Success(
                     ProcessSaleResponse(
                         saleId = saleId,
@@ -176,6 +199,12 @@ class SaleRepositoryImpl(
             }
         } catch (e: Exception) {
             Log.e("SaleRepo", "processSale failed: ${e.message}", e)
+            analytics.logError(e, "SaleRepositoryImpl.processSale")
+            analytics.trackEvent("sale_failed", bundleOf(
+                "error_reason" to (e.message ?: "Unknown error"),
+                "payment_method" to request.paymentMethod,
+                "branch_id" to (request.branchId ?: "unknown")
+            ))
             Resource.Error(e.message ?: "Sale failed")
         }
     }
@@ -205,6 +234,7 @@ class SaleRepositoryImpl(
                         productId = it.productId,
                         productName = it.productName,
                         variantSku = it.variantSku,
+                        unitType = it.unitType,
                         unitPrice = it.unitPrice,
                         costPrice = it.costPrice,
                         quantity = it.quantity,
@@ -225,6 +255,8 @@ class SaleRepositoryImpl(
             return result
         } catch (e: Exception) {
             Log.e("SaleRepo", "pushSale failed for $saleId: ${e.message}")
+            analytics.logError(e, "SaleRepositoryImpl.pushSale")
+            analytics.log("Sale push failed: saleId=$saleId")
             return null
         }
     }
@@ -257,6 +289,10 @@ class SaleRepositoryImpl(
                 )
             )
 
+            analytics.trackEvent("debt_payment_recorded", bundleOf(
+                "amount_kobo" to amountKobo
+            ))
+
             val existingSale = saleDao.getSaleById(request.saleId)
             existingSale?.let { saleWithItems ->
                 val sale = saleWithItems.sale
@@ -277,6 +313,7 @@ class SaleRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("SaleRepo", "recordDebtPayment failed: ${e.message}", e)
+            analytics.logError(e, "SaleRepositoryImpl.recordDebtPayment")
             Resource.Error(e.message ?: "Payment failed")
         }
     }
@@ -308,6 +345,11 @@ class SaleRepositoryImpl(
 
             val saleIds = remoteSales.map { it.id }
 
+            // Also pull items for these sales. 
+            // The UNIQUE(clientTransactionId) REPLACE above should have handled local items 
+            // via CASCADE delete if the sale was replaced. 
+            // But if the sale wasn't replaced (e.g. ID matched), we should ensure items are fresh.
+            
             val remoteItems = postgrest
                 .from("sale_items")
                 .select {

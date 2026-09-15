@@ -21,14 +21,15 @@ class DashboardRepositoryImpl(
 ) : DashboardRepository {
 
     override suspend fun getTodaySummary(
-        businessId: String
+        businessId: String,
+        branchId: String?
     ): Resource<DashboardSummary> = withContext(Dispatchers.IO) {
         try {
             val startOfDay = LocalDate.now()
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toString()
-            Resource.Success(saleDao.getTodaySummary(businessId, startOfDay))
+            Resource.Success(saleDao.getTodaySummary(businessId, startOfDay, branchId))
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to load summary")
         }
@@ -36,7 +37,8 @@ class DashboardRepositoryImpl(
 
     override suspend fun getChartData(
         businessId: String,
-        days: Int
+        days: Int,
+        branchId: String?
     ): Resource<List<ChartDataPoint>> = withContext(Dispatchers.IO) {
         try {
             val since = LocalDate.now()
@@ -44,7 +46,7 @@ class DashboardRepositoryImpl(
                 .atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toString()
-            val data = saleDao.getChartData(businessId, since)
+            val data = saleDao.getChartData(businessId, since, branchId)
 
             // Fill missing days with zero so the chart has no gaps
             val filled = fillMissingDays(data, days)
@@ -55,10 +57,11 @@ class DashboardRepositoryImpl(
     }
 
     override suspend fun getPendingDebts(
-        businessId: String
+        businessId: String,
+        branchId: String?
     ): Resource<PendingDebtSummary> = withContext(Dispatchers.IO) {
         try {
-            Resource.Success(saleDao.getPendingDebts(businessId))
+            Resource.Success(saleDao.getPendingDebts(businessId, branchId))
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to load debts")
         }

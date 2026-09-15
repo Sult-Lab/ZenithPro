@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
@@ -96,35 +97,55 @@ fun SaleDetailScreen(
             )
         }
     ) { padding ->
-        val sale = state.saleWithItems?.sale
-
-        if (sale == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            return@Scaffold
-        }
-
-        LazyColumn(
-            modifier   = Modifier.fillMaxSize().padding(padding),
-            contentPadding  = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.Center
         ) {
-            // ── Sale summary ──────────────────────────────────────────
-            item {
-                SaleSummaryCard(saleWithItems = state.saleWithItems!!)
-            }
+            when {
+                state.isLoading -> {
+                    CircularProgressIndicator()
+                }
 
-            // ── Items ─────────────────────────────────────────────────
-            item {
-                Text(
-                    text = "Items",
-                    style      = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold)
-            }
-            items(
-                items = state.saleWithItems!!.items) { item ->
-                SaleItemRow(item = item)
+                state.error != null -> {
+                    Text(
+                        text = state.error ?: "Unknown error",
+                        color = MaterialTheme.colorScheme.error,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+
+                state.saleWithItems != null -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        // ── Sale summary ──────────────────────────────────────────
+                        item {
+                            SaleSummaryCard(
+                                saleWithItems = state.saleWithItems!!,
+                                cashierName = state.cashierName
+                            )
+                        }
+
+                        // ── Items ─────────────────────────────────────────────────
+                        item {
+                            Text(
+                                text = "Items",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        items(
+                            items = state.saleWithItems!!.items
+                        ) { item ->
+                            SaleItemRow(item = item)
+                        }
+                    }
+                }
             }
         }
     }
@@ -237,7 +258,7 @@ private fun TransferDetailRow(
 }
 
 @Composable
-private fun SaleSummaryCard(saleWithItems: SaleWithItems) {
+private fun SaleSummaryCard(saleWithItems: SaleWithItems, cashierName: String) {
     val sale = saleWithItems.sale
     Card(
         shape     = RoundedCornerShape(12.dp),
@@ -250,6 +271,7 @@ private fun SaleSummaryCard(saleWithItems: SaleWithItems) {
             DetailRow("Date",
                 Instant.parse(sale.soldAt).atZone(ZoneId.systemDefault())
                     .format(DateTimeFormatter.ofPattern("MMM d, yyyy · h:mm a")))
+            DetailRow("Cashier", cashierName)
             DetailRow("Payment", sale.paymentMethod.name.lowercase()
                 .replaceFirstChar { it.uppercase() })
             if (sale.subtotal != sale.totalAmount) {
@@ -304,7 +326,7 @@ private fun SaleItemRow(item: SaleItemEntity) {
             Text(item.productName,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium)
-            Text("${item.variantSku} × ${item.quantity}",
+            Text("${item.variantSku} × ${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

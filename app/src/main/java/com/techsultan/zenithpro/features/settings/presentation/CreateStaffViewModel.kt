@@ -32,13 +32,30 @@ class CreateStaffViewModel(
 
     init {
         loadBranches()
+        loadSession()
+    }
+
+    private fun loadSession() {
+        val session = sessionManager.currentSession
+        _state.update { it.copy(
+            currentRole = session?.role ?: "STAFF",
+            selectedRole = "STAFF", // Default
+            selectedBranchId = if (session?.isAdmin == false) session.branchId else null
+        ) }
     }
 
     private fun loadBranches() {
         viewModelScope.launch {
             getBranchesUseCase(sessionManager.businessId).collect { result ->
                 if (result is Resource.Success) {
-                    _state.update { it.copy(branches = result.data ?: emptyList()) }
+                    val branches = result.data ?: emptyList()
+                    val session = sessionManager.currentSession
+                    val filteredBranches = if (session?.isAdmin == true) {
+                        branches
+                    } else {
+                        branches.filter { it.id == session?.branchId }
+                    }
+                    _state.update { it.copy(branches = filteredBranches) }
                 }
             }
         }
@@ -133,6 +150,7 @@ data class CreateStaffUiState(
     val lastName: String = "",
     val phone: String = "",
     val selectedRole: String = "STAFF",
+    val currentRole: String = "STAFF",
     val selectedBranchId: String? = null,
     val branches: List<BranchEntity> = emptyList(),
     val isLoading: Boolean = false,

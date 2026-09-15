@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseEntity
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseFilter
 import com.techsultan.zenithpro.features.expenses.data.local.ExpenseStatsData
@@ -30,7 +32,8 @@ class ExpenseListViewModel(
     private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val expenseRepository: ExpenseRepository,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ExpenseListUiState())
@@ -65,12 +68,22 @@ class ExpenseListViewModel(
     }
 
     fun deleteExpense(expenseId: String) {
+        if (sessionManager.currentSession?.isAdmin != true) {
+            viewModelScope.launch {
+                _events.emit(ExpenseListEvent.ShowError("Only admins can delete expenses"))
+            }
+            return
+        }
         viewModelScope.launch {
             when (val result = deleteExpenseUseCase(expenseId)) {
-                is Resource.Success ->
+                is Resource.Success -> {
+                    analytics.trackEvent("expense_deleted")
                     _events.emit(ExpenseListEvent.ShowMessage("Expense deleted"))
-                is Resource.Error ->
+                }
+                is Resource.Error -> {
+                    analytics.logError(Exception(result.message), "ExpenseListViewModel.deleteExpense")
                     _events.emit(ExpenseListEvent.ShowError(result.message ?: "Delete failed"))
+                }
                 else -> Unit
             }
         }
@@ -101,6 +114,12 @@ class ExpenseListViewModel(
 
     private fun observeExpenses() {
         val bId = businessId ?: return
+        val session = sessionManager.currentSession
+        if (session?.isStaff == true) {
+            _state.update { it.copy(isLoading = false, expenses = emptyList()) }
+            return
+        }
+
         observeJob?.cancel()
         observeJob = viewModelScope.launch {
             getExpensesUseCase(bId, _state.value.filter).collect { result ->
@@ -108,8 +127,14 @@ class ExpenseListViewModel(
                     is Resource.Loading -> _state.update {
                         it.copy(isLoading = it.expenses.isEmpty())
                     }
-                    is Resource.Success -> _state.update {
-                        it.copy(isLoading = false, expenses = result.data ?: emptyList(), error = null)
+                    is Resource.Success -> {
+                        val allExpenses = result.data ?: emptyList()
+                        val filtered = if (session?.isAdmin == true) {
+                            allExpenses
+                        } else {
+                            allExpenses.filter { it.branchId == session?.branchId }
+                        }
+                        _state.update { it.copy(isLoading = false, expenses = filtered, error = null) }
                     }
                     is Resource.Error -> _state.update {
                         it.copy(isLoading = false, error = result.message)
@@ -121,13 +146,21 @@ class ExpenseListViewModel(
 
     private fun loadStats() {
         val bId = businessId ?: return
+        val session = sessionManager.currentSession
+        if (session?.isStaff == true) return
+
         viewModelScope.launch {
             when (val result = getExpenseStatsUseCase(bId, _state.value.filter)) {
-                is Resource.Success -> _state.update {
-                    it.copy(
-                        stats      = result.data,
-                        categories = result.data?.categories ?: emptyList()
-                    )
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(
+                            stats      = result.data,
+                            categories = result.data?.categories ?: emptyList()
+                        )
+                    }
+                    analytics.trackEvent("report_viewed", bundleOf(
+                        "report_type" to "expenses"
+                    ))
                 }
                 else -> Unit
             }

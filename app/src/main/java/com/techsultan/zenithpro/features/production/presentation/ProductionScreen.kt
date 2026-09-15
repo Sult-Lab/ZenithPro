@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
 import org.koin.androidx.compose.koinViewModel
@@ -182,7 +183,7 @@ private fun ProductionOrderCard(
             }
 
             Spacer(Modifier.height(6.dp))
-            Text("Qty: ${order.quantity}",
+            Text("Qty: ${com.techsultan.zenithpro.core.util.Util.formatQuantity(order.quantity, UnitType.UNIT)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             order.notes?.let {

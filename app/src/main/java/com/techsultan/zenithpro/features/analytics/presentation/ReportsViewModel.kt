@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.analytics.data.ReportPeriod
 import com.techsultan.zenithpro.features.analytics.data.remote.ReportsData
 import com.techsultan.zenithpro.features.analytics.domain.ReportsRepository
@@ -20,6 +22,7 @@ class ReportsViewModel(
     private val reportsRepository: ReportsRepository,
     private val branchRepository: BranchRepository,
     private val sessionManager: SessionManager,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ReportsUiState())
@@ -39,20 +42,34 @@ class ReportsViewModel(
         this.businessId = businessId
         val session = sessionManager.currentSession
 
-        // Staff without manager rights are locked to their own branch
-        // and cannot view other staff's performance
-        if (session != null && !session.isManager) {
+        if (session?.isStaff == true) {
+            _state.update {
+                it.copy(
+                    error = "You don't have permission to view reports",
+                    isLoading = false
+                )
+            }
+            return
+        }
+        // Managers are locked to their own branch if assigned
+        if (session?.isAdmin == false) {
             _state.update {
                 it.copy(
                     filterBranchId = session.branchId,
-                    filterStaffId  = session.userId,
-                    canFilterBranch = false,
-                    canFilterStaff  = false
+                    canFilterBranch = session.branchId == null,
+                    canFilterStaff  = true, // Can see staff in their branch(es)
+                    showProfit = false,
+                    canExport = false
                 )
             }
         } else {
             _state.update {
-                it.copy(canFilterBranch = true, canFilterStaff = true)
+                it.copy(
+                    canFilterBranch = true,
+                    canFilterStaff = true,
+                    showProfit = true,
+                    canExport = true
+                )
             }
         }
 
@@ -137,8 +154,13 @@ class ReportsViewModel(
         )
 
         when (result) {
-            is Resource.Success -> _state.update {
-                it.copy(isLoading = false, data = result.data, error = null)
+            is Resource.Success -> {
+                _state.update {
+                    it.copy(isLoading = false, data = result.data, error = null)
+                }
+                analytics.trackEvent("report_viewed", bundleOf(
+                    "report_type" to "sales"
+                ))
             }
             is Resource.Error -> _state.update {
                 it.copy(isLoading = false, error = result.message)
@@ -160,7 +182,9 @@ data class ReportsUiState(
     val canFilterStaff: Boolean = true,
     val branches: List<BranchEntity> = emptyList(),
     val data: ReportsData? = null,
-    val error: String? = null
+    val error: String? = null,
+    val showProfit: Boolean = false,
+    val canExport: Boolean = false
 ) {
     val hasActiveFilters: Boolean get() = filterBranchId != null || filterStaffId != null
 }

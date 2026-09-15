@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,10 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.components.ZenithBottomNavigation
 import com.techsultan.zenithpro.core.components.ZenithNavigationDrawer
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
 import com.techsultan.zenithpro.features.analytics.presentation.ReportsScreen
 import com.techsultan.zenithpro.features.branch.presentation.BranchScreen
@@ -50,6 +54,7 @@ import com.techsultan.zenithpro.features.sales.presentation.ReceiptPreviewScreen
 import com.techsultan.zenithpro.features.sales.presentation.ReceiptViewModel
 import com.techsultan.zenithpro.features.sales.presentation.SaleDetailScreen
 import com.techsultan.zenithpro.features.sales.presentation.SalesScreen
+import com.techsultan.zenithpro.features.settings.presentation.AboutAppScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessInformationScreen
 import com.techsultan.zenithpro.features.settings.presentation.BusinessProfileScreen
 import com.techsultan.zenithpro.features.settings.presentation.CategoryManagementScreen
@@ -60,27 +65,44 @@ import com.techsultan.zenithpro.features.settings.presentation.SettingsScreen
 import com.techsultan.zenithpro.features.settings.presentation.StaffManagementScreen
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @Composable
 fun MainNavGraph(
     dataPersistentViewModel: DataPersistentViewModel
 ) {
+    val analytics: AnalyticsHelper = koinInject()
+    val session by dataPersistentViewModel.session.collectAsStateWithLifecycle()
+
+    val topLevelDestinations = remember(session) {
+        TOP_LEVEL_DESTINATIONS.keys.filter {
+            if (session?.isStaff == true) it != Route.Home.Reports else true
+        }.toSet()
+    }
+
     val navigationState = rememberNavigationState(
         startRoute = Route.Home.Dashboard,
-        topLevelDestinations = TOP_LEVEL_DESTINATIONS.keys
+        topLevelDestinations = topLevelDestinations
     )
     val navigator = remember { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    val session by dataPersistentViewModel.session.collectAsStateWithLifecycle()
-
     // Gesture and Bottom Bar visibility logic
-    val isBottomBarDestination = navigationState.topLevelRoute in TOP_LEVEL_DESTINATIONS.keys
+    val isBottomBarDestination = navigationState.topLevelRoute in topLevelDestinations
     val currentStack = navigationState.backStacks[navigationState.topLevelRoute]
     val isAtRootOfStack = currentStack?.size == 1
     val gesturesEnabled = isBottomBarDestination && isAtRootOfStack
+
+    val currentRoute = currentStack?.lastOrNull()
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route ->
+            val screenName = route::class.simpleName ?: route.toString()
+            analytics.trackScreen(screenName = screenName)
+            analytics.setKey("active_screen", screenName)
+        }
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -152,6 +174,7 @@ fun MainNavGraph(
                 if (isBottomBarDestination && isAtRootOfStack) {
                     ZenithBottomNavigation(
                         currentRoute = navigationState.topLevelRoute,
+                        isStaff = session?.isStaff == true,
                         onNavigate = { navigator.navigate(it) }
                     )
                 }
@@ -214,7 +237,7 @@ fun MainNavGraph(
                                 onBack = {},
                                 onAccountSettings = {},
                                 onNotifications = {},
-                                onAbout = {},
+                                onAbout = { navigator.navigate(Route.Home.AboutApp) },
                                 onLogout = { showLogoutDialog = true },
                                 onPrinterSettings = { navigator.navigate(Route.Home.PrinterSettings) },
                                 onStaffManagement = { navigator.navigate(Route.Home.StaffManagementScreen) },
@@ -399,6 +422,11 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.NombaTransferScreen> {
                             NombaTransferScreen(
+                                onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.AboutApp> {
+                            AboutAppScreen(
                                 onBack = { navigator.goBack() }
                             )
                         }

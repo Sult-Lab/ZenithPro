@@ -13,10 +13,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import androidx.core.graphics.scale
+import com.techsultan.zenithpro.core.domain.domain.UnitType
+import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 
 object Util {
     fun convertLongToFullDate(time: Long): String {
@@ -123,6 +126,14 @@ object Util {
 
     fun String.trimOrNull(): String? = trim().ifBlank { null }
 
+    val emailRegex = Regex(
+        "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
+    )
+
+    val phoneRegex = Regex("^234[789][01][0-9]{8}$")
+
+    val nigerianLocalPhoneRegex = Regex("^[789][01][0-9]{8}$")
+
     fun vibrate(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibratorManager =
@@ -152,4 +163,45 @@ object Util {
         return "$category-$cleanName-$timestamp"
     }
 
+    fun formatQuantity(quantity: Double, unitType: UnitType): String {
+        return if (unitType.isDecimal) {
+            if (quantity == quantity.toLong().toDouble()) {
+                quantity.toLong().toString()   // show "2" not "2.0"
+            } else {
+                "%.3f".format(quantity).trimEnd('0').trimEnd('.')
+            }
+        } else {
+            quantity.toLong().toString()
+        }
+    }
+
+    fun formatReceiptQuantity(quantity: Double, unitType: UnitType): String {
+        return "${formatQuantity(quantity, unitType)} ${unitType.abbreviation}"
+        // → "2.5 kg", "3 pcs", "0.5 bag", "1 L"
+    }
+
+    fun formatStockDisplay(quantity: Double, unitType: UnitType): String {
+        return "${formatQuantity(quantity, unitType)} ${unitType.abbreviation} in stock"
+        // → "50 pcs in stock", "12.5 kg in stock"
+    }
+
+    fun formatRelativeTime(isoTime: String): String = runCatching {
+        val then = Instant.parse(isoTime)
+        val now = Instant.now()
+        val diffSeconds = ChronoUnit.SECONDS.between(then, now)
+        val diffMinutes = ChronoUnit.MINUTES.between(then, now)
+        val diffHours = ChronoUnit.HOURS.between(then, now)
+        val diffDays = ChronoUnit.DAYS.between(then, now)
+
+        when {
+            diffSeconds < 60 -> "just now"
+            diffMinutes < 60 -> "$diffMinutes min${if (diffMinutes > 1) "s" else ""} ago"
+            diffHours < 24 -> "$diffHours hr${if (diffHours > 1) "s" else ""} ago"
+            diffDays < 7 -> "$diffDays day${if (diffDays > 1) "s" else ""} ago"
+            else -> {
+                val formatter = DateTimeFormatter.ofPattern("MMM dd, yyyy")
+                then.atZone(ZoneId.systemDefault()).format(formatter)
+            }
+        }
+    }.getOrElse { "unknown time" }
 }

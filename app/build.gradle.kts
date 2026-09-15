@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+val mockitoAgent = configurations.create("mockitoAgent")
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -38,9 +39,23 @@ android {
         buildConfigField("String", "SUPABASE_URL", "\"${localProperties.getProperty("SUPABASE_URL")}\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties.getProperty("RELEASE_STORE_FILE") ?: "keystore.jks")
+            storePassword = localProperties.getProperty("RELEASE_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("RELEASE_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("RELEASE_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -158,4 +173,22 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.messaging)
     implementation(libs.firebase.config)
+
+    //vico
+    implementation(libs.vico.compose.m3)
+
+    // test
+
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
+    mockitoAgent(libs.mockito.core) { isTransitive = false }
+}
+
+tasks.withType<Test> {
+    doFirst {
+        jvmArgs("-javaagent:${mockitoAgent.asPath}")
+    }
 }

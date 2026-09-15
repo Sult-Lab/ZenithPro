@@ -7,12 +7,18 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.techsultan.zenithpro.MainActivity
 import com.techsultan.zenithpro.R
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
-class ZenithFirebaseMessagingService : FirebaseMessagingService() {
+class ZenithFirebaseMessagingService : FirebaseMessagingService(), KoinComponent {
+
+    private val analytics: AnalyticsHelper by inject()
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
@@ -23,6 +29,10 @@ class ZenithFirebaseMessagingService : FirebaseMessagingService() {
         val amount = data["amount"] ?: ""
         val sender = data["sender"] ?: ""
         val bank   = data["bank"]   ?: ""
+
+        analytics.trackEvent("nomba_transfer_notification_received", bundleOf(
+            "amount_kobo" to (amount.toDoubleOrNull()?.times(100)?.toLong() ?: 0L)
+        ))
 
         showNotification(title, body, amount, sender, bank)
     }

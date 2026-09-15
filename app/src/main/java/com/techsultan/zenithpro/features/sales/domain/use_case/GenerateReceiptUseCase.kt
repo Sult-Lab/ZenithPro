@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.sales.domain.use_case
 import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.data.local.ReceiptItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
+import kotlin.math.roundToLong
 
 class GenerateReceiptUseCase {
 
@@ -20,8 +21,9 @@ class GenerateReceiptUseCase {
                 ReceiptItem(
                     name = it.productName,
                     qty = it.quantity,
+                    unitType = it.unitType,
                     price = it.unitPrice,
-                    total = it.unitPrice * it.quantity
+                    total = (it.unitPrice * it.quantity).roundToLong()
                 )
             },
             subtotal = sale.subtotal,

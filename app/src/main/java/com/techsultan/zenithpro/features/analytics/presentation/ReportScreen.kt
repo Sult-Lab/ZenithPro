@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -93,6 +94,7 @@ fun ReportsScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             ZenithTopAppBar(
                 title = "Business Reports",
@@ -156,14 +158,21 @@ fun ReportsScreen(
                 }
 
                 // ── Sales summary ────────────────────────────────────
-                item { ReportSalesSummaryCard(summary = data.salesSummary) }
+                item { 
+                    ReportSalesSummaryCard(
+                        summary = data.salesSummary,
+                        showProfit = state.showProfit
+                    ) 
+                }
 
                 // ── Profit vs expenses ───────────────────────────────
-                item {
-                    ReportComparisonCard(
-                        totalProfit   = data.salesSummary.totalProfit,
-                        totalExpenses = data.expenseSummary.totalAmount
-                    )
+                if (state.showProfit) {
+                    item {
+                        ReportComparisonCard(
+                            totalProfit   = data.salesSummary.totalProfit,
+                            totalExpenses = data.expenseSummary.totalAmount
+                        )
+                    }
                 }
 
                 // ── Sales trend chart ────────────────────────────────

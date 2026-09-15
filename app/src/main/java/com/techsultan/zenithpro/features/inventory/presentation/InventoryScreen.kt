@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.techsultan.zenithpro.core.components.SyncStatusBadge
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.component.EmptyInventoryState
@@ -97,6 +99,7 @@ fun InventoryScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackBarHostState) },
         topBar = {
             ZenithTopAppBar(
@@ -206,13 +209,15 @@ fun InventoryScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { onAddProductClick() },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Product")
+            if (!state.isStaff) {
+                FloatingActionButton(
+                    onClick = { onAddProductClick() },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White,
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Product")
+                }
             }
         }
     ) { paddingValues ->
@@ -376,7 +381,7 @@ fun InventoryItemCard(
             
             Row(verticalAlignment = Alignment.CenterVertically) {
                 when {
-                    totalStock == 0 -> {
+                    totalStock == 0.0 -> {
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = null,
@@ -399,14 +404,14 @@ fun InventoryItemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$totalStock in Stock",
+                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFFA000)
                         )
                     }
                     else -> {
                         Text(
-                            text = "$totalStock in Stock",
+                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

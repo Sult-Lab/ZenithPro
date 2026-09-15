@@ -217,7 +217,13 @@ fun CreateStaffScreen(
                     "STAFF"   to "Staff",
                     "MANAGER" to "Manager",
                     "ADMIN"   to "Admin"
-                ).forEach { (value, label) ->
+                ).filter { (value, _) ->
+                    when (state.currentRole) {
+                        "ADMIN" -> true
+                        "MANAGER" -> value == "STAFF"
+                        else -> false
+                    }
+                }.forEach { (value, label) ->
                     val selected = state.selectedRole == value
                     Surface(
                         shape    = RoundedCornerShape(10.dp),
@@ -274,73 +280,91 @@ fun CreateStaffScreen(
             }
 
             if (state.branches.isNotEmpty()) {
-                ExposedDropdownMenuBox(
-                    expanded         = showBranchMenu,
-                    onExpandedChange = { showBranchMenu = it }
-                ) {
-                    OutlinedTextField(
-                        value = state.branches
-                            .firstOrNull { it.id == state.selectedBranchId }
-                            ?.name ?: "All branches (no restriction)",
-                        onValueChange = {},
-                        label = { Text("Assign to branch") },
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(showBranchMenu)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = Color(0xFFF9FAFB),
-                            focusedContainerColor = Color(0xFFF9FAFB),
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                        ),
-                    )
-                    ExposedDropdownMenu(
-                        expanded         = showBranchMenu,
-                        onDismissRequest = { showBranchMenu = false }
+                if (state.currentRole == "ADMIN") {
+                    ExposedDropdownMenuBox(
+                        expanded = showBranchMenu,
+                        onExpandedChange = { showBranchMenu = it }
                     ) {
+                        OutlinedTextField(
+                            value = state.branches
+                                .firstOrNull { it.id == state.selectedBranchId }
+                                ?.name ?: "All branches (no restriction)",
+                            onValueChange = {},
+                            label = { Text("Assign to branch") },
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(showBranchMenu)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color(0xFFF9FAFB),
+                                focusedContainerColor = Color(0xFFF9FAFB),
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            ),
+                        )
+                        ExposedDropdownMenu(
+                            expanded = showBranchMenu,
+                            onDismissRequest = { showBranchMenu = false }
+                        ) {
 
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text("All branches")
-                                    Text(
-                                        "No branch restriction",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text("All branches")
+                                        Text(
+                                            "No branch restriction",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    viewModel.onBranchChanged(null)
+                                    showBranchMenu = false
+                                }
+                            )
+                            HorizontalDivider()
+                            state.branches
+                                .filter { it.isActive }
+                                .forEach { branch ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(branch.name)
+                                                branch.address?.let {
+                                                    Text(
+                                                        it,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            viewModel.onBranchChanged(branch.id)
+                                            showBranchMenu = false
+                                        }
                                     )
                                 }
-                            },
-                            onClick = {
-                                viewModel.onBranchChanged(null)
-                                showBranchMenu = false
-                            }
-                        )
-                        HorizontalDivider()
-                        state.branches
-                            .filter { it.isActive }
-                            .forEach { branch ->
-                                DropdownMenuItem(
-                                    text    = {
-                                        Column {
-                                            Text(branch.name)
-                                            branch.address?.let {
-                                                Text(
-                                                    it,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        viewModel.onBranchChanged(branch.id)
-                                        showBranchMenu = false
-                                    }
-                                )
-                            }
+                        }
                     }
+                } else {
+                    // MANAGER — show fixed branch
+                    val branchName = state.branches.firstOrNull()?.name ?: "Your branch"
+                    OutlinedTextField(
+                        value = branchName,
+                        onValueChange = {},
+                        label = { Text("Assigned branch") },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledContainerColor = Color(0xFFF9FAFB),
+                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                    )
                 }
             }
 

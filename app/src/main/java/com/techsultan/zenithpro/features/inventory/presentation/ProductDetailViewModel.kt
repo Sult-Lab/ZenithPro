@@ -9,12 +9,16 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.features.category.data.local.CategoryEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.GetCategoriesUseCase
 import com.techsultan.zenithpro.features.category.domain.use_case.UpsertCategoryUseCase
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
 import com.techsultan.zenithpro.features.inventory.data.remote.UpdateProductRequest
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductAuditLogUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.UpdateProductUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,10 +38,15 @@ class ProductDetailViewModel(
     val upsertCategoryUseCase: UpsertCategoryUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val sessionManager: SessionManager,
+    private val getProductAuditLogUseCase: GetProductAuditLogUseCase,
+    private val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = mutableStateOf(ProductDetailUiState())
     val state: State<ProductDetailUiState> = _state
+
+    private val _auditLogs = MutableStateFlow<List<ProductAuditLogEntity>>(emptyList())
+    val auditLogs: StateFlow<List<ProductAuditLogEntity>> = _auditLogs.asStateFlow()
 
     private val _categories = MutableStateFlow<List<CategoryEntity>>(emptyList())
     val categories: StateFlow<List<CategoryEntity>> = _categories.asStateFlow()
@@ -48,7 +57,17 @@ class ProductDetailViewModel(
     private val _scannedBarcode = mutableStateOf<String?>(null)
     val scannedBarcode: State<String?> = _scannedBarcode
 
+    val canEdit: Boolean
+        get() = sessionManager.currentSession?.isManager ?: false
+
+    val canDelete: Boolean
+        get() = sessionManager.currentSession?.isAdmin ?: false
+
+    val canViewAudit: Boolean
+        get() = sessionManager.currentSession?.isManager ?: false
+
     val businessId: String? get() = try { sessionManager.businessId } catch (e: Exception) { null }
+    val branchId: String? get() = try { sessionManager.currentSession?.branchId } catch (e: Exception) { null }
 
     fun onBarcodeScanned(barcode: String) {
         _scannedBarcode.value = barcode
@@ -63,8 +82,16 @@ class ProductDetailViewModel(
         _scannedBarcode.value = null
     }
 
+    fun onUnitTypeChanged(unitType: String) {
+        _state.value = _state.value.copy(unitType = unitType)
+    }
+
     init {
         observeCategories()
+        val session = sessionManager.currentSession
+        _state.value = _state.value.copy(
+            isStaff = session?.isStaff ?: true
+        )
     }
 
     private fun observeCategories() {
@@ -80,7 +107,7 @@ class ProductDetailViewModel(
 
     fun getProduct(productId: String) {
         viewModelScope.launch {
-            _state.value = ProductDetailUiState(
+            _state.value = _state.value.copy(
                 isLoading = true,
                 product = null,
                 error = null
@@ -89,9 +116,11 @@ class ProductDetailViewModel(
                 when (result) {
                     is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
                     is Resource.Success -> {
+                        val product = result.data
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            product = result.data,
+                            product = product,
+                            unitType = product?.product?.unitType ?: "UNIT",
                             error = null
                         )
                     }
@@ -111,6 +140,12 @@ class ProductDetailViewModel(
         imageUris: List<Uri>,
         barcode: String? = null
     ) {
+        if (_state.value.isStaff) {
+            viewModelScope.launch {
+                _eventFlow.emit(UiEvent.Error("Staff cannot update products"))
+            }
+            return
+        }
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
 
@@ -155,6 +190,7 @@ class ProductDetailViewModel(
             }
 
             val requestWithIds = updateProductRequest.copy(
+                branchId = branchId,
                 variants = variants,
                 imageUrls = remoteUrls
             )
@@ -162,18 +198,34 @@ class ProductDetailViewModel(
             when (val result = updateProductUseCase(requestWithIds, cachedLocalUris)) {
                 is Resource.Success -> {
                     _state.value = _state.value.copy(isLoading = false)
+                    analytics.trackEvent("product_edited", bundleOf(
+                        "category" to updateProductRequest.category,
+                        "branch_id" to (branchId ?: "unknown")
+                    ))
                     _eventFlow.emit(UiEvent.Success)
                     // Refresh product
                     getProduct(updateProductRequest.clientId)
                 }
                 is Resource.Error -> {
+                    val errorMessage = result.message ?: "An unexpected error occurred"
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = result.message ?: "An unexpected error occurred"
+                        error = errorMessage
                     )
-                    _eventFlow.emit(UiEvent.Error(result.message ?: "An unexpected error occurred"))
+                    analytics.logError(Exception(errorMessage), "ProductDetailViewModel.updateProduct")
+                    _eventFlow.emit(UiEvent.Error(errorMessage))
                 }
                 is Resource.Loading -> _state.value = _state.value.copy(isLoading = true)
+            }
+        }
+    }
+
+    fun loadAuditLogs(productId: String) {
+        viewModelScope.launch {
+            getProductAuditLogUseCase(productId).collectLatest { result ->
+                if (result is Resource.Success) {
+                    _auditLogs.value = result.data ?: emptyList()
+                }
             }
         }
     }
@@ -187,5 +239,7 @@ class ProductDetailViewModel(
 data class ProductDetailUiState(
     val isLoading: Boolean = false,
     val product: ProductWithVariants? = null,
-    val error: String? = null
+    val unitType: String = "UNIT",
+    val error: String? = null,
+    val isStaff: Boolean = true
 )

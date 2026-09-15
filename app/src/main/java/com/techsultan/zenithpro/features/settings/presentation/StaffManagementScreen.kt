@@ -118,6 +118,7 @@ fun StaffManagementScreen(
                     StaffCard(
                         staff  = staff,
                         isCurrentUser  = staff.id == viewModel.currentUserId,
+                        isAdmin = viewModel.isAdmin,
                         onEdit = { editingStaff = staff },
                     )
                 }
@@ -161,6 +162,7 @@ fun StaffManagementScreen(
 private fun StaffCard(
     staff: StaffMember,
     isCurrentUser: Boolean,
+    isAdmin: Boolean = false,
     onEdit: (StaffMember) -> Unit,
 ) {
     Card(
@@ -251,7 +253,7 @@ private fun StaffCard(
                 }
             }
 
-            if (!isCurrentUser) {
+            if (isAdmin) {
                 IconButton(onClick = { onEdit(staff) }) {
                     Icon(
                         imageVector = Icons.Default.Edit,

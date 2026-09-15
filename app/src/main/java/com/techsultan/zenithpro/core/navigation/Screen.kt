@@ -13,7 +13,19 @@ sealed interface Route: NavKey {
         @Serializable
         data object SignUp : Route, NavKey
         @Serializable
-        data class ChangePassword(val isForced: Boolean) : Route, NavKey
+        data class RegistrationSuccess(val email: String) : Route, NavKey
+        @Serializable
+        data class EmailConfirmed(val token: String) : Route, NavKey
+        @Serializable
+        data class ChangePassword(
+            val mode: PasswordChangeMode = PasswordChangeMode.CHANGE,
+            val email: String? = null
+        ) : Route, NavKey
+    }
+
+    @Serializable
+    enum class PasswordChangeMode {
+        CHANGE, FORCED, FORGOT
     }
 
     @Serializable
@@ -68,6 +80,9 @@ sealed interface Route: NavKey {
 
         @Serializable
         data object PaymentSettings : Route, NavKey
+
+        @Serializable
+        data object AboutApp : Route, NavKey
 
         @Serializable
         data class SaleDetail(val saleId: String) : Route, NavKey

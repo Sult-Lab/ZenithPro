@@ -14,6 +14,7 @@ import com.techsultan.zenithpro.features.inventory.data.repository.ProductReposi
 import com.techsultan.zenithpro.features.inventory.domain.repository.ProductRepository
 import com.techsultan.zenithpro.features.inventory.domain.use_case.AddProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.DeleteProductUseCase
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductAuditLogUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.inventory.domain.use_case.SyncProductsUseCase
@@ -41,7 +42,8 @@ val productModule = module {
         productDao = get(),
         variantDao = get(),
         stockDao = get(),
-        imageCacheManager = get()
+        imageCacheManager = get(),
+        auditLogDao = get()
     ) }
 
     worker {
@@ -63,6 +65,7 @@ val productModule = module {
             saleDao = get(),
             productionDao = get(),
             networkMonitor = get(),
+            analytics = get()
         )
     }
 
@@ -70,15 +73,16 @@ val productModule = module {
         SyncManager(androidContext())
     }
 
-    factory { AddProductUseCase(get()) }
+    factory { AddProductUseCase(get(), get()) }
     factory { GetProductsUseCase(get()) }
     factory { GetProductUseCase(get()) }
     factory { UpdateProductUseCase(get()) }
     factory { SyncProductsUseCase(get(), get(), get()) }
     factory { DeleteProductUseCase(get()) }
+    factory { GetProductAuditLogUseCase(get()) }
 
-    viewModel { AddProductViewModel(get(), get(), get(), get(), get()) }
-    viewModel { ProductDetailViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { AddProductViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ProductDetailViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
 
     viewModel {
         InventoryViewModel(
@@ -86,7 +90,8 @@ val productModule = module {
             syncProductsUseCase = get(),
             deleteProductUseCase = get(),
             networkMonitor = get(),
-            sessionManager = get()
+            sessionManager = get(),
+            analytics = get()
         )
     }
 

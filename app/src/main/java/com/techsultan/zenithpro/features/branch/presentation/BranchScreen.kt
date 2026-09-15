@@ -77,8 +77,10 @@ fun BranchScreen(
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
-                is BranchViewModel.BranchEvent.Saved ->
+                is BranchViewModel.BranchEvent.Saved -> {
                     snackbarHost.showSnackbar("Branch saved")
+                    viewModel.pullFromServer()
+                }
                 is BranchViewModel.BranchEvent.Deleted ->
                     snackbarHost.showSnackbar("Branch deleted")
                 is BranchViewModel.BranchEvent.ShowError ->

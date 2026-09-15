@@ -9,12 +9,13 @@ import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.SignUpUseCase
 import com.techsultan.zenithpro.features.auth.presentation.AuthViewModel
 import com.techsultan.zenithpro.features.auth.presentation.ChangePasswordViewModel
+import com.techsultan.zenithpro.features.auth.presentation.EmailConfirmedViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val authModule = module {
     single<AuthenticationRepository> {
-        AuthenticationRepositoryImpl(get(), get(), get(), get(), get())
+        AuthenticationRepositoryImpl(get(), get(), get(), get(), get(), get())
     }
 
     factory { SignUpUseCase(get()) }
@@ -24,10 +25,14 @@ val authModule = module {
     factory { CreateStaffUseCase(get()) }
 
     viewModel {
-        AuthViewModel(get(), get(), get(), get(), get())
+        AuthViewModel(get(), get(), get(), get(), get(), get())
     }
 
     viewModel {
-        ChangePasswordViewModel(get(), get())
+        ChangePasswordViewModel(get(), get(), get(), get())
+    }
+
+    viewModel {
+        EmailConfirmedViewModel(get(), get())
     }
 }

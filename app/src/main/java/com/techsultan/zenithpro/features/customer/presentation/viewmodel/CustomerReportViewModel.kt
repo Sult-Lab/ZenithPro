@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import androidx.core.os.bundleOf
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
 import com.techsultan.zenithpro.features.customer.domain.use_case.CustomerReportData
 import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerReportsUseCase
@@ -18,7 +20,8 @@ class CustomerReportsViewModel(
     private val getCustomerReportsUseCase: GetCustomerReportsUseCase,
     private val customerRepository: CustomerRepository,
     private val networkMonitor: NetworkMonitor,
-    val sessionManager: SessionManager
+    val sessionManager: SessionManager,
+    val analytics: AnalyticsHelper
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CustomerReportsUiState())
@@ -40,11 +43,19 @@ class CustomerReportsViewModel(
                 customerRepository.pullFromServer(businessId)
             }
             when (val result = getCustomerReportsUseCase(businessId)) {
-                is Resource.Success -> _state.update {
-                    it.copy(isLoading = false, data = result.data)
+                is Resource.Success -> {
+                    _state.update {
+                        it.copy(isLoading = false, data = result.data)
+                    }
+                    analytics.trackEvent("report_viewed", bundleOf(
+                        "report_type" to "customers"
+                    ))
                 }
-                is Resource.Error -> _state.update {
-                    it.copy(isLoading = false, error = result.message)
+                is Resource.Error -> {
+                    _state.update {
+                        it.copy(isLoading = false, error = result.message)
+                    }
+                    analytics.logError(Exception(result.message), context = "CustomerReportsViewModel.load")
                 }
                 else -> Unit
             }

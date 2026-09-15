@@ -26,6 +26,7 @@ class ProcessSaleUseCase(
         discountAmount: Long = 0L,
         taxAmount: Long = 0L,
         notes: String? = null,
+        clientTransactionId: String = UUID.randomUUID().toString(),
     ): Resource<ProcessSaleResponse> {
         if (cart.isEmpty()) return Resource.Error("Cart is empty")
         if (amountPaid < 0) return Resource.Error("Invalid payment amount")
@@ -61,7 +62,7 @@ class ProcessSaleUseCase(
         )
 
         val request = ProcessSaleRequest(
-            clientTransactionId = UUID.randomUUID().toString(),
+            clientTransactionId = clientTransactionId,
             branchId = branchId,
             customerId = customerId,
             staffId = staffId,
@@ -71,6 +72,7 @@ class ProcessSaleUseCase(
                     productId = item.productId,
                     productName = item.productName,
                     variantSku = item.variantSku,
+                    unitType = item.unitType,
                     unitPrice = item.unitPrice,
                     costPrice = item.costPrice,
                     quantity = item.quantity,

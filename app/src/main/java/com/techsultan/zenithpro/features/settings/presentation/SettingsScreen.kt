@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -50,6 +51,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.BuildConfig
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import org.koin.androidx.compose.koinViewModel
 
@@ -86,6 +88,7 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             ZenithTopAppBar(
@@ -103,41 +106,50 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
 
-            if (state.session?.isAdmin == true) {
+            val session = state.session
+            if (session?.isManager == true) {
                 item {
-                    SettingsSectionHeader(title = "ADMIN")
+                    SettingsSectionHeader(title = if (session.isAdmin) "ADMIN" else "MANAGER")
                 }
 
                 item {
-                    SettingsNavSection(
-                        title = "GENERAL",
-                        items = listOf(
+                    val staffItem = SettingsNavItem(
+                        title = "Staff Management",
+                        icon = Icons.Default.People,
+                        onClick = onStaffManagement
+                    )
+
+                    val adminItems = if (session.isAdmin) {
+                        listOf(
+                            staffItem,
                             SettingsNavItem(
-                                title  = "Staff Management",
-                                icon   = Icons.Default.People,
-                                onClick = onStaffManagement
-                            ),
-                            SettingsNavItem(
-                                title  = "Category Management",
-                                icon   = Icons.Default.Category,
+                                title = "Category Management",
+                                icon = Icons.Default.Category,
                                 onClick = onCategoryManagement
                             ),
                             SettingsNavItem(
-                                title  = "Business Profile",
-                                icon   = Icons.Default.Store,
+                                title = "Business Profile",
+                                icon = Icons.Default.Store,
                                 onClick = onBusinessProfile
                             ),
                             SettingsNavItem(
-                                title  = "Business Information",
-                                icon   = Icons.Default.Store,
+                                title = "Business Information",
+                                icon = Icons.Default.Store,
                                 onClick = onBusinessInformation
                             ),
                             SettingsNavItem(
-                                title  = "Payment Settings",
-                                icon   = Icons.Default.Payments,
+                                title = "Payment Settings",
+                                icon = Icons.Default.Payments,
                                 onClick = onPaymentSettings
                             )
                         )
+                    } else {
+                        listOf(staffItem)
+                    }
+
+                    SettingsNavSection(
+                        title = "ADMINISTRATION",
+                        items = adminItems
                     )
                 }
             }
@@ -146,21 +158,21 @@ fun SettingsScreen(
                 SettingsNavSection(
                     title = "GENERAL",
                     items = listOf(
-                        SettingsNavItem(
+                       /* SettingsNavItem(
                             title  = "Account settings",
                             icon   = Icons.Default.Person,
                             onClick = onAccountSettings
-                        ),
+                        ),*/
                         SettingsNavItem(
                             title  = "Printer settings",
                             icon   = Icons.Default.Print,
                             onClick = onPrinterSettings
                         ),
-                        SettingsNavItem(
+                       /* SettingsNavItem(
                             title  = "Notifications",
                             icon   = Icons.Default.Notifications,
                             onClick = onNotifications
-                        ),
+                        ),*/
                         SettingsNavItem(
                             title  = "About app",
                             icon   = Icons.Default.Info,
@@ -188,20 +200,20 @@ fun SettingsScreen(
                         )
                     ) {
                         Icon(
-                            imageVector        = Icons.Default.Logout,
+                            imageVector = Icons.Default.Logout,
                             contentDescription = null,
-                            modifier           = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text       = "Log out",
-                            style      = MaterialTheme.typography.titleSmall,
+                            text = "Log out",
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
 
                     Text(
-                        text  = "Version 1.0.0",
+                        text  = BuildConfig.VERSION_NAME,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

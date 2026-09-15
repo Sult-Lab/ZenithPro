@@ -12,12 +12,21 @@ import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
 import com.techsultan.zenithpro.features.settings.data.mapper.toEntity
 import com.techsultan.zenithpro.features.settings.data.remote.TerminalDto
 import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessResponse
+import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import androidx.core.os.bundleOf
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.Postgrest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import java.util.Objects.isNull
@@ -27,7 +36,8 @@ class SessionManager(
     private val postgrest: Postgrest,
     private val auth: Auth,
     private val logoManager: BusinessLogoManager,
-    private val terminalDao: TerminalDao
+    private val terminalDao: TerminalDao,
+    private val analytics: AnalyticsHelper,
 ) {
 
     @Volatile
@@ -36,6 +46,12 @@ class SessionManager(
 
     val sessionFlow: Flow<UserSession?> = sessionDataStore.sessionFlow
         .onEach { _currentSession = it }
+
+    private val _activeBranchId = MutableStateFlow<String?>(null)
+    val activeBranchId: StateFlow<String?> = _activeBranchId.asStateFlow()
+
+    private val _activeBranchName = MutableStateFlow<String?>(null)
+    val activeBranchName: StateFlow<String?> = _activeBranchName.asStateFlow()
 
 
     suspend fun loadSession(): UserSession? {
@@ -48,6 +64,7 @@ class SessionManager(
         if (stored != null) {
             _currentSession = stored
             logoManager.loadLogo(stored.businessLogoUrl)
+            initActiveBranch(stored)
             return stored
         }
 
@@ -59,47 +76,73 @@ class SessionManager(
         _currentSession = session
     }
 
-    suspend fun initSessionFromServer(userId: String): Result<UserSession> {
-        return try {
-            val profile = withContext(Dispatchers.IO) {
+    // Called after login to set the initial active branch
+    suspend fun initActiveBranch(session: UserSession) {
+        if (!session.isAdmin) {
+            // Staff/Manager — lock to their branch
+            _activeBranchId.value  = session.branchId
+            _activeBranchName.value = session.branchName
+        } else {
+            // Admin — load persisted selection if any
+            val (persistedId, persistedName) = sessionDataStore.getSelectedBranch()
+            _activeBranchId.value  = persistedId
+            _activeBranchName.value = persistedName
+        }
+    }
+
+    // Called when admin selects a branch
+    suspend fun setActiveBranch(branchId: String?, branchName: String?) {
+        _activeBranchId.value  = branchId
+        _activeBranchName.value = branchName
+        sessionDataStore.updateSelectedBranch(branchId, branchName)
+    }
+
+    // Convenience — returns active branch or throws if null
+    // Used in checkout where branch is required
+    fun requireActiveBranchId(): String = _activeBranchId.value
+        ?: error("SessionManager: requireActiveBranchId() called before branch selected")
+
+    suspend fun initSessionFromServer(userId: String): Result<UserSession> = coroutineScope {
+        try {
+            val profileDeferred = async(Dispatchers.IO) {
                 postgrest
                     .from("user_profiles")
                     .select { filter { eq("id", userId) } }
                     .decodeSingle<UserProfileDto>()
             }
+
+            val profile = profileDeferred.await()
             Log.d("SessionManager", "Loaded profile: $profile")
 
             if (profile.status != "ACTIVE") {
                 auth.signOut()
-                return Result.failure(Exception("Account is inactive"))
+                return@coroutineScope Result.failure(Exception("Account is inactive"))
             }
 
-            val business = withContext(Dispatchers.IO) {
+            // Run these in parallel once we have the businessId
+            val businessDeferred = async(Dispatchers.IO) {
                 postgrest
                     .from("businesses")
                     .select { filter { eq("id", profile.businessId) } }
                     .decodeSingle<BusinessDto>()
             }
 
-            val settings = runCatching {
-                withContext(Dispatchers.IO) {
+            val settingsDeferred = async(Dispatchers.IO) {
+                runCatching {
                     postgrest
                         .from("business_settings")
                         .select { filter { eq("business_id", profile.businessId) } }
                         .decodeSingleOrNull<BusinessSettingsDto>()
-                }
-            }.getOrNull()
-
-            val remote = postgrest.from("terminals").select {
-                filter { eq("business_id", profile.businessId) }  // ← use profile.businessId, not businessId
-            }.decodeList<TerminalDto>()
-
-            if (remote.isNotEmpty()) {
-                terminalDao.insertTerminals(remote.map { it.toEntity() })
+                }.getOrNull()
             }
 
-            // Fetch all active branches for this business
-            val branches = withContext(Dispatchers.IO) {
+            val terminalsDeferred = async(Dispatchers.IO) {
+                postgrest.from("terminals").select {
+                    filter { eq("business_id", profile.businessId) }
+                }.decodeList<TerminalDto>()
+            }
+
+            val branchesDeferred = async(Dispatchers.IO) {
                 postgrest
                     .from("branches")
                     .select {
@@ -111,81 +154,98 @@ class SessionManager(
                     }
                     .decodeList<BranchDto>()
             }
-            Log.d("SessionManager", "Fetched ${branches.size} branches")
 
-            // Branch resolution — only admins have null branchId
-            // For staff: use their assigned branch, or auto-resolve if only one branch exists
+            // Wait for all data
+            val business = businessDeferred.await()
+            val settings = settingsDeferred.await()
+            val remote = terminalsDeferred.await()
+            val branches = branchesDeferred.await()
+
+            Log.d("SessionManager", "Fetched ${branches.size} branches and ${remote.size} terminals")
+
+            if (remote.isNotEmpty()) {
+                terminalDao.insertTerminals(remote.map { it.toEntity() })
+            }
+
+            // Branch resolution
             val resolvedBranchId: String?
             val resolvedBranchName: String?
 
             when {
                 profile.role == "ADMIN" -> {
-                    // Admin sees all branches — no fixed branch
-                    resolvedBranchId   = null
+                    resolvedBranchId = null
                     resolvedBranchName = null
                 }
                 profile.branchId != null -> {
-                    // Staff explicitly assigned to a branch
                     val branch = branches.firstOrNull { it.id == profile.branchId }
-                    resolvedBranchId   = branch?.id ?: profile.branchId
+                    resolvedBranchId = branch?.id ?: profile.branchId
                     resolvedBranchName = branch?.name
-                    Log.d("SessionManager", "Staff assigned to branch: $resolvedBranchName")
                 }
                 branches.size == 1 -> {
-                    // Staff not assigned but only one branch — auto-assign
-                    resolvedBranchId   = branches.first().id
+                    resolvedBranchId = branches.first().id
                     resolvedBranchName = branches.first().name
-                    Log.d("SessionManager", "Auto-resolved single branch: $resolvedBranchName")
                 }
                 else -> {
-                    // Multiple branches, staff not assigned — they'll pick at checkout
-                    resolvedBranchId   = null
+                    resolvedBranchId = null
                     resolvedBranchName = null
-                    Log.w("SessionManager", "Staff has no branch and multiple branches exist")
                 }
             }
-            // Replace the terminal resolution block with this:
+
             val terminal: TerminalDto? = when {
-                // ADMIN — take first active terminal for the business
-                profile.role == "ADMIN" -> {
-                    remote.firstOrNull { it.isActive }
-                }
-                // Staff — find terminal matching their resolved branch
-                resolvedBranchId != null -> {
-                    remote.firstOrNull {
-                        it.branchId == resolvedBranchId && it.isActive
-                    }
-                }
+                profile.role == "ADMIN" -> remote.firstOrNull { it.isActive }
+                resolvedBranchId != null -> remote.firstOrNull { it.branchId == resolvedBranchId && it.isActive }
                 else -> null
             }
 
-            Log.d("SessionManager", "Resolved terminal: ${terminal?.id} " +
-                    "name=${terminal?.name} for branch=$resolvedBranchName")
             val session = UserSession(
-                userId          = userId,
-                businessId      = profile.businessId,
-                firstName       = profile.firstName,
-                lastName        = profile.lastName,
-                email           = profile.email,
-                role            = profile.role,
-                businessName    = business.name,
-                businessPhone   = business.phone,
+                userId = userId,
+                businessId = profile.businessId,
+                firstName = profile.firstName,
+                lastName = profile.lastName,
+                email = profile.email,
+                role = profile.role,
+                businessName = business.name,
+                businessPhone = business.phone,
                 businessAddress = business.address,
                 mustChangePassword = profile.mustChangePassword,
-                currencySymbol  = settings?.currencySymbol ?: "₦",
-                currencyCode    = business.currencyCode.ifBlank { settings?.currencyCode ?: "NGN" },
-                branchId        = resolvedBranchId,
-                branchName      = resolvedBranchName,
-                businessType    = business.type,
-                businessEmail   = business.email,
+                currencySymbol = settings?.currencySymbol ?: "₦",
+                currencyCode = business.currencyCode.ifBlank { settings?.currencyCode ?: "NGN" },
+                branchId = resolvedBranchId,
+                branchName = resolvedBranchName,
+                businessType = business.type,
+                businessEmail = business.email,
                 businessLogoUrl = business.logoUrl,
-                terminalId      = terminal?.id
+                terminalId = terminal?.id
             )
 
             logoManager.loadLogo(session.businessLogoUrl)
             sessionDataStore.saveSession(session)
             _currentSession = session
-            Log.d("SessionManager", "Session initialized: ${session.fullName} branch=${session.branchName}")
+            initActiveBranch(session)
+
+            // Fire and forget FCM registration to avoid blocking main flow
+            async {
+                try {
+                    ZenithFcmTokenManager.registerTokenForTerminal(
+                        postgrest = postgrest,
+                        terminalId = terminal?.id ?: "",
+                        businessId = profile.businessId,
+                    )
+                } catch (e: Exception) {
+                    Log.e("SessionManager", "FCM token registration failed: ${e.message}")
+                }
+            }
+
+            analytics.setUser(
+                userId = session.userId,
+                businessId = session.businessId,
+                role = session.role,
+                businessName = session.businessName
+            )
+            analytics.trackEvent("session_started", bundleOf(
+                "role" to session.role,
+                "branch_id" to (session.branchId ?: "all")
+            ))
 
             ZenithFcmTokenManager.registerTokenForTerminal(
                 postgrest  = postgrest,
@@ -197,6 +257,7 @@ class SessionManager(
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e("SessionManager", "initSessionFromServer failed: ${e.message}", e)
+            analytics.logError(e, "SessionManager.initSessionFromServer")
             Result.failure(e)
         }
     }
@@ -221,9 +282,18 @@ class SessionManager(
 
     suspend fun signOut() {
         try {
+            // Sign out globally first
             auth.signOut()
+            analytics.clearUser()
         } catch (e: Exception) {
-            Log.w("SessionManager", "Supabase sign out failed: ${e.message}")
+            Log.w("SessionManager", "Supabase global sign out failed: ${e.message}, forcing local sign out")
+            try {
+                auth.signOut(scope = SignOutScope.LOCAL)
+            } catch (localEx: Exception) {
+                Log.e("SessionManager", "Local sign out failed: ${localEx.message}")
+                Log.w("SessionManager", "Supabase sign out failed: ${e.message}")
+                analytics.logError(e, "SessionManager.signOut")
+            }
         } finally {
             sessionDataStore.clearSession()
             _currentSession = null

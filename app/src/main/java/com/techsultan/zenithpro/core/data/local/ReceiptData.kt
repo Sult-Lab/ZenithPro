@@ -26,7 +26,8 @@ data class ReceiptData(
 
 data class ReceiptItem(
     val name: String,
-    val qty: Int,
+    val qty: Double,
+    val unitType: String = "UNIT",
     val price: Long,
     val total: Long
 )

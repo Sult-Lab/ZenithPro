@@ -31,7 +31,8 @@ val salesModule = module {
             networkMonitor = get(),
             sessionManager = get(),
             debtPaymentDao = get(),
-            branchDao = get()
+            branchDao = get(),
+            analytics = get()
         )
     }
 
@@ -48,9 +49,8 @@ val salesModule = module {
         generateReceiptUseCase = get(),
         receiptNumberGenerator = get(),
         getSettingsUseCase = get(),
-        getBranchesUseCase = get(),
         getTerminalsUseCase = get(),
-        saleDao = get()
+        analytics = get(),
     ) }
 
     viewModel {

@@ -22,9 +22,10 @@ data class SaleItemEntity(
     val productId: String,
     val productName: String,
     val variantSku: String,
+    val unitType: String = "UNIT",
     val unitPrice: Long,
     val costPrice: Long,
-    val quantity: Int,
+    val quantity: Double,
     val discount: Long,
     val totalPrice: Long
 )

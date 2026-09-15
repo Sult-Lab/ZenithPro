@@ -12,7 +12,6 @@ val databaseModule = module {
             name = ZenithDatabase.DATABASE_NAME,
             klass = ZenithDatabase::class.java
         )
-            .fallbackToDestructiveMigration(true)
             .build()
     }
 
@@ -30,4 +29,5 @@ val databaseModule = module {
     single { get<ZenithDatabase>().debtPaymentDao }
     single { get<ZenithDatabase>().terminalDao }
     single { get<ZenithDatabase>().paymentDao }
+    single { get<ZenithDatabase>().auditLogDao }
 }

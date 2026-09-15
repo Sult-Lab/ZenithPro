@@ -8,6 +8,8 @@ import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogDao
+import com.techsultan.zenithpro.features.inventory.data.local.ProductAuditLogEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
 import com.techsultan.zenithpro.features.inventory.data.local.ProductEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductStockDao
@@ -20,6 +22,7 @@ import com.techsultan.zenithpro.features.inventory.data.mapper.toEntity
 import com.techsultan.zenithpro.features.inventory.data.mapper.toProductDto
 import com.techsultan.zenithpro.features.inventory.data.mapper.toProductEntity
 import com.techsultan.zenithpro.features.inventory.data.remote.AddProductRequest
+import com.techsultan.zenithpro.features.inventory.data.remote.ProductAuditLogDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductStockDto
 import com.techsultan.zenithpro.features.inventory.data.remote.ProductVariantCreateRequest
@@ -53,7 +56,8 @@ class ProductRepositoryImpl(
     private val productDao: ProductDao,
     private val variantDao: ProductVariantDao,
     private val stockDao: ProductStockDao,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val auditLogDao: ProductAuditLogDao
 ) : ProductRepository {
 
     override fun getProducts(businessId: String): Flow<Resource<List<ProductWithVariants>>> =
@@ -75,6 +79,21 @@ class ProductRepositoryImpl(
             }
         } catch (e: Exception) {
             emit(Resource.Error(e.message ?: "Failed to load product"))
+        }
+    }
+
+    override fun getProductsForBranch(
+        businessId: String,
+        branchId: String
+    ): Flow<Resource<List<ProductWithVariants>>> = flow {
+        emit(Resource.Loading())
+        try {
+            productDao.getProductsForBranch(businessId, branchId)
+                .collect { products ->
+                    emit(Resource.Success(products))
+                }
+        } catch (e: Exception) {
+            emit(Resource.Error(e.message ?: "Failed to load products"))
         }
     }
 
@@ -114,10 +133,12 @@ class ProductRepositoryImpl(
                     isActive = productRequest.isActive,
                     imageUrls = imageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
+                    unitType = productRequest.unitType,
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.PENDING,
-                    locallyCreatedAt = now
+                    locallyCreatedAt = now,
+                    branchId = productRequest.branchId
                 )
             )
             productRequest.variants?.forEach { variantReq ->
@@ -156,7 +177,8 @@ class ProductRepositoryImpl(
                             expiryDate = it.expiryDate,
                             lowStockAlert = it.lowStockAlert,
                             updatedAt = now,
-                            syncStatus = Util.SyncStatus.PENDING
+                            syncStatus = Util.SyncStatus.PENDING,
+                            branchId = productRequest.branchId ?: ""
                         )
                     }
                 )
@@ -218,10 +240,12 @@ class ProductRepositoryImpl(
                     isActive = productRequest.isActive,
                     imageUrls = allImageUrls,
                     expiryWarningDays = productRequest.expiryWarningDays,
+                    unitType = productRequest.unitType,
                     updatedAt = now,
                     deletedAt = null,
                     syncStatus = Util.SyncStatus.DIRTY,
-                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt
+                    locallyCreatedAt = currentProduct?.product?.locallyCreatedAt,
+                    branchId = productRequest.branchId
                 )
             )
 
@@ -263,7 +287,8 @@ class ProductRepositoryImpl(
                             expiryDate = it.expiryDate,
                             lowStockAlert = it.lowStockAlert,
                             updatedAt = now,
-                            syncStatus = Util.SyncStatus.DIRTY
+                            syncStatus = Util.SyncStatus.DIRTY,
+                            branchId = productRequest.branchId ?: ""
                         )
                     }
                 )
@@ -303,7 +328,9 @@ class ProductRepositoryImpl(
                 expiryWarningDays = productWithVariants.product.expiryWarningDays,
                 isActive = productWithVariants.product.isActive,
                 businessId = productWithVariants.product.businessId,
+                branchId = productWithVariants.product.branchId,
                 imageUrls = productWithVariants.product.imageUrls,
+                unitType = productWithVariants.product.unitType,
                 variants = productWithVariants.variants.map { variantWithStock ->
                     ProductVariantCreateRequest(
                         clientId = variantWithStock.variant.id,
@@ -540,6 +567,7 @@ class ProductRepositoryImpl(
                     baseSalesPrice = entity.baseSalesPrice,
                     baseCostPrice = entity.baseCostPrice,
                     expiryWarningDays = entity.expiryWarningDays,
+                    unitType = entity.unitType,
                     isActive = entity.isActive,
                     businessId = entity.businessId,
                     imageUrls = imagePaths,
@@ -629,6 +657,7 @@ class ProductRepositoryImpl(
             reconcileVariantsLocally(
                 productId  = request.clientId,
                 businessId = request.businessId,
+                branchId   = request.branchId,
                 variants   = request.variants,
                 now        = now
             )
@@ -660,6 +689,7 @@ class ProductRepositoryImpl(
                 baseSalesPrice = request.baseSalesPrice,
                 baseCostPrice = request.baseCostPrice,
                 expiryWarningDays = request.expiryWarningDays,
+                unitType = request.unitType,
                 isActive = request.isActive,
                 businessId = request.businessId,
                 imageUrls = request.imageUrls,
@@ -689,6 +719,7 @@ class ProductRepositoryImpl(
     private suspend fun reconcileVariantsLocally(
         productId: String,
         businessId: String,
+        branchId: String?,
         variants: List<ProductVariantCreateRequest>,
         now: String
     ) {
@@ -764,7 +795,8 @@ class ProductRepositoryImpl(
                         expiryDate    = it.expiryDate,
                         lowStockAlert = it.lowStockAlert,
                         updatedAt     = now,
-                        syncStatus    = Util.SyncStatus.DIRTY
+                        syncStatus    = Util.SyncStatus.DIRTY,
+                        branchId      = branchId ?: ""
                     )
                 }
             )
@@ -785,6 +817,33 @@ class ProductRepositoryImpl(
         }
     }
 
+    override fun getProductAuditLogs(productId: String): Flow<Resource<List<ProductAuditLogEntity>>> = flow {
+        emit(Resource.Loading())
+
+        // 1. Emit local cache first
+        auditLogDao.observeLogsForProduct(productId).collect { localLogs ->
+            emit(Resource.Success(localLogs))
+
+            // 2. Then try to pull from server if connected
+            if (networkMonitor.isConnected()) {
+                try {
+                    val remoteLogs = postgrest
+                        .from("product_audit_log")
+                        .select {
+                            filter { eq("product_id", productId) }
+                            order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+                            limit(50)
+                        }
+                        .decodeList<ProductAuditLogDto>()
+
+                    auditLogDao.insertAll(remoteLogs.map { it.toEntity() })
+                } catch (e: Exception) {
+                    Log.e("ProductRepo", "Failed to pull audit logs: ${e.message}")
+                    // We don't emit error here because we already emitted local data
+                }
+            }
+        }
+    }.catch { emit(Resource.Error(it.message ?: "Failed to load audit logs")) }
 
 }
 

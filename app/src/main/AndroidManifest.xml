@@ -31,15 +31,45 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ZenithPro">
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.ZenithPro">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Deep link intent filter for email confirmation -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="zenithpro"
+                    android:host="auth"
+                    android:pathPrefix="/confirm" />
+            </intent-filter>
+
+            <!-- Deep link intent filter for ZenithPro website -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="www.zenithpro.name.ng"
+                    android:pathPrefix="/" />
+                <data
+                    android:scheme="https"
+                    android:host="zenithpro.name.ng"
+                    android:pathPrefix="/" />
             </intent-filter>
         </activity>
 

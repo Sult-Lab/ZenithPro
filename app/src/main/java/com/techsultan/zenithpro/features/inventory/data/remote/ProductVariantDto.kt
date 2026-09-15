@@ -11,7 +11,7 @@ data class ProductVariantDto(
     val sku: String,
     @SerialName("sales_price")  val salesPrice: Long,
     @SerialName("cost_price")   val costPrice: Long,
-    val barcode: String?,
+    val barcode: String? = null,
     @SerialName("updated_at")   val updatedAt: String,
     @SerialName("deleted_at")   val deletedAt: String? = null
 )

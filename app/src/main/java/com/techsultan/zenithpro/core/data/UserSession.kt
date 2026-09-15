@@ -27,6 +27,7 @@ data class UserSession(
         get() = role == "ADMIN"
 
     val isManager: Boolean get() = role in listOf("ADMIN", "MANAGER")
+    val isStaff: Boolean get() = role == "STAFF"
     val staffId: String get() = userId
     val hasBranch: Boolean  get() = branchId != null
     val canSelectBranch: Boolean get() = isAdmin || isManager || !hasBranch

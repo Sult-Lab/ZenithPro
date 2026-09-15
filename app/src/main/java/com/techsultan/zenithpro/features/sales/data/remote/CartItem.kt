@@ -5,10 +5,12 @@ data class CartItem(
     val productId: String,
     val productName: String,
     val variantSku: String,
+    val unitType: String = "UNIT",
     val unitPrice: Long,
     val costPrice: Long,
-    var quantity: Int,
+    var quantity: Double,
     var discount: Long = 0L
 ) {
-    val totalPrice: Long get() = (unitPrice - discount) * quantity
+    val totalPrice: Long
+        get() = ((unitPrice - discount) * quantity).toLong()
 }

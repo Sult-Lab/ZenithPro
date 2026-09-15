@@ -29,7 +29,8 @@ class ImageUploadManager(
     private val functions = supabaseClient.functions
 
     companion object {
-        private const val BUCKET = "product_images"
+        private const val PRODUCT_BUCKET = "product_images"
+        private const val BUSINESS_ASSETS_BUCKET = "business_assets"
         private const val MAX_WIDTH = 1024
         private const val MAX_HEIGHT = 1024
         private const val JPEG_QUALITY = 85
@@ -62,6 +63,49 @@ class ImageUploadManager(
             Resource.Success(imageUrl)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "An unknown error occurred")
+        }
+    }
+
+    suspend fun uploadBusinessLogo(
+        uri: Uri,
+        name: String,
+        businessId: String? = null
+    ): String = withContext(Dispatchers.IO) {
+        val bytes = compressLogo(uri)
+        val fileName = if (businessId != null) "logo_${businessId}.jpg" else "logo_${name.replace(" ", "_")}_${UUID.randomUUID()}.jpg"
+        val path = if (businessId != null) "business-logos/$businessId/$fileName" else "business-logos/$fileName"
+
+        storage.from(BUSINESS_ASSETS_BUCKET).upload(
+            path = path,
+            data = UploadData(
+                stream = ByteReadChannel(bytes),
+                size = bytes.size.toLong()
+            ),
+            options = {
+                contentType = ContentType.Image.JPEG
+                upsert = true
+            }
+        )
+
+        storage.from(BUSINESS_ASSETS_BUCKET).publicUrl(path)
+    }
+
+    private fun compressLogo(uri: Uri): ByteArray {
+        val inputStream = context.contentResolver.openInputStream(uri)
+            ?: throw IOException("Cannot open logo URI")
+
+        val bitmap = inputStream.use { BitmapFactory.decodeStream(it) }
+            ?: throw IOException("Failed to decode logo")
+
+        // Logos are square — resize to 512×512
+        val size = 512
+        val scaled = Bitmap.createScaledBitmap(bitmap, size, size, true)
+        if (scaled !== bitmap) bitmap.recycle()
+
+        return ByteArrayOutputStream().use { out ->
+            scaled.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            scaled.recycle()
+            out.toByteArray()
         }
     }
 
@@ -98,7 +142,7 @@ class ImageUploadManager(
         val fileName = "${name}_${UUID.randomUUID()}.jpg"
         val storagePath = "products/$businessId/$fileName"
         Log.d("ImageUploadManager", "Uploading to path: $storagePath (${bytes.size} bytes)")
-        storage.from(BUCKET).upload(
+        storage.from(PRODUCT_BUCKET).upload(
             path = storagePath,
             data = UploadData(
                 stream = ByteReadChannel(bytes),
@@ -111,7 +155,7 @@ class ImageUploadManager(
         )
         Log.d("ImageUploadManager", "Upload successful")
         // Return public URL, not the storage path
-        return storage.from(BUCKET).publicUrl(storagePath)
+        return storage.from(PRODUCT_BUCKET).publicUrl(storagePath)
     }
 
     private fun compressImage(uri: Uri): ByteArray {

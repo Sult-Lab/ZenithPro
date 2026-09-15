@@ -81,7 +81,18 @@ class SettingsViewModel(
         val bId = businessId ?: return
         viewModelScope.launch {
             when (val result = getStaffListUseCase(bId)) {
-                is Resource.Success -> _state.update { it.copy(staffList = result.data ?: emptyList()) }
+                is Resource.Success -> {
+                    val fullList = result.data ?: emptyList()
+                    val session = sessionManager.currentSession
+                    val filteredList = when {
+                        session?.isAdmin == true -> fullList
+                        session?.isManager == true -> {
+                            fullList.filter { it.branchId == session.branchId }
+                        }
+                        else -> emptyList()
+                    }
+                    _state.update { it.copy(staffList = filteredList) }
+                }
                 is Resource.Error   -> _state.update { it.copy(error = result.message) }
                 else -> Unit
             }
@@ -89,6 +100,7 @@ class SettingsViewModel(
     }
 
     fun updateSettings(settings: BusinessSettingsEntity) {
+        if (!isAdmin) return
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true) }
             when (val result = updateSettingsUseCase(settings)) {
@@ -106,6 +118,12 @@ class SettingsViewModel(
     }
 
     fun updateStaffRole(userId: String, newRole: String) {
+        if (!isAdmin) {
+            viewModelScope.launch {
+                _events.emit(SettingsEvent.ShowError("Only admins can change staff roles"))
+            }
+            return
+        }
         val bId = businessId ?: return
         viewModelScope.launch {
             when (val result = updateStaffRoleUseCase(userId, newRole, bId)) {
@@ -121,6 +139,12 @@ class SettingsViewModel(
     }
 
     fun updateStaffStatus(userId: String, status: String) {
+        if (!isAdmin) {
+            viewModelScope.launch {
+                _events.emit(SettingsEvent.ShowError("Only admins can deactivate staff"))
+            }
+            return
+        }
         viewModelScope.launch {
             settingsRepository.updateUserStatus(userId, status)
             loadStaff()

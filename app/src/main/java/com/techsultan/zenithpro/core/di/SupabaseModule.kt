@@ -42,9 +42,9 @@ val supabaseModule = module {
 
             httpConfig {
                 install(HttpTimeout) {
-                    requestTimeoutMillis = 30000 // 30 seconds
-                    connectTimeoutMillis = 30000
-                    socketTimeoutMillis = 30000
+                    requestTimeoutMillis = 60000 // 60 seconds
+                    connectTimeoutMillis = 60000
+                    socketTimeoutMillis = 60000
                 }
             }
         }
