@@ -2,15 +2,12 @@ package com.techsultan.zenithpro.core.components
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -54,18 +50,18 @@ fun OtpTextField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         decorationBox = {
             Row(
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxSize()
-                   // .height(50.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 repeat(otpCount) { index ->
                     CharView(
                         index = index,
-                        text = otpText
+                        text = otpText,
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(max = 46.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                 }
             }
         }
@@ -77,6 +73,7 @@ fun OtpTextField(
 private fun CharView(
     index: Int,
     text: String,
+    modifier: Modifier = Modifier
 ) {
     val isFocused = text.length == index
     val char = when {
@@ -84,31 +81,35 @@ private fun CharView(
         index > text.length -> ""
         else -> text[index].toString()
     }
-    Text(
-        modifier = Modifier
-            .size(50.dp)
+    Box(
+        modifier = modifier
+            .height(50.dp)
             .border(
                 1.dp, when {
                     isFocused -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }, RoundedCornerShape(8.dp)
-            )
-            .padding(top = 16.dp),
-        text = char,
-        style = MaterialTheme.typography.bodyLarge,
-        color = if (isFocused) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        textAlign = TextAlign.Center
-    )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = char,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            textAlign = TextAlign.Center
+        )
+    }
 }
 
 @Composable
 private fun MaskCharView(
     index: Int,
     text: String,
+    modifier: Modifier = Modifier,
     maskChar: Char = '*'
 ) {
     val isFocused = text.length == index
@@ -117,25 +118,28 @@ private fun MaskCharView(
         index > text.length -> ""
         else -> maskChar.toString()
     }
-    Text(
-        modifier = Modifier
-            .size(50.dp)
+    Box(
+        modifier = modifier
+            .height(50.dp)
             .border(
                 1.dp, when {
                     isFocused -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }, RoundedCornerShape(8.dp)
-            )
-            .padding(top = 16.dp),
-        text = char,
-        style = MaterialTheme.typography.bodyLarge,
-        color = if (isFocused) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        },
-        textAlign = TextAlign.Center
-    )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = char,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isFocused) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            textAlign = TextAlign.Center
+        )
+    }
 }
 
 @Composable
@@ -164,19 +168,19 @@ fun MaskOtpTextField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
         decorationBox = {
             Row(
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxSize()
-                // .height(50.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 repeat(otpCount) { index ->
                     MaskCharView(
                         index = index,
                         text = otpText,
+                        modifier = Modifier
+                            .weight(1f)
+                            .widthIn(max = 46.dp),
                         maskChar = '*'
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                 }
             }
         }

@@ -73,34 +73,34 @@ fun ZenithNavigationDrawer(
                         )
                     }
 
-                    if (session?.isManager == true) {
-                        NavigationDrawerItem(
-                            label = { Text("Production") },
-                            selected = false,
-                            onClick = onProductionClick,
-                            icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-
-                        NavigationDrawerItem(
-                            label = { Text("Material") },
-                            selected = false,
-                            onClick = onMaterialClick,
-                            icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
-                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                        )
-                    }
+//                    if (session?.isManager == true) {
+//                        NavigationDrawerItem(
+//                            label = { Text("Production") },
+//                            selected = false,
+//                            onClick = onProductionClick,
+//                            icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
+//                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//                        )
+//
+//                        NavigationDrawerItem(
+//                            label = { Text("Material") },
+//                            selected = false,
+//                            onClick = onMaterialClick,
+//                            icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+//                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//                        )
+//                    }
                     
                     Spacer(modifier = Modifier.weight(1f))
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    NavigationDrawerItem(
-                        label = { Text("Help & Support") },
-                        selected = false,
-                        onClick = { /* TODO */ },
-                        icon = { Icon(Icons.Default.Help, contentDescription = null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
+//                    NavigationDrawerItem(
+//                        label = { Text("Help & Support") },
+//                        selected = false,
+//                        onClick = { /* TODO */ },
+//                        icon = { Icon(Icons.Default.Help, contentDescription = null) },
+//                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//                    )
                     NavigationDrawerItem(
                         label = { Text("Logout") },
                         selected = false,

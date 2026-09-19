@@ -119,7 +119,22 @@ fun SignUpScreen(
 
     LaunchedEffect(key1 = state.registrationComplete) {
         if (state.registrationComplete) {
-            state.email?.let { onCreateAccountSuccess(it) }
+            state.email?.let { successEmail ->
+                onCreateAccountSuccess(successEmail)
+                // Reset fields
+                businessName = ""
+                businessPhone = ""
+                businessAddress = ""
+                businessLogoUri = null
+                adminFirstName = ""
+                adminLastName = ""
+                email = ""
+                password = ""
+                confirmPassword = ""
+                passwordVisible = false
+                confirmPasswordVisible = false
+                viewModel.resetSignUpState()
+            }
         }
     }
 

@@ -212,7 +212,7 @@ fun ChangePasswordScreen(
 
                     com.techsultan.zenithpro.core.components.OtpTextField(
                         otpText = state.otpCode,
-                        otpCount = 8,
+                        otpCount = 4,
                         onOtpTextChange = { text, isComplete ->
                             viewModel.onOtpChanged(text)
                             if (isComplete) {

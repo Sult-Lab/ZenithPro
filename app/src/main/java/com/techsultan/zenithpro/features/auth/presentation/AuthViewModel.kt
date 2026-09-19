@@ -111,6 +111,10 @@ class AuthViewModel(
         logoutUseCase().launchIn(viewModelScope)
     }
 
+    fun resetSignUpState() {
+        _signUpState.value = AuthState()
+    }
+
     fun isUserLoggedIn(): Boolean {
         return isUserLoggedInUseCase()
     }

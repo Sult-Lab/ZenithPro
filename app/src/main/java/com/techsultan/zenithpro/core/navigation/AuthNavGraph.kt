@@ -90,9 +90,7 @@ fun AuthGraph(
                     email = route.email,
                     onNavigateToLogin = {
                         authBackStack.remove(route)
-                        if (Route.Auth.SignIn !in authBackStack) {
-                            authBackStack.add(Route.Auth.SignIn)
-                        }
+                        authBackStack.add(Route.Auth.SignIn)
                     }
                 )
             }
