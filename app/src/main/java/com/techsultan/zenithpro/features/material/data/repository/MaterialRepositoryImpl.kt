@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.material.data.repository
 
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.material.data.local.MaterialDao
@@ -32,18 +33,18 @@ class MaterialRepositoryImpl(
     override fun getMaterials(businessId: String, status: String?) =
         materialDao.getMaterials(businessId, status)
             .map<List<MaterialEntity>, Resource<List<MaterialEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
             .onStart { emit(Resource.Loading()) }
 
     override fun getLowStockMaterials(businessId: String) =
         materialDao.getLowStockMaterials(businessId)
             .map<List<MaterialEntity>, Resource<List<MaterialEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
 
     override fun getRecipeForVariant(variantId: String) =
         materialDao.getRecipeForVariant(variantId)
             .map<List<RecipeWithMaterial>, Resource<List<RecipeWithMaterial>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
 
     override suspend fun upsertMaterial(
         request: UpsertMaterialRequest,
@@ -79,7 +80,7 @@ class MaterialRepositoryImpl(
             }
             Resource.Success(entity)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to save material")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save material"))
         }
     }
 
@@ -88,7 +89,7 @@ class MaterialRepositoryImpl(
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             val existing = materialDao.getMaterialById(materialId)
-                ?: return@withContext Resource.Error("Material not found")
+                ?: return@withContext Resource.Error(ErrorSanitizer.clean("Material not found"))
             val updated = existing.copy(
                 status     = status,
                 updatedAt  = Instant.now().toString(),
@@ -104,7 +105,7 @@ class MaterialRepositoryImpl(
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed"))
         }
     }
 
@@ -114,7 +115,7 @@ class MaterialRepositoryImpl(
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             val existing = materialDao.getMaterialById(materialId)
-                ?: return@withContext Resource.Error("Material not found")
+                ?: return@withContext Resource.Error(ErrorSanitizer.clean("Material not found"))
 
             val newQuantity = existing.quantity + quantity
             val newStatus = when {
@@ -152,7 +153,7 @@ class MaterialRepositoryImpl(
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to adjust stock")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to adjust stock"))
         }
     }
 
@@ -198,7 +199,7 @@ class MaterialRepositoryImpl(
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to save recipe")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save recipe"))
         }
     }
 
@@ -215,7 +216,7 @@ class MaterialRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed"))
             }
         }
 
@@ -241,7 +242,7 @@ class MaterialRepositoryImpl(
 
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 }

@@ -64,6 +64,9 @@ import org.koin.androidx.compose.koinViewModel
 import com.techsultan.zenithpro.core.navigation.Route
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import com.techsultan.zenithpro.core.util.Util.emailRegex
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -80,6 +83,8 @@ fun ChangePasswordScreen(
     val snackbarHost  = remember { SnackbarHostState() }
     var showPassword  by remember { mutableStateOf(false) }
     var showConfirm   by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
 
     LaunchedEffect(mode, initialEmail) {
         viewModel.init(mode, initialEmail)
@@ -212,7 +217,7 @@ fun ChangePasswordScreen(
 
                     com.techsultan.zenithpro.core.components.OtpTextField(
                         otpText = state.otpCode,
-                        otpCount = 4,
+                        otpCount = 6,
                         onOtpTextChange = { text, isComplete ->
                             viewModel.onOtpChanged(text)
                             if (isComplete) {
@@ -373,7 +378,16 @@ fun ChangePasswordScreen(
             Spacer(Modifier.height(8.dp))
 
             Button(
-                onClick  = viewModel::submit,
+                onClick  = {
+                    if (mode == Route.PasswordChangeMode.FORGOT && !state.isOtpSent) {
+                        val trimmedEmail = state.email.trim()
+                        if (!emailRegex.matches(trimmedEmail)) {
+                            Toast.makeText(context, "Invalid email address", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+                    }
+                    viewModel.submit()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

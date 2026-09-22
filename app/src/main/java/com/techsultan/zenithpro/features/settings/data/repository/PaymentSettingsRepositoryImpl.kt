@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.settings.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.TerminalDao
 import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
@@ -26,7 +27,7 @@ class PaymentSettingsRepositoryImpl(
     override fun getTerminals(businessId: String) =
         terminalDao.getTerminals(businessId)
             .map<List<TerminalEntity>, Resource<List<TerminalEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
             .onStart { emit(Resource.Loading()) }
 
     override suspend fun updateSweepAccount(
@@ -50,7 +51,7 @@ class PaymentSettingsRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("PaymentSettingsRepo", "Failed to update bank account", e)
-            Resource.Error(e.message ?: "Failed to update bank account")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update bank account"))
         }
     }
 
@@ -66,7 +67,7 @@ class PaymentSettingsRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("PaymentSettingsRepo", "Pull from server failed", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 }

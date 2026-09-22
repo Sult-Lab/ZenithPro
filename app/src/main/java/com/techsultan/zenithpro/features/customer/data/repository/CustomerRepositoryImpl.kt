@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.customer.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.customer.data.local.CustomerDao
@@ -37,23 +38,23 @@ class CustomerRepositoryImpl(
     override fun getCustomers(businessId: String) =
         customerDao.getAllCustomers(businessId)
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load customers")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load customers"))) }
             .onStart { emit(Resource.Loading()) }
 
     override fun searchCustomers(businessId: String, query: String) =
         customerDao.searchCustomers(businessId, query)
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Search failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Search failed"))) }
 
     override fun observeCustomer(customerId: String) =
         customerDao.observeCustomer(customerId)
             .map<CustomerEntity?, Resource<CustomerEntity?>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed to observe customer")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to observe customer"))) }
 
     override fun getCustomersWithDebt(businessId: String) =
         customerDao.getCustomersWithDebt(businessId)
             .map<List<CustomerEntity>, Resource<List<CustomerEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load debtors")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load debtors"))) }
 
 
     override suspend fun upsertCustomer(
@@ -97,7 +98,7 @@ class CustomerRepositoryImpl(
             Resource.Success(entity)
         } catch (e: Exception) {
             Log.e("CustomerRepo", "upsertCustomer: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to save customer")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save customer"))
         }
     }
 
@@ -116,7 +117,7 @@ class CustomerRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to delete customer")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to delete customer"))
             }
         }
 
@@ -125,21 +126,21 @@ class CustomerRepositoryImpl(
         businessId: String, limit: Int
     ): Resource<List<CustomerEntity>> = withContext(Dispatchers.IO) {
         try { Resource.Success(customerDao.getTopSpenders(businessId, limit)) }
-        catch (e: Exception) { Resource.Error(e.message ?: "Failed") }
+        catch (e: Exception) { Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed")) }
     }
 
     override suspend fun getMostLoyal(
         businessId: String, limit: Int
     ): Resource<List<CustomerEntity>> = withContext(Dispatchers.IO) {
         try { Resource.Success(customerDao.getMostLoyal(businessId, limit)) }
-        catch (e: Exception) { Resource.Error(e.message ?: "Failed") }
+        catch (e: Exception) { Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed")) }
     }
 
     override suspend fun getCustomerStats(
         businessId: String
     ): Resource<CustomerStats> = withContext(Dispatchers.IO) {
         try { Resource.Success(customerDao.getCustomerStats(businessId)) }
-        catch (e: Exception) { Resource.Error(e.message ?: "Failed") }
+        catch (e: Exception) { Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed")) }
     }
 
 
@@ -152,7 +153,7 @@ class CustomerRepositoryImpl(
             val sales = saleDao.getSalesByCustomer(customerId)
             Resource.Success(sales)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load transactions")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load transactions"))
         }
     }
 
@@ -160,7 +161,7 @@ class CustomerRepositoryImpl(
         withContext(Dispatchers.IO) {
             if (businessId.isBlank()) {
                 Log.e("CustomerRepo", "pullFromServer: businessId is blank")
-                return@withContext Resource.Error("Business ID is missing")
+                return@withContext Resource.Error(ErrorSanitizer.clean("Business ID is missing"))
             }
             try {
                 val remote = postgrest
@@ -194,7 +195,7 @@ class CustomerRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("CustomerRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 

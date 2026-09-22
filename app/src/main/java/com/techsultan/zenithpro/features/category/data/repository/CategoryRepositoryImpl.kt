@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.category.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.category.data.local.CategoryDao
@@ -29,7 +30,7 @@ class CategoryRepositoryImpl(
     override fun getCategories(businessId: String) =
         categoryDao.getCategories(businessId)
             .map<List<CategoryEntity>, Resource<List<CategoryEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
             .onStart { emit(Resource.Loading()) }
 
     override fun searchCategories(businessId: String, query: String) =
@@ -68,9 +69,9 @@ class CategoryRepositoryImpl(
         } catch (e: Exception) {
             if (e.message?.contains("unique") == true ||
                 e.message?.contains("duplicate") == true) {
-                Resource.Error("A category with this name already exists")
+                Resource.Error(ErrorSanitizer.clean("A category with this name already exists"))
             } else {
-                Resource.Error(e.message ?: "Failed to save category")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save category"))
             }
         }
     }
@@ -84,7 +85,7 @@ class CategoryRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to delete category")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to delete category"))
             }
         }
 
@@ -112,7 +113,7 @@ class CategoryRepositoryImpl(
 
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 

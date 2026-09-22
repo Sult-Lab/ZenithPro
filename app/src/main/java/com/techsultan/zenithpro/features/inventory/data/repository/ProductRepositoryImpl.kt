@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.net.toUri
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.ImageCacheManager
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
@@ -65,7 +66,7 @@ class ProductRepositoryImpl(
             .map<List<ProductWithVariants>, Resource<List<ProductWithVariants>>> {
                 Resource.Success(it)
             }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load products")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load products"))) }
             .onStart { emit(Resource.Loading()) }
 
     override fun getProduct(productId: String): Flow<Resource<ProductWithVariants>> = flow {
@@ -75,10 +76,10 @@ class ProductRepositoryImpl(
             if (product != null) {
                 emit(Resource.Success(product))
             } else {
-                emit(Resource.Error("Product not found"))
+                emit(Resource.Error(ErrorSanitizer.clean("Product not found")))
             }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "Failed to load product"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load product")))
         }
     }
 
@@ -93,7 +94,7 @@ class ProductRepositoryImpl(
                     emit(Resource.Success(products))
                 }
         } catch (e: Exception) {
-            emit(Resource.Error(e.message ?: "Failed to load products"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load products")))
         }
     }
 
@@ -197,7 +198,7 @@ class ProductRepositoryImpl(
 
         } catch (e: Exception) {
             Log.e("ProductRepo", "addProduct error: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to add product")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to add product"))
         }
     }
 
@@ -302,7 +303,7 @@ class ProductRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("ProductRepo", "updateProduct error: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to update product")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update product"))
         }
     }
 
@@ -390,7 +391,7 @@ class ProductRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ProductRepo", "deleteProduct error: ${e.message}", e)
-                Resource.Error(e.message ?: "Delete failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Delete failed"))
             }
         }
 
@@ -414,7 +415,7 @@ class ProductRepositoryImpl(
             
             if (businessId.isBlank()) {
                 Log.e("ProductRepo", "pullFromServer: businessId is blank")
-                return@withContext Resource.Error("Business ID is missing")
+                return@withContext Resource.Error(ErrorSanitizer.clean("Business ID is missing"))
             }
 
             try {
@@ -533,7 +534,7 @@ class ProductRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ProductRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 
@@ -541,7 +542,7 @@ class ProductRepositoryImpl(
         withContext(Dispatchers.IO) {
             try {
                 val productWithVariants = productDao.getProductWithVariants(productId)
-                    ?: return@withContext Resource.Error("Product not found: $productId")
+                    ?: return@withContext Resource.Error(ErrorSanitizer.clean("Product not found: $productId"))
 
                 val entity = productWithVariants.product
 
@@ -614,7 +615,7 @@ class ProductRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ProductRepo", "pushPendingProduct failed for $productId: ${e.message}", e)
-                Resource.Error(e.message ?: "Sync failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Sync failed"))
             }
         }
 
@@ -625,7 +626,7 @@ class ProductRepositoryImpl(
         try {
             val now      = Instant.now().toString()
             val existing = productDao.getProductById(request.clientId)
-                ?: return@withContext Resource.Error("Product not found")
+                ?: return@withContext Resource.Error(ErrorSanitizer.clean("Product not found"))
 
             // Upload new images and combine with kept existing URLs
             val uploadedUrls: List<String> = if (newImageUris.isNotEmpty()) {
@@ -672,7 +673,7 @@ class ProductRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("ProductRepo", "updateProduct: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to update product")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update product"))
         }
     }
 
@@ -843,7 +844,7 @@ class ProductRepositoryImpl(
                 }
             }
         }
-    }.catch { emit(Resource.Error(it.message ?: "Failed to load audit logs")) }
+    }.catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load audit logs"))) }
 
 }
 

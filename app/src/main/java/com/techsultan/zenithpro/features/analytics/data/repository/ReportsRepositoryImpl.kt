@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.analytics.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.analytics.data.ReportPeriod
 import com.techsultan.zenithpro.features.analytics.data.remote.ReportsData
@@ -114,7 +115,7 @@ class ReportsRepositoryImpl(
             )
         } catch (e: Exception) {
             Log.e("ReportsRepo", "getReportData error: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to load reports")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load reports"))
         }
     }
 
@@ -148,7 +149,7 @@ class ReportsRepositoryImpl(
                 customerRepository.pullFromServer(businessId)
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Sync failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Sync failed"))
             }
         }
 }

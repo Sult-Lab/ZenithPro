@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.dashboard.data.repository
 
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
@@ -33,7 +34,7 @@ class DashboardRepositoryImpl(
                 .toString()
             Resource.Success(saleDao.getTodaySummary(businessId, startOfDay, branchId))
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load summary")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load summary"))
         }
     }
 
@@ -54,7 +55,7 @@ class DashboardRepositoryImpl(
             val filled = fillMissingDays(data, days)
             Resource.Success(filled)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load chart data")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load chart data"))
         }
     }
 
@@ -65,7 +66,7 @@ class DashboardRepositoryImpl(
         try {
             Resource.Success(saleDao.getPendingDebts(businessId, branchId))
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load debts")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load debts"))
         }
     }
 
@@ -78,7 +79,7 @@ class DashboardRepositoryImpl(
                 branchRepository.pullFromServer(businessId)
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Sync failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Sync failed"))
             }
         }
 
