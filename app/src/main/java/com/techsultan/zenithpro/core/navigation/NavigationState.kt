@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.core.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSerializable
@@ -50,7 +51,9 @@ fun rememberNavigationState(
 
     val backStacks: Map<Route, NavBackStack<NavKey>> =
         topLevelDestinations.associateWith { route ->
-            rememberNavBackStack(route)
+            key(route) {
+                rememberNavBackStack(route)
+            }
         }
 
     return remember(startRoute, topLevelDestinations) {
@@ -67,17 +70,19 @@ fun NavigationState.toEntries(
     entryProvider: (NavKey) -> NavEntry<NavKey>
 ) : SnapshotStateList<NavEntry<NavKey>> {
 
-    val decoratedEntries = backStacks.mapValues { (_, stack) ->
-        val decorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
-            rememberViewModelStoreNavEntryDecorator()
-        )
+    val decoratedEntries = backStacks.mapValues { (route, stack) ->
+        key(route) {
+            val decorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+                rememberViewModelStoreNavEntryDecorator()
+            )
 
-        rememberDecoratedNavEntries(
-            backStack = stack,
-            entryProvider = entryProvider,
-            entryDecorators = decorators
-        )
+            rememberDecoratedNavEntries(
+                backStack = stack,
+                entryProvider = entryProvider,
+                entryDecorators = decorators
+            )
+        }
     }
 
     return stacksInUse
