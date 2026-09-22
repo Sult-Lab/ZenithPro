@@ -84,7 +84,13 @@ fun MainNavGraph(
         startRoute = Route.Home.Dashboard,
         topLevelDestinations = topLevelDestinations
     )
-    val navigator = remember { Navigator(navigationState) }
+
+    LaunchedEffect(topLevelDestinations) {
+        if (navigationState.topLevelRoute !in topLevelDestinations) {
+            navigationState.topLevelRoute = Route.Home.Dashboard
+        }
+    }
+    val navigator = remember(navigationState) { Navigator(navigationState) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }

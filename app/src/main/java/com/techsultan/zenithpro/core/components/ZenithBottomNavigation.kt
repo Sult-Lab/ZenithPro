@@ -24,7 +24,7 @@ fun ZenithBottomNavigation(
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
         TOP_LEVEL_DESTINATIONS.forEach { (topLevelDestination, data) ->
-            if (isStaff && topLevelDestination is Route.Home.Reports) return@forEach
+            if (isStaff && topLevelDestination == Route.Home.Reports) return@forEach
 
             NavigationBarItem(
                 icon = { Icon(imageVector = data.selectedIcon, contentDescription = data.title) },
