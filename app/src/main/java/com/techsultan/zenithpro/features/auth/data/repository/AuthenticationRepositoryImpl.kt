@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import com.techsultan.zenithpro.core.database.ZenithDatabase
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.remote.CreateStaffRequest
@@ -52,7 +53,7 @@ class AuthenticationRepositoryImpl(
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
             Log.e("AuthenticationRepositoryImpl", "signUp: ${e.message}")
-            emit(Resource.Error(e.localizedMessage ?: "An error occurred during sign up"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.localizedMessage ?: "An error occurred during sign up")))
         }
     }
 
@@ -74,15 +75,15 @@ class AuthenticationRepositoryImpl(
                     },
                     onFailure = { e ->
                         Log.e("AuthenticationRepositoryImpl", "login: ${e.message}")
-                        emit(Resource.Error(e.localizedMessage ?: "Failed to load session"))
+                        emit(Resource.Error(ErrorSanitizer.clean(e.localizedMessage ?: "Failed to load session")))
                     }
                 )
             } else {
-                emit(Resource.Error("No session found after login"))
+                emit(Resource.Error(ErrorSanitizer.clean("No session found after login")))
             }
         } catch (e: Exception) {
             Log.e("AuthenticationRepositoryImpl", "login: ${e.localizedMessage}")
-            emit(Resource.Error(e.localizedMessage ?: "Login failed"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.localizedMessage ?: "Login failed")))
         }
     }
 
@@ -98,7 +99,7 @@ class AuthenticationRepositoryImpl(
 
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
-            emit(Resource.Error(e.localizedMessage ?: "Logout failed"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.localizedMessage ?: "Logout failed")))
         }
     }.flowOn(Dispatchers.IO)
 
@@ -111,7 +112,7 @@ class AuthenticationRepositoryImpl(
             )
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
-            emit(Resource.Error(e.localizedMessage ?: "Verification failed"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.localizedMessage ?: "Verification failed")))
         }
     }
 

@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.settings.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsDao
 import com.techsultan.zenithpro.features.settings.data.local.BusinessSettingsEntity
@@ -52,7 +53,7 @@ class SettingsRepositoryImpl(
             Log.d("SettingsRepository", "Settings updated successfully")
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to save settings")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save settings"))
         }
     }
 
@@ -66,7 +67,7 @@ class SettingsRepositoryImpl(
                 }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update role")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update role"))
         }
     }
 
@@ -80,7 +81,7 @@ class SettingsRepositoryImpl(
                 }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update status")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update status"))
         }
     }
 
@@ -100,7 +101,7 @@ class SettingsRepositoryImpl(
                 Resource.Success(staff)
             } catch (e: Exception) {
                 Log.e("SettingsRepo", "getStaffList error: ${e.message}", e)
-                Resource.Error(e.message ?: "Failed to load staff")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load staff"))
             }
         }
 
@@ -139,7 +140,7 @@ class SettingsRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("SettingsRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 
@@ -156,13 +157,15 @@ class SettingsRepositoryImpl(
         } catch (e: Exception) {
             Log.e("SettingsRepo", "createStaff: ${e.message}", e)
             Resource.Error(
-                when {
-                    e.message?.contains("already exists") == true ->
-                        "A user with this email already exists"
-                    e.message?.contains("Managers cannot") == true ->
-                        "Managers cannot create admin accounts"
-                    else -> e.message ?: "Failed to create staff"
-                }
+                ErrorSanitizer.clean(
+                    when {
+                        e.message?.contains("already exists") == true ->
+                            "A user with this email already exists"
+                        e.message?.contains("Managers cannot") == true ->
+                            "Managers cannot create admin accounts"
+                        else -> e.message ?: "Failed to create staff"
+                    }
+                )
             )
         }
     }
@@ -177,7 +180,7 @@ class SettingsRepositoryImpl(
                 }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to update branch")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update branch"))
         }
     }
 
@@ -190,7 +193,7 @@ class SettingsRepositoryImpl(
                     }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to remove staff")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to remove staff"))
             }
         }
 
@@ -206,13 +209,15 @@ class SettingsRepositoryImpl(
         } catch (e: Exception) {
             Log.e("SettingsRepo", "editStaff: ${e.message}", e)
             Resource.Error(
-                when {
-                    e.message?.contains("admin role") == true ->
-                        "Managers cannot assign admin role"
-                    e.message?.contains("another business") == true ->
-                        "Cannot edit staff from another business"
-                    else -> e.message ?: "Failed to update staff"
-                }
+                ErrorSanitizer.clean(
+                    when {
+                        e.message?.contains("admin role") == true ->
+                            "Managers cannot assign admin role"
+                        e.message?.contains("another business") == true ->
+                            "Cannot edit staff from another business"
+                        else -> e.message ?: "Failed to update staff"
+                    }
+                )
             )
         }
     }

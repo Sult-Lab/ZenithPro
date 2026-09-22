@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.sales.data.repository
 
 import android.util.Log
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.sales.data.remote.FetchNombaTransactionsResponse
 import com.techsultan.zenithpro.features.sales.data.remote.NombaTransactionDto
@@ -45,7 +46,7 @@ class NombaRepositoryImpl(
                 .firstOrNull()
 
             val terminalId = terminal?.get("id") ?: run {
-                emit(Resource.Error("No active terminal found"))
+                emit(Resource.Error(ErrorSanitizer.clean("No active terminal found")))
                 return@flow
             }
 
@@ -82,7 +83,7 @@ class NombaRepositoryImpl(
 
                 emit(Resource.Success(rows.map { it.toDomain() }))
             } catch (_: Exception) {
-                emit(Resource.Error(e.message ?: "Failed to load transfers"))
+                emit(Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load transfers")))
             }
         }
     }
@@ -164,7 +165,7 @@ class NombaRepositoryImpl(
             emit(Resource.Success(summary))
         } catch (e: Exception) {
             Log.e("NombaRepo", "getNombaSummary failed: ${e.message}", e)
-            emit(Resource.Error(e.message ?: "Failed to load summary"))
+            emit(Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load summary")))
         }
     }
 
@@ -178,7 +179,7 @@ class NombaRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("NombaRepo", "confirmTransfer failed: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to confirm transfer")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to confirm transfer"))
         }
     }
 

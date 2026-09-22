@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.settings.data.repository
 import android.net.Uri
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.ImageUploadManager
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.settings.data.remote.UpdateBusinessRequest
@@ -48,7 +49,7 @@ class BusinessRepositoryImpl(
             Resource.Success(result)
         } catch (e: Exception) {
             Log.e("BusinessRepo", "updateBusiness: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to update business")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update business"))
         }
     }
 }

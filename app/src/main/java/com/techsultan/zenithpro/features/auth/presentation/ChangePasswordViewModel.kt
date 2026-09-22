@@ -7,6 +7,7 @@ import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.util.AnalyticsHelper
 import androidx.core.os.bundleOf
 import com.techsultan.zenithpro.core.navigation.Route
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.functions.Functions
@@ -83,7 +84,7 @@ class ChangePasswordViewModel(
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "forgotPassword: ${e.message}", e)
                 analytics.logError(e, "ChangePasswordViewModel.submitForgotPassword")
-                _state.update { it.copy(isLoading = false, error = e.message) }
+                _state.update { it.copy(isLoading = false, error = ErrorSanitizer.clean(e.message)) }
             }
         }
     }
@@ -105,7 +106,7 @@ class ChangePasswordViewModel(
                 _state.update { it.copy(isLoading = false, isOtpVerified = true) }
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "verifyOtpCode: ${e.message}", e)
-                _state.update { it.copy(isLoading = false, error = e.message ?: "Invalid code") }
+                _state.update { it.copy(isLoading = false, error = ErrorSanitizer.clean(e.message ?: "Invalid code")) }
             }
         }
     }
@@ -161,7 +162,7 @@ class ChangePasswordViewModel(
             } catch (e: Exception) {
                 Log.e("ChangePasswordVM", "submit: ${e.message}", e)
                 analytics.logError(e, "ChangePasswordViewModel.submitChangePassword")
-                _state.update { it.copy(isLoading = false, error = e.message) }
+                _state.update { it.copy(isLoading = false, error = ErrorSanitizer.clean(e.message)) }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.expenses.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.expenses.data.local.CategoryBreakdown
@@ -46,7 +47,7 @@ class ExpenseRepositoryImpl(
             maxAmount  = filter.maxAmount
         )
             .map<List<ExpenseEntity>, Resource<List<ExpenseEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load expenses")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load expenses"))) }
             .onStart { emit(Resource.Loading()) }
 
     override suspend fun upsertExpense(
@@ -86,7 +87,7 @@ class ExpenseRepositoryImpl(
             Resource.Success(entity)
         } catch (e: Exception) {
             Log.e("ExpenseRepo", "upsertExpense: ${e.message}", e)
-            Resource.Error(e.message ?: "Failed to save expense")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save expense"))
         }
     }
 
@@ -99,7 +100,7 @@ class ExpenseRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to delete expense")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to delete expense"))
             }
         }
 
@@ -121,7 +122,7 @@ class ExpenseRepositoryImpl(
                 )
             )
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load summary")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load summary"))
         }
     }
 
@@ -138,7 +139,7 @@ class ExpenseRepositoryImpl(
                 )
             )
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to load breakdown")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load breakdown"))
         }
     }
 
@@ -146,7 +147,7 @@ class ExpenseRepositoryImpl(
         withContext(Dispatchers.IO) {
             if (businessId.isBlank()) {
                 Log.e("ExpenseRepo", "pullFromServer: businessId is blank")
-                return@withContext Resource.Error("Business ID is missing")
+                return@withContext Resource.Error(ErrorSanitizer.clean("Business ID is missing"))
             }
             try {
                 val remote = postgrest
@@ -182,7 +183,7 @@ class ExpenseRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ExpenseRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 

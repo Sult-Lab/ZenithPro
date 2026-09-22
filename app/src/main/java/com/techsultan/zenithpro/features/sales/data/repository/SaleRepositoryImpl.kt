@@ -5,6 +5,7 @@ import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.AnalyticsHelper
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
@@ -63,7 +64,7 @@ class SaleRepositoryImpl(
                 Log.d("SaleRepo", "GetSales: returned ${it.size} items for businessId=$businessId")
                 Resource.Success(it)
             }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load sales")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load sales"))) }
             .onStart {
                 Log.d("SaleRepo", "getSales: starting for businessId=$businessId")
                 emit(Resource.Loading())
@@ -82,7 +83,7 @@ class SaleRepositoryImpl(
                 Log.d("SaleRepo", "getSalesFiltered: returned ${it.size} items for businessId=$businessId, filter=$filter")
                 Resource.Success(it)
             }
-            .catch { emit(Resource.Error(it.message ?: "Failed to load sales")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed to load sales"))) }
             .onStart {
                 Log.d("SaleRepo", "getSalesFiltered: starting for businessId=$businessId, filter=$filter")
                 emit(Resource.Loading())
@@ -104,7 +105,7 @@ class SaleRepositoryImpl(
                 val branchCount = branchDao.getActiveBranchCount(businessId)
                 if (branchCount > 0) {
                     return@withContext Resource.Error(
-                        "A branch must be selected for this sale"
+                        ErrorSanitizer.clean("A branch must be selected for this sale")
                     )
                 }
             }
@@ -205,7 +206,7 @@ class SaleRepositoryImpl(
                 "payment_method" to request.paymentMethod,
                 "branch_id" to (request.branchId ?: "unknown")
             ))
-            Resource.Error(e.message ?: "Sale failed")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Sale failed"))
         }
     }
 
@@ -314,7 +315,7 @@ class SaleRepositoryImpl(
         } catch (e: Exception) {
             Log.e("SaleRepo", "recordDebtPayment failed: ${e.message}", e)
             analytics.logError(e, "SaleRepositoryImpl.recordDebtPayment")
-            Resource.Error(e.message ?: "Payment failed")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Payment failed"))
         }
     }
 
@@ -386,7 +387,7 @@ class SaleRepositoryImpl(
             Resource.Success(Unit)
         } catch (e: Exception) {
             Log.e("SaleRepo", "pullSalesFromServer error: ${e.message}", e)
-            Resource.Error(e.message ?: "Pull failed")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
         }
     }
 
@@ -399,7 +400,7 @@ class SaleRepositoryImpl(
                     .toString()
                 Resource.Success(saleDao.getDailySummary(businessId, startOfDay))
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to load summary")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load summary"))
             }
         }
 

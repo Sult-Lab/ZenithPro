@@ -3,6 +3,7 @@ package com.techsultan.zenithpro.features.branch.data.repository
 import android.util.Log
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.branch.data.local.BranchDao
@@ -31,7 +32,7 @@ class BranchRepositoryImpl(
     override fun getBranches(businessId: String) =
         branchDao.getBranches(businessId)
             .map<List<BranchEntity>, Resource<List<BranchEntity>>> { Resource.Success(it) }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
             .onStart { emit(Resource.Loading()) }
 
     override suspend fun upsertBranch(
@@ -58,7 +59,7 @@ class BranchRepositoryImpl(
             }
             Resource.Success(entity)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to save branch")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to save branch"))
         }
     }
 
@@ -67,7 +68,7 @@ class BranchRepositoryImpl(
     ): Resource<Unit> = withContext(Dispatchers.IO) {
         try {
             val existing = branchDao.getBranchById(branchId)
-                ?: return@withContext Resource.Error("Branch not found")
+                ?: return@withContext Resource.Error(ErrorSanitizer.clean("Branch not found"))
             val updated = existing.copy(
                 isActive   = isActive,
                 updatedAt  = Instant.now().toString(),
@@ -79,7 +80,7 @@ class BranchRepositoryImpl(
             }
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed"))
         }
     }
 
@@ -93,7 +94,7 @@ class BranchRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed to delete branch")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to delete branch"))
             }
         }
 
@@ -137,7 +138,7 @@ class BranchRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("BranchRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 

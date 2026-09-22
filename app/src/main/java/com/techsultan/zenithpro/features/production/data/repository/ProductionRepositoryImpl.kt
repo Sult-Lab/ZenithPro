@@ -2,6 +2,7 @@ package com.techsultan.zenithpro.features.production.data.repository
 
 import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
+import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderDao
@@ -32,7 +33,7 @@ class ProductionRepositoryImpl(
             .map<List<ProductionOrderEntity>, Resource<List<ProductionOrderEntity>>> {
                 Resource.Success(it)
             }
-            .catch { emit(Resource.Error(it.message ?: "Failed")) }
+            .catch { emit(Resource.Error(ErrorSanitizer.clean(it.message ?: "Failed"))) }
             .onStart { emit(Resource.Loading()) }
 
     override suspend fun createOrder(
@@ -56,7 +57,7 @@ class ProductionRepositoryImpl(
             }
             Resource.Success(entity)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to create order")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to create order"))
         }
     }
 
@@ -89,7 +90,7 @@ class ProductionRepositoryImpl(
             try {
                 val now = Instant.now().toString()
                 val existing = productionOrderDao.getOrderById(orderId)
-                    ?: return@withContext Resource.Error("Order not found")
+                    ?: return@withContext Resource.Error(ErrorSanitizer.clean("Order not found"))
                 
                 val updated = existing.copy(
                     status = "IN_PROGRESS",
@@ -104,7 +105,7 @@ class ProductionRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed"))
             }
         }
 
@@ -114,7 +115,7 @@ class ProductionRepositoryImpl(
         try {
             if (!networkMonitor.isConnected()) {
                 return@withContext Resource.Error(
-                    "Internet required to complete production — materials must be deducted server-side"
+                    ErrorSanitizer.clean("Internet required to complete production — materials must be deducted server-side")
                 )
             }
             val response = functions.invoke(
@@ -130,7 +131,7 @@ class ProductionRepositoryImpl(
             productionOrderDao.markSynced(orderId, now)
             Resource.Success(Unit)
         } catch (e: Exception) {
-            Resource.Error(e.message ?: "Failed to complete order")
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to complete order"))
         }
     }
 
@@ -139,7 +140,7 @@ class ProductionRepositoryImpl(
             try {
                 val now = Instant.now().toString()
                 val existing = productionOrderDao.getOrderById(orderId)
-                    ?: return@withContext Resource.Error("Order not found")
+                    ?: return@withContext Resource.Error(ErrorSanitizer.clean("Order not found"))
                 
                 val updated = existing.copy(
                     status = "CANCELLED",
@@ -153,7 +154,7 @@ class ProductionRepositoryImpl(
                 }
                 Resource.Success(Unit)
             } catch (e: Exception) {
-                Resource.Error(e.message ?: "Failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed"))
             }
         }
 
@@ -181,7 +182,7 @@ class ProductionRepositoryImpl(
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Log.e("ProductionRepo", "pullFromServer error: ${e.message}", e)
-                Resource.Error(e.message ?: "Pull failed")
+                Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
             }
         }
 }

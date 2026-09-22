@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.core.util.Util.emailRegex
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import org.koin.androidx.compose.koinViewModel
 
@@ -108,6 +110,7 @@ fun SignInScreen(
                     Box(
                         modifier = Modifier
                             .size(100.dp)
+                            .statusBarsPadding()
                             .background(
                                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
                                 shape = CircleShape
@@ -218,9 +221,14 @@ fun SignInScreen(
                     ZenithButton(
                         text = "Sign In",
                         onClick = {
+                            val trimmedEmail = email.trim()
+                            if (!emailRegex.matches(trimmedEmail)) {
+                                Toast.makeText(context, "Invalid email address", Toast.LENGTH_LONG).show()
+                                return@ZenithButton
+                            }
                             viewModel.login(
                                 request = SignInRequest(
-                                    email = email,
+                                    email = trimmedEmail,
                                     password = password
                                 )
                             )
