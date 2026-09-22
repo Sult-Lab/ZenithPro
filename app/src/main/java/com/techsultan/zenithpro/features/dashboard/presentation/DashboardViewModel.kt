@@ -54,8 +54,12 @@ class DashboardViewModel(
             ) }
 
             if (session.isAdmin) {
-                val branches = branchDao.getActiveBranchesForBusiness(session.businessId)
-                _state.update { it.copy(branches = branches) }
+                launch {
+                    branchDao.getBranches(session.businessId).collect { list ->
+                        val activeBranches = list.filter { it.isActive }
+                        _state.update { it.copy(branches = activeBranches) }
+                    }
+                }
             }
 
             observeConnectivity()

@@ -16,7 +16,8 @@ val dashboardModule = module {
         DashboardRepositoryImpl(
             saleDao = get(),
             saleRepository = get(),
-            productRepository = get()
+            productRepository = get(),
+            branchRepository = get()
         )
     }
 

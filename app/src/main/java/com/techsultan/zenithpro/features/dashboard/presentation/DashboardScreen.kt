@@ -135,7 +135,7 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                if (state.isAdmin && state.branches.size > 1) {
+                if (state.isAdmin && state.branches.isNotEmpty()) {
                     item {
                         BranchSelectorBar(
                             activeBranchName = state.activeBranchName,

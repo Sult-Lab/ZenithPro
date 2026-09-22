@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.dashboard.data.repository
 
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
@@ -18,6 +19,7 @@ class DashboardRepositoryImpl(
     private val saleDao: SaleDao,
     private val saleRepository: SaleRepository,
     private val productRepository: ProductRepository,
+    private val branchRepository: BranchRepository,
 ) : DashboardRepository {
 
     override suspend fun getTodaySummary(
@@ -67,12 +69,13 @@ class DashboardRepositoryImpl(
         }
     }
 
-    // Pull latest sales + products so local Room reflects server state
+    // Pull latest sales + products + branches so local Room reflects server state
     override suspend fun syncDashboard(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
             try {
                 saleRepository.pullSalesFromServer(businessId)
                 productRepository.pullFromServer(businessId)
+                branchRepository.pullFromServer(businessId)
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Resource.Error(e.message ?: "Sync failed")
