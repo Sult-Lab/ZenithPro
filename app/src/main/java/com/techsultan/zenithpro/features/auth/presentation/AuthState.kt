@@ -6,5 +6,7 @@ data class AuthState(
     val error: String? = null,
     val data: String? = null,
     val registrationComplete: Boolean = false,
-    val email: String? = null
+    val email: String? = null,
+    val showResendOption: Boolean = false,
+    val unconfirmedEmail: String? = null
 )
