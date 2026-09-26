@@ -177,6 +177,10 @@ dependencies {
     //vico
     implementation(libs.vico.compose.m3)
 
+    // Play app update
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
+
     // test
 
     testImplementation(libs.mockito.kotlin)
