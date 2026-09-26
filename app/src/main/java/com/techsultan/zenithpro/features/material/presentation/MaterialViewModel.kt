@@ -122,6 +122,20 @@ class MaterialViewModel(
         }
     }
 
+    fun deleteMaterial(materialId: String) {
+        viewModelScope.launch {
+            when (val result = materialRepository.deleteMaterial(materialId)) {
+                is Resource.Success -> {
+                    _events.emit(MaterialEvent.Saved)
+                }
+                is Resource.Error -> {
+                    _events.emit(MaterialEvent.ShowError(result.message ?: "Failed to delete"))
+                }
+                else -> Unit
+            }
+        }
+    }
+
     sealed class MaterialEvent {
         data object Saved : MaterialEvent()
         data object StockAdjusted : MaterialEvent()

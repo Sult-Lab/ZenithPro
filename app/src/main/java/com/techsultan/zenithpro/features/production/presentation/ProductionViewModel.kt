@@ -6,6 +6,9 @@ import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
+import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
+import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
 import com.techsultan.zenithpro.features.material.domain.repository.MaterialRepository
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
 import com.techsultan.zenithpro.features.production.domain.repository.ProductionRepository
@@ -26,6 +29,7 @@ class ProductionViewModel(
     private val completeOrderUseCase: CompleteProductionOrderUseCase,
     private val productionRepository: ProductionRepository,
     private val materialRepository: MaterialRepository,
+    private val getProductsUseCase: GetProductsUseCase,
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -50,14 +54,14 @@ class ProductionViewModel(
     }
 
     fun init(businessId: String?) {
+        val bId = businessId ?: return
         viewModelScope.launch {
-            val bId = businessId ?: return@launch
             getOrdersUseCase(bId).collect { result ->
                 when (result) {
                     is Resource.Success -> _state.update {
                         it.copy(isLoading = false, orders = result.data ?: emptyList())
                     }
-                    is Resource.Error   -> _state.update {
+                    is Resource.Error -> _state.update {
                         it.copy(isLoading = false, error = result.message)
                     }
                     is Resource.Loading -> _state.update { it.copy(isLoading = true) }
@@ -65,12 +69,41 @@ class ProductionViewModel(
             }
         }
         viewModelScope.launch {
-            val bId = businessId ?: return@launch
+            getProductsUseCase(bId).collect { result ->
+                if (result is Resource.Success) {
+                    _state.update { it.copy(products = result.data ?: emptyList()) }
+                }
+            }
+        }
+        viewModelScope.launch {
+            materialRepository.getMaterials(bId).collect { result ->
+                if (result is Resource.Success) {
+                    _state.update { it.copy(materials = result.data ?: emptyList()) }
+                }
+            }
+        }
+        viewModelScope.launch {
             if (networkMonitor.isConnected()) {
                 productionRepository.pullFromServer(bId)
                 materialRepository.pullFromServer(bId)
             }
         }
+    }
+
+    fun onStatusFilterChanged(status: String?) {
+        _state.update { it.copy(selectedStatusFilter = status) }
+        val bId = businessId ?: return
+        viewModelScope.launch {
+            getOrdersUseCase(bId, status).collect { result ->
+                if (result is Resource.Success) {
+                    _state.update { it.copy(orders = result.data ?: emptyList()) }
+                }
+            }
+        }
+    }
+
+    fun onSearchQueryChanged(query: String) {
+        _state.update { it.copy(searchQuery = query) }
     }
 
     fun createOrder(
@@ -81,14 +114,14 @@ class ProductionViewModel(
         viewModelScope.launch {
             val bId = businessId ?: return@launch
             val currentSession = session ?: return@launch
-            
+
             _state.update { it.copy(isSaving = true) }
             when (val result = createOrderUseCase(
-                variantId, 
-                quantity, 
-                currentSession.branchId, 
-                notes, 
-                bId, 
+                variantId,
+                quantity,
+                currentSession.branchId,
+                notes,
+                bId,
                 currentSession.userId
             )) {
                 is Resource.Success -> {
@@ -114,7 +147,7 @@ class ProductionViewModel(
         viewModelScope.launch {
             val bId = businessId ?: return@launch
             val currentSession = session ?: return@launch
-            
+
             _state.update { it.copy(isCompleting = true) }
             when (val result = completeOrderUseCase(orderId, bId, currentSession.userId)) {
                 is Resource.Success -> {
@@ -148,5 +181,9 @@ data class ProductionUiState(
     val isSaving: Boolean = false,
     val isCompleting: Boolean = false,
     val orders: List<ProductionOrderEntity> = emptyList(),
+    val products: List<ProductWithVariants> = emptyList(),
+    val materials: List<MaterialEntity> = emptyList(),
+    val selectedStatusFilter: String? = null,
+    val searchQuery: String = "",
     val error: String? = null
 )
