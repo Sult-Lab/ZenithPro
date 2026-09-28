@@ -9,6 +9,10 @@ object ErrorSanitizer {
             return "Invalid email or password. Please try again."
         }
 
+        if (raw.contains("not confirmed", ignoreCase = true) || raw.contains("email_not_confirmed", ignoreCase = true)) {
+            return "Email not confirmed"
+        }
+
         if (raw.contains("validation_failed", ignoreCase = true) || raw.contains("invalid format", ignoreCase = true)) {
             return "Unable to validate email address. Please check the format and try again."
         }

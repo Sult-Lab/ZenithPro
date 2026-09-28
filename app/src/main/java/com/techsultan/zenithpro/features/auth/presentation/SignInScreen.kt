@@ -46,13 +46,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util.emailRegex
 import com.techsultan.zenithpro.features.auth.data.remote.SignInRequest
 import org.koin.androidx.compose.koinViewModel
@@ -70,6 +73,24 @@ fun SignInScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    val pendingViewModel: RegistrationPendingViewModel = koinViewModel()
+    val resendStatus by pendingViewModel.resendStatus.collectAsStateWithLifecycle()
+
+    LaunchedEffect(resendStatus) {
+        resendStatus?.let { status ->
+            when (status) {
+                is Resource.Success -> {
+                    Toast.makeText(context, "Confirmation link resent successfully!", Toast.LENGTH_LONG).show()
+                    pendingViewModel.resetStatus()
+                }
+                is Resource.Error -> {
+                    Toast.makeText(context, status.message ?: "Failed to resend link", Toast.LENGTH_LONG).show()
+                    pendingViewModel.resetStatus()
+                }
+                is Resource.Loading -> {}
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -214,6 +235,41 @@ fun SignInScreen(
                             ),
                             modifier = Modifier.clickable { onForgotPasswordClick(email) }
                         )
+                    }
+
+                    if (state.showResendOption) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Please confirm your email before signing in.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val resendCooldown by pendingViewModel.resendCooldown.collectAsStateWithLifecycle()
+                            if (resendCooldown > 0) {
+                                Text(
+                                    text = "Resend link available in ${resendCooldown}s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    text = "Resend confirmation email",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    modifier = Modifier.clickable {
+                                        state.unconfirmedEmail?.let { pendingViewModel.resendEmail(it) }
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.weight(1f))

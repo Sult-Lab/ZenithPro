@@ -14,5 +14,6 @@ interface AuthenticationRepository {
     fun isUserLoggedIn(): Boolean
     fun logout(): Flow<Resource<Unit>>
     fun verifyEmail(token: String): Flow<Resource<Unit>>
+    suspend fun resendConfirmationEmail(email: String): Resource<Unit>
     val sessionState: Flow<Boolean>
 }

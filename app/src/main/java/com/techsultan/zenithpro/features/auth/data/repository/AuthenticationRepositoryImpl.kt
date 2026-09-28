@@ -116,6 +116,27 @@ class AuthenticationRepositoryImpl(
         }
     }
 
+    override suspend fun resendConfirmationEmail(email: String): Resource<Unit> {
+        return try {
+            auth.resendEmail(
+                type = OtpType.Email.SIGNUP,
+                email = email,
+            )
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(
+                when {
+                    e.message?.contains("rate limit", ignoreCase = true) == true ->
+                        "Please wait a few minutes before requesting another email."
+                    e.message?.contains("already confirmed", ignoreCase = true) == true ->
+                        "Your email is already confirmed. Please sign in."
+                    else ->
+                        "Failed to resend. Please try again."
+                }
+            )
+        }
+    }
+
     override val sessionState: Flow<Boolean> = auth.sessionStatus
         .map { status ->
             when (status) {

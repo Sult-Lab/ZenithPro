@@ -95,7 +95,15 @@ class AuthViewModel(
                 }
                 is Resource.Error -> {
                     val errorCode = result.message ?: "unknown"
-                    _loginState.value = AuthState(error = errorCode)
+                    if (errorCode.contains("Email not confirmed", ignoreCase = true)) {
+                        _loginState.value = AuthState(
+                            error = "Please confirm your email before signing in.",
+                            showResendOption = true,
+                            unconfirmedEmail = request.email
+                        )
+                    } else {
+                        _loginState.value = AuthState(error = errorCode)
+                    }
                     analytics.trackEvent("login_failure", bundleOf(
                         "error_code" to errorCode
                     ))
