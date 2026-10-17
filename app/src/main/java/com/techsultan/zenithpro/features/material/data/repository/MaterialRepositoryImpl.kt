@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.material.data.repository
 
+import android.util.Log
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
@@ -72,10 +73,13 @@ class MaterialRepositoryImpl(
                 deletedAt = null,
                 syncStatus = Util.SyncStatus.PENDING
             )
+            Log.d("MaterialRepositoryImpl", "upsertMaterial: $entity")
             materialDao.insertMaterial(entity)
 
             if (networkMonitor.isConnected()) {
+                Log.d("MaterialRepositoryImpl", "upsertMaterial: ${entity.toDto()}")
                 postgrest.from("materials").upsert(entity.toDto()) { onConflict = "id" }
+                Log.d("MaterialRepositoryImpl", "upsertMaterial: ${entity.toDto()}")
                 materialDao.markSynced(materialId, now)
             }
             Resource.Success(entity)
@@ -97,10 +101,12 @@ class MaterialRepositoryImpl(
             )
             materialDao.insertMaterial(updated)
             if (networkMonitor.isConnected()) {
+                Log.d("MaterialRepositoryImpl", "updateStatus: $updated")
                 postgrest.from("materials")
                     .update(mapOf("status" to status)) {
                         filter { eq("id", materialId) }
                     }
+                Log.d("MaterialRepositoryImpl", "updateStatus: $updated")
                 materialDao.markSynced(materialId, updated.updatedAt)
             }
             Resource.Success(Unit)
@@ -133,8 +139,9 @@ class MaterialRepositoryImpl(
                     syncStatus = Util.SyncStatus.DIRTY
                 )
             )
-
+            Log.d("MaterialRepositoryImpl", "adjustStock: $existing")
             if (networkMonitor.isConnected()) {
+                Log.d("MaterialRepositoryImpl", "adjustStock1: $existing")
                 postgrest.from("material_movements").insert(
                     mapOf(
                         "business_id"   to businessId,
@@ -145,10 +152,12 @@ class MaterialRepositoryImpl(
                         "recorded_by"   to staffId
                     )
                 )
+                Log.d("MaterialRepositoryImpl", "adjustStock2: $existing")
                 postgrest.from("materials")
                     .update(mapOf("quantity" to newQuantity, "status" to newStatus)) {
                         filter { eq("id", materialId) }
                     }
+                Log.d("MaterialRepositoryImpl", "adjustStock3: $existing")
                 materialDao.markSynced(materialId, Instant.now().toString())
             }
             Resource.Success(Unit)
@@ -177,13 +186,17 @@ class MaterialRepositoryImpl(
                     createdAt = now
                 )
             }
+            Log.d("MaterialRepositoryImpl", "saveRecipe1: $entities")
             materialDao.insertRecipes(entities)
 
             if (networkMonitor.isConnected()) {
                 // Delete existing and reinsert on server
+                Log.d("MaterialRepositoryImpl", "saveRecipe2: $entities")
                 postgrest.from("recipes")
                     .delete { filter { eq("variant_id", variantId) } }
+                Log.d("MaterialRepositoryImpl", "saveRecipe3: $entities")
                 if (entities.isNotEmpty()) {
+                    Log.d("MaterialRepositoryImpl", "saveRecipe4: $entities")
                     postgrest.from("recipes").insert(
                         entities.map { r ->
                             mapOf(
@@ -195,6 +208,7 @@ class MaterialRepositoryImpl(
                             )
                         }
                     )
+                    Log.d("MaterialRepositoryImpl", "saveRecipe5: $entities")
                 }
             }
             Resource.Success(Unit)
@@ -226,20 +240,21 @@ class MaterialRepositoryImpl(
     override suspend fun pullFromServer(businessId: String): Resource<Unit> =
         withContext(Dispatchers.IO) {
             try {
+                Log.d("MaterialRepositoryImpl", "pullFromServer: $businessId")
                 val remote = postgrest.from("materials").select {
                     filter { eq("business_id", businessId); isNull("deleted_at") }
                 }.decodeList<MaterialDto>()
-
+                Log.d("MaterialRepositoryImpl", "pullFromServer: $remote")
                 val unsyncedIds = materialDao.getUnsyncedMaterials().map { it.id }.toSet()
                 remote.filter { it.id !in unsyncedIds }
                     .map { it.toEntity() }
                     .let { if (it.isNotEmpty()) materialDao.insertMaterials(it) }
-
+                Log.d("MaterialRepositoryImpl", "pullFromServer: $remote")
                 val remoteIds = remote.map { it.id }.toSet()
                 materialDao.getAllMaterialIds(businessId)
                     .filter { it !in remoteIds && it !in unsyncedIds }
                     .forEach { materialDao.hardDelete(it) }
-
+                Log.d("MaterialRepositoryImpl", "pullFromServer: $remote")
                 Resource.Success(Unit)
             } catch (e: Exception) {
                 Resource.Error(ErrorSanitizer.clean(e.message ?: "Pull failed"))
