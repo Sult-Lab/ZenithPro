@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ fun ZenithNavigationDrawer(
     onBranchesClick: () -> Unit,
     onProductionClick: () -> Unit,
     onMaterialClick: () -> Unit,
+    onRecipeClick: () -> Unit,
     content: @Composable () -> Unit
 ) {
     ModalNavigationDrawer(
@@ -73,23 +75,31 @@ fun ZenithNavigationDrawer(
                         )
                     }
 
-//                    if (session?.isManager == true) {
-//                        NavigationDrawerItem(
-//                            label = { Text("Production") },
-//                            selected = false,
-//                            onClick = onProductionClick,
-//                            icon = { Icon(Icons.Default.LocalConvenienceStore, contentDescription = null) },
-//                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//                        )
-//
-//                        NavigationDrawerItem(
-//                            label = { Text("Material") },
-//                            selected = false,
-//                            onClick = onMaterialClick,
-//                            icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
-//                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//                        )
-//                    }
+                    if (session?.isManager == true) {
+                        NavigationDrawerItem(
+                            label = { Text("Material") },
+                            selected = false,
+                            onClick = onMaterialClick,
+                            icon = { Icon(Icons.Default.Inventory2, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Product Recipes") },
+                            selected = false,
+                            onClick = onRecipeClick,
+                            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+
+                        NavigationDrawerItem(
+                            label = { Text("Production") },
+                            selected = false,
+                            onClick = onProductionClick,
+                            icon = { Icon(Icons.Default.Factory, contentDescription = null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
                     
                     Spacer(modifier = Modifier.weight(1f))
                     

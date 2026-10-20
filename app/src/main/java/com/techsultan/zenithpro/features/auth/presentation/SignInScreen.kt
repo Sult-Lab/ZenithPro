@@ -46,10 +46,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,7 +66,8 @@ fun SignInScreen(
     onLoginClick: () -> Unit,
     onCreateAccountClick: () -> Unit,
     onMustChangePassword: () -> Unit,
-    onForgotPasswordClick: (String) -> Unit
+    onForgotPasswordClick: (String) -> Unit,
+    onConfirmMailScreen: (String) -> Unit
 ) {
     val state = viewModel.loginState.value
     val context = LocalContext.current
@@ -81,6 +82,7 @@ fun SignInScreen(
             when (status) {
                 is Resource.Success -> {
                     Toast.makeText(context, "Confirmation link resent successfully!", Toast.LENGTH_LONG).show()
+                    onConfirmMailScreen(email)
                     pendingViewModel.resetStatus()
                 }
                 is Resource.Error -> {
@@ -341,6 +343,7 @@ fun SignInScreenPreview(){
         onLoginClick = {},
         onCreateAccountClick = {},
         onMustChangePassword = {},
-        onForgotPasswordClick = {}
+        onForgotPasswordClick = {},
+        onConfirmMailScreen = {}
     )
 }

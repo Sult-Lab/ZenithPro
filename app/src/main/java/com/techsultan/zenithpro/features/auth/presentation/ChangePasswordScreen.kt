@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import com.techsultan.zenithpro.core.components.OtpTextField
 import com.techsultan.zenithpro.core.util.Util.emailRegex
 
 
@@ -215,7 +216,7 @@ fun ChangePasswordScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    com.techsultan.zenithpro.core.components.OtpTextField(
+                    OtpTextField(
                         otpText = state.otpCode,
                         otpCount = 6,
                         onOtpTextChange = { text, isComplete ->

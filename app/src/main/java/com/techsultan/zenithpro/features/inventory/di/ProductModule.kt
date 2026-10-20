@@ -23,6 +23,8 @@ import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewMo
 import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
+import com.techsultan.zenithpro.features.material.data.repository.MaterialRepositoryImpl
+import com.techsultan.zenithpro.features.material.domain.repository.MaterialRepository
 import com.techsultan.zenithpro.features.production.data.repository.ProductionRepositoryImpl
 import com.techsultan.zenithpro.features.production.domain.repository.ProductionRepository
 import com.techsultan.zenithpro.features.sales.data.repository.SaleRepositoryImpl
@@ -57,6 +59,7 @@ val productModule = module {
             customerRepository = get<CustomerRepository>() as CustomerRepositoryImpl,
             saleRepository = get<SaleRepository>() as SaleRepositoryImpl,
             productionRepository = get<ProductionRepository>() as ProductionRepositoryImpl,
+            materialRepository = get<MaterialRepository>() as MaterialRepositoryImpl,
             productDao = get(),
             expenseDao = get(),
             categoryDao = get(),
@@ -65,7 +68,8 @@ val productModule = module {
             saleDao = get(),
             productionDao = get(),
             networkMonitor = get(),
-            analytics = get()
+            analytics = get(),
+            materialDao = get(),
         )
     }
 

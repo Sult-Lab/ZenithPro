@@ -40,10 +40,6 @@ fun EmailConfirmedScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(token) {
-        viewModel.verifyToken(token)
-    }
-
     Scaffold { padding ->
         Column(
             modifier = Modifier

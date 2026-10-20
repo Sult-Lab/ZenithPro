@@ -20,6 +20,7 @@ data class SaleDto(
     @SerialName("debt_amount")  val debtAmount: Long,
     @SerialName("payment_method") val paymentMethod: String,
     val status: String,
+    @SerialName("fulfillment_status") val fulfillmentStatus: String? = null,
     val notes: String?,
     @SerialName("sold_at")      val soldAt: String,
     @SerialName("updated_at")   val updatedAt: String,

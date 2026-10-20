@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
@@ -67,6 +68,7 @@ import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.inventory.component.EmptyInventoryState
 import com.techsultan.zenithpro.features.inventory.component.FilterInventoryBottomSheet
+import com.techsultan.zenithpro.features.inventory.component.InventoryPieChartBottomSheet
 import com.techsultan.zenithpro.features.inventory.component.SortInventoryBottomSheet
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import org.koin.androidx.compose.koinViewModel
@@ -86,6 +88,7 @@ fun InventoryScreen(
     var openMenuDialog by remember { mutableStateOf(false) }
     var sortInventory by remember { mutableStateOf(false) }
     var filterInventory by remember { mutableStateOf(false) }
+    var showPieChart by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -177,6 +180,30 @@ fun InventoryScreen(
                                 onClick = {
                                     openMenuDialog = false
                                     filterInventory = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                modifier = Modifier
+                                    .width(200.dp),
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            text = "Stock Chart",
+                                        )
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.PieChart,
+                                        contentDescription = "Stock Chart",
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                },
+                                onClick = {
+                                    openMenuDialog = false
+                                    showPieChart = true
                                 }
                             )
                             DropdownMenuItem(
@@ -317,6 +344,12 @@ fun InventoryScreen(
             onReset = { viewModel.resetFilters() }
         )
     }
+    if (showPieChart) {
+        InventoryPieChartBottomSheet(
+            products = filteredProducts,
+            onDismiss = { showPieChart = false }
+        )
+    }
 }
 
 @Composable
@@ -404,14 +437,14 @@ fun InventoryItemCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
+                            text = Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFFFFA000)
                         )
                     }
                     else -> {
                         Text(
-                            text = com.techsultan.zenithpro.core.util.Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
+                            text = Util.formatStockDisplay(totalStock, UnitType.fromString(product.unitType)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -8,5 +8,6 @@ data class UpsertMaterialRequest(
     val costPerUnit: Long,
     val lowStockAlert: Double?,
     val supplier: String?,
-    val notes: String?
+    val notes: String?,
+    val quantity: Double?
 )

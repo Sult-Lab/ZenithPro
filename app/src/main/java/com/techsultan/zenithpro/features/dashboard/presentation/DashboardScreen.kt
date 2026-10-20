@@ -66,6 +66,7 @@ import com.techsultan.zenithpro.features.analytics.component.SalesChartCard
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
+import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardFulfillmentSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
 import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBar
@@ -172,6 +173,13 @@ fun DashboardScreen(
                     )
                 }
 
+                item {
+                    FulfillmentSummarySection(
+                        summary = state.fulfillmentSummary,
+                        onViewSales = onViewSales
+                    )
+                }
+
                 if (state.showProfit) {
                     item {
                         ProfitMarginCard(summary = state.summary)
@@ -219,12 +227,125 @@ fun DashboardScreen(
             }
         }
 
-        if (showBranchSheet) {
+        if (showBranchSheet && state.isAdmin) {
             BranchSelectorBottomSheet(
                 branches = state.branches,
                 activeBranchId = state.activeBranchId,
-                onBranchSelected = viewModel::onBranchSelected,
+                onBranchSelected = { id, name ->
+                    viewModel.onBranchSelected(id, name)
+                    showBranchSheet = false
+                },
                 onDismiss = { showBranchSheet = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FulfillmentSummarySection(
+    summary: DashboardFulfillmentSummary,
+    onViewSales: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onViewSales),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "THIS WEEK'S FULFILLMENT",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "${summary.totalOrdersThisWeek} Orders Total",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "View Sales",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FulfillmentMiniCard(
+                    modifier = Modifier.weight(1f),
+                    label = "Pending",
+                    count = summary.pendingCount,
+                    color = Color(0xFFF57C00)
+                )
+                // TODO: "processed" bucket maps to PROCESSING — unconfirmed with business owner if "processed" means PROCESSING or DELIVERED.
+                FulfillmentMiniCard(
+                    modifier = Modifier.weight(1f),
+                    label = "Processing",
+                    count = summary.processingCount,
+                    color = Color(0xFF1976D2)
+                )
+                FulfillmentMiniCard(
+                    modifier = Modifier.weight(1f),
+                    label = "Delivered",
+                    count = summary.deliveredCount,
+                    color = Color(0xFF2E7D32)
+                )
+                FulfillmentMiniCard(
+                    modifier = Modifier.weight(1f),
+                    label = "Failed/Cancel",
+                    count = summary.failedCount + summary.cancelledCount,
+                    color = Color(0xFFC62828)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FulfillmentMiniCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    count: Int,
+    color: Color
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        color = color.copy(alpha = 0.12f)
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = color,
+                maxLines = 1
             )
         }
     }
@@ -275,27 +396,29 @@ private fun DashboardHero(onNewSale: () -> Unit) {
 private fun TodayKpiSection(
     summary: DashboardSummary,
     isLoading: Boolean,
-    showProfit: Boolean = true,
+    showProfit: Boolean,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Today's overview",
+            text = "Today's performance",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             KpiCard(
                 modifier = Modifier.weight(1f),
                 label = "Revenue",
                 value = "₦${summary.totalRevenue.formatAmount()}",
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
-                color = Color(0xFF1976D2),
+                color = MaterialTheme.colorScheme.primary,
                 isLoading = isLoading
             )
+
             if (showProfit) {
                 KpiCard(
                     modifier = Modifier.weight(1f),
@@ -650,24 +773,5 @@ private fun QuickActionsRow(
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
             )
         }
-    }
-}
-
-@Composable
-private fun LegendItem(color: Color, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, CircleShape)
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }

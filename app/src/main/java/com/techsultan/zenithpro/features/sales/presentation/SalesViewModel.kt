@@ -10,6 +10,7 @@ import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.branch.domain.use_case.GetBranchesUseCase
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
@@ -156,13 +157,18 @@ class SalesListViewModel(
         restartObserver()
     }
 
+    fun onFulfillmentStatusFilterChanged(status: FulfillmentStatus?) {
+        _state.update { it.copy(filterFulfillmentStatus = status) }
+    }
+
     fun clearFilters() {
         _state.update { it.copy(
             filterFrom  = LocalDate.now().minusDays(30),
             filterTo = LocalDate.now(),
             filterStaffId = null,
             filterPaymentMethod = null,
-            filterBranchId = null
+            filterBranchId = null,
+            filterFulfillmentStatus = null
         )}
         restartObserver()
     }
@@ -248,14 +254,20 @@ class SalesListViewModel(
     val filteredSales: StateFlow<List<SaleWithItems>> = state
         .map { s ->
             Log.d("SalesListViewModel", "Filtered sales: ${s.sales.size}")
-            if (s.searchQuery.isBlank()) s.sales
-            else s.sales.filter { saleWithItems ->
-                val sale = saleWithItems.sale
-                saleWithItems.items.any { item ->
-                    item.productName.contains(s.searchQuery, ignoreCase = true) ||
-                            item.variantSku.contains(s.searchQuery, ignoreCase = true)
-                } || sale.notes?.contains(s.searchQuery, ignoreCase = true) == true
+            var list = s.sales
+            if (s.filterFulfillmentStatus != null) {
+                list = list.filter { it.sale.fulfillmentStatus == s.filterFulfillmentStatus }
             }
+            if (s.searchQuery.isNotBlank()) {
+                list = list.filter { saleWithItems ->
+                    val sale = saleWithItems.sale
+                    saleWithItems.items.any { item ->
+                        item.productName.contains(s.searchQuery, ignoreCase = true) ||
+                                item.variantSku.contains(s.searchQuery, ignoreCase = true)
+                    } || sale.notes?.contains(s.searchQuery, ignoreCase = true) == true
+                }
+            }
+            list
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -326,6 +338,7 @@ data class SalesListUiState(
     val filterTo: LocalDate = LocalDate.now(),
     val filterStaffId: String? = null,
     val filterPaymentMethod: PaymentMethod? = null,
+    val filterFulfillmentStatus: FulfillmentStatus? = null,
     val filterBranchId: String? = null,
     val availableBranches: List<BranchEntity> = emptyList(),
     val availableStaff: List<StaffMember> = emptyList(),

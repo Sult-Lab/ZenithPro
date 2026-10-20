@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.techsultan.zenithpro.core.util.Util
 
 @Entity(
     tableName = "recipes",
@@ -22,5 +23,7 @@ data class RecipeEntity(
     val materialId: String,
     val quantityNeeded: Double,
     val notes: String?,
-    val createdAt: String
+    val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED,
+    val createdAt: String,
+    val updatedAt: String,
 )

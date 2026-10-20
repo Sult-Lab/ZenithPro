@@ -14,7 +14,10 @@ import com.techsultan.zenithpro.features.settings.domain.use_case.CreateStaffUse
 import com.techsultan.zenithpro.features.auth.domain.use_case.IsUserLoggedInUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.LoginUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.LogoutUseCase
+import com.techsultan.zenithpro.features.auth.domain.use_case.ResendConfirmationEmailUseCase
 import com.techsultan.zenithpro.features.auth.domain.use_case.SignUpUseCase
+import com.techsultan.zenithpro.features.auth.domain.use_case.VerifySignupOtpUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.launchIn
@@ -27,7 +30,9 @@ class AuthViewModel(
     private val logoutUseCase: LogoutUseCase,
     private val isUserLoggedInUseCase: IsUserLoggedInUseCase,
     private val createStaffUseCase: CreateStaffUseCase,
-    private val analytics: AnalyticsHelper
+    private val analytics: AnalyticsHelper,
+    private val verifySignupOtpUseCase: VerifySignupOtpUseCase,
+    private val resendConfirmationEmailUseCase: ResendConfirmationEmailUseCase
 ) : ViewModel() {
 
     private val _signUpState = mutableStateOf(AuthState())
@@ -115,6 +120,112 @@ class AuthViewModel(
         }.launchIn(viewModelScope)
     }
 
+    private var verifyOtpJob: Job? = null
+    private var resendOtpJob: Job? = null
+
+
+    fun onOtpChanged(code: String) {
+        _signUpState.value = _signUpState.value.copy(
+            otpCode = code,
+            otpError = null,
+            error = null
+        )
+    }
+
+    private var verificationJob: Job? = null
+
+    fun verifySignupOtp(email: String, token: String) {
+        val code = token.trim()
+
+        if (code.length != 6 || !code.all(Char::isDigit)) {
+            _signUpState.value = _signUpState.value.copy(
+                otpError = "Enter the complete 6-digit code."
+            )
+            return
+        }
+
+        if (_signUpState.value.isVerifyingEmail) return
+
+        verificationJob?.cancel()
+        verificationJob = verifySignupOtpUseCase(
+            email.trim().lowercase(),
+            token = code.trim()
+        ).onEach { result ->
+            when (result) {
+                is Resource.Loading -> {
+                    _signUpState.value = _signUpState.value.copy(
+                        isVerifyingEmail = true,
+                        otpError = null
+                    )
+                }
+
+                is Resource.Success -> {
+                    _signUpState.value = _signUpState.value.copy(
+                        isVerifyingEmail = false,
+                        isEmailVerified = true,
+                        otpCode = "",
+                        otpError = null
+                    )
+                    _events.emit(AuthEvent.EmailVerificationSuccess)
+                }
+
+                is Resource.Error -> {
+                    _signUpState.value = _signUpState.value.copy(
+                        isVerifyingEmail = false,
+                        otpError = result.message?.trim()
+                            ?: "Verification failed. Please try again."
+                    )
+                }
+            }
+        }.launchIn(viewModelScope)
+    }
+
+    fun resendSignupOtp() {
+        val email = _signUpState.value.email
+            ?.trim()
+            ?.lowercase()
+            .orEmpty()
+
+        if (email.isBlank() || _signUpState.value.isResendingOtp) return
+
+        viewModelScope.launch {
+            _signUpState.value = _signUpState.value.copy(
+                isResendingOtp = true,
+                otpError = null,
+                resendOtpMessage = null
+            )
+
+            try {
+                when (val result =
+                    resendConfirmationEmailUseCase(email)) {
+                    is Resource.Success -> {
+                        _signUpState.value = _signUpState.value.copy(
+                            isResendingOtp = false,
+                            otpCode = "",
+                            resendOtpMessage =
+                                "A new verification code has been sent."
+                        )
+                    }
+
+                    is Resource.Error -> {
+                        _signUpState.value = _signUpState.value.copy(
+                            isResendingOtp = false,
+                            otpError = result.message
+                                ?: "Failed to resend the code."
+                        )
+                    }
+
+                    is Resource.Loading -> Unit
+                }
+            } catch (e: Exception) {
+                _signUpState.value = _signUpState.value.copy(
+                    isResendingOtp = false,
+                    otpError = "Failed to resend the code. Please try again."
+                )
+            }
+        }
+    }
+
     fun logout() {
         logoutUseCase().launchIn(viewModelScope)
     }
@@ -131,5 +242,7 @@ class AuthViewModel(
         object LoginSuccess : AuthEvent()
         object SignUpSuccess : AuthEvent()
         object LoginSuccessMustChangePassword : AuthEvent()
+
+        object EmailVerificationSuccess : AuthEvent()
     }
 }

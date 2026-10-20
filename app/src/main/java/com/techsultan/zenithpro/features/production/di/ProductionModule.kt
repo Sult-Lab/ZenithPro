@@ -12,7 +12,7 @@ import org.koin.dsl.module
 val productionModule = module {
 
     single<ProductionRepository> {
-        ProductionRepositoryImpl(get(), get(), get(), get())
+        ProductionRepositoryImpl(get(), get(), get(), get(), get())
     }
 
     factory { GetProductionOrdersUseCase(get()) }
@@ -20,6 +20,8 @@ val productionModule = module {
     factory { CompleteProductionOrderUseCase(get()) }
 
     viewModel { ProductionViewModel(
+        get(),
+        get(),
         get(),
         get(),
         get(),

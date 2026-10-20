@@ -30,9 +30,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Money
@@ -43,6 +46,9 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TaskAlt
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,6 +57,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -89,6 +96,7 @@ import com.techsultan.zenithpro.core.data.local.ReceiptData
 import com.techsultan.zenithpro.core.util.Util.formatAsTime
 import com.techsultan.zenithpro.core.util.Util.toUtcLocalDate
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.component.EmptySalesState
@@ -191,6 +199,13 @@ fun SalesScreen(
                                     onSearchChange = viewModel::onSearchQueryChanged
                                 )
                             }
+
+//                            item {
+//                                FulfillmentFilterRow(
+//                                    selectedStatus = state.filterFulfillmentStatus,
+//                                    onStatusSelected = viewModel::onFulfillmentStatusFilterChanged
+//                                )
+//                            }
 
                             item {
                                 SalesFilterRow(
@@ -832,7 +847,7 @@ private fun SaleCard(
     Card(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors =CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -921,10 +936,16 @@ private fun SaleCard(
                     }
                 }
 
-                // Status badge (non-completed only)
-                if (sale.status != SaleStatus.COMPLETED) {
-                    Spacer(Modifier.height(8.dp))
-                    SaleStatusBadge(status = sale.status)
+                // Fulfillment badge & Sale Status badge
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    FulfillmentStatusBadge(fulfillmentStatus = sale.fulfillmentStatus)
+                    if (sale.status != SaleStatus.COMPLETED) {
+                        SaleStatusBadge(status = sale.status)
+                    }
                     branchName?.let { name ->
                         Surface(
                             shape = RoundedCornerShape(4.dp),
@@ -993,7 +1014,7 @@ private fun SaleCard(
                                 text = "Reprint Receipt",
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                               },
+                        },
                         onClick = {
                             showMenu = false
                             onReprint()
@@ -1011,7 +1032,7 @@ private fun SaleCard(
                                 text = "Share Receipt",
                                 style = MaterialTheme.typography.bodyMedium
                             )
-                               },
+                        },
                         onClick = {
                             showMenu = false
                             onShare()
@@ -1059,4 +1080,93 @@ fun PreviewSales() {
         onSaleClick = {},
         onNewSale = {}
     )
+}
+
+private data class FulfillmentFilterOption(
+    val label: String,
+    val statusKey: FulfillmentStatus?,
+    val icon: ImageVector
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FulfillmentFilterRow(
+    selectedStatus: FulfillmentStatus?,
+    onStatusSelected: (FulfillmentStatus?) -> Unit
+) {
+    val options = listOf(
+        FulfillmentFilterOption("All", null, Icons.Default.CheckCircle),
+        FulfillmentFilterOption("Pending", FulfillmentStatus.PENDING, Icons.Default.Timer),
+        FulfillmentFilterOption("Processing", FulfillmentStatus.PROCESSING, Icons.Default.Sync),
+        FulfillmentFilterOption("Delivered", FulfillmentStatus.DELIVERED, Icons.Default.TaskAlt),
+        FulfillmentFilterOption("Failed", FulfillmentStatus.FAILED, Icons.Default.Error),
+        FulfillmentFilterOption("Cancelled", FulfillmentStatus.CANCELLED, Icons.Default.Block)
+    )
+
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        items(options) { option ->
+            val isSelected = selectedStatus == option.statusKey
+            FilterChip(
+                selected = isSelected,
+                onClick = { onStatusSelected(option.statusKey) },
+                label = {
+                    Text(
+                        text = option.label,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = option.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.onSurface,
+                    selectedLabelColor = MaterialTheme.colorScheme.surface,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurface,
+                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                shape = RoundedCornerShape(20.dp),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = MaterialTheme.colorScheme.outlineVariant
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun FulfillmentStatusBadge(fulfillmentStatus: FulfillmentStatus) {
+    val (bgColor, textColor, label) = when (fulfillmentStatus) {
+        FulfillmentStatus.PENDING -> Triple(Color(0xFFFFF3E0), Color(0xFFE65100), "Pending")
+        FulfillmentStatus.PROCESSING -> Triple(Color(0xFFE3F2FD), Color(0xFF1976D2), "Processing")
+        FulfillmentStatus.DELIVERED -> Triple(Color(0xFFE8F5E9), Color(0xFF2E7D32), "Delivered")
+        FulfillmentStatus.FAILED -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), "Failed")
+        FulfillmentStatus.CANCELLED -> Triple(Color(0xFFFFEBEE), Color(0xFFC62828), "Cancelled")
+        FulfillmentStatus.UNKNOWN -> Triple(Color.LightGray, Color.DarkGray, "Unknown")
+    }
+
+    Surface(
+        shape = RoundedCornerShape(4.dp),
+        color = bgColor
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = textColor
+        )
+    }
 }

@@ -13,11 +13,13 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.techsultan.zenithpro.core.util.AuthState
 import com.techsultan.zenithpro.core.viewmodel.DataPersistentViewModel
+import com.techsultan.zenithpro.features.auth.presentation.AuthViewModel
 import com.techsultan.zenithpro.features.auth.presentation.ChangePasswordScreen
+import com.techsultan.zenithpro.features.auth.presentation.ConfirmEmailScreen
 import com.techsultan.zenithpro.features.auth.presentation.EmailConfirmedScreen
-import com.techsultan.zenithpro.features.auth.presentation.RegistrationSuccessScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignInScreen
 import com.techsultan.zenithpro.features.auth.presentation.SignUpScreen
+import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun AuthGraph(
@@ -74,24 +76,28 @@ fun AuthGraph(
                             mode = Route.PasswordChangeMode.FORGOT,
                             email = email
                         ))
+                    },
+                    onConfirmMailScreen = { email ->
+                        authBackStack.add(Route.Auth.ConfirmEmailScreen(email))
                     }
                 )
             }
             entry<Route.Auth.SignUp> {
                 SignUpScreen(
                     onCreateAccountSuccess = { email ->
-                        authBackStack.add(Route.Auth.RegistrationSuccess(email))
+                        authBackStack.add(Route.Auth.ConfirmEmailScreen(email))
                     },
                     onLoginClick = { authBackStack.add(Route.Auth.SignIn) },
                 )
             }
-            entry<Route.Auth.RegistrationSuccess> { route ->
-                RegistrationSuccessScreen(
+            entry<Route.Auth.ConfirmEmailScreen> { route ->
+
+                ConfirmEmailScreen(
                     email = route.email,
                     onNavigateToLogin = {
                         authBackStack.remove(route)
                         authBackStack.add(Route.Auth.SignIn)
-                    }
+                    },
                 )
             }
             entry<Route.Auth.EmailConfirmed> { route ->

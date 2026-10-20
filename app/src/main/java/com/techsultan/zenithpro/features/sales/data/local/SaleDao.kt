@@ -81,6 +81,9 @@ interface SaleDao {
     @Query("UPDATE sales SET syncStatus = 'SYNCED' WHERE id = :id")
     suspend fun markSynced(id: String)
 
+    @Query("UPDATE sales SET fulfillmentStatus = :status, updatedAt = :at WHERE id = :id")
+    suspend fun updateFulfillmentStatus(id: String, status: String, at: String)
+
     @Query("SELECT id FROM sales WHERE businessId = :businessId")
     suspend fun getAllSaleIds(businessId: String): List<String>
 
@@ -298,4 +301,24 @@ interface SaleDao {
 
     @Query("SELECT * FROM sales")
     suspend fun getAllSales(): List<SaleEntity>
+
+    @Query("""
+        SELECT fulfillmentStatus, COUNT(*) AS count
+        FROM sales
+        WHERE businessId = :businessId
+          AND soldAt     >= :startOfWeek
+          AND status     != 'CANCELLED'
+          AND (:branchId IS NULL OR branchId = :branchId)
+        GROUP BY fulfillmentStatus
+    """)
+    suspend fun getWeeklyFulfillmentCounts(
+        businessId: String,
+        startOfWeek: String,
+        branchId: String? = null
+    ): List<FulfillmentCountRow>
 }
+
+data class FulfillmentCountRow(
+    val fulfillmentStatus: String,
+    val count: Int
+)

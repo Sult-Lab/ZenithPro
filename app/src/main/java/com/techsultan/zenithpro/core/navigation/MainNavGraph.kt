@@ -43,9 +43,13 @@ import com.techsultan.zenithpro.features.inventory.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.BarcodeScannerScreen
 import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
+import com.techsultan.zenithpro.features.material.presentation.RecipeListRoute
+import com.techsultan.zenithpro.features.material.presentation.RecipeRoute
+import com.techsultan.zenithpro.features.material.presentation.RecipeScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
@@ -167,6 +171,12 @@ fun MainNavGraph(
                 navigator.navigate(Route.Home.Material)
             }
         },
+        onRecipeClick = {
+            scope.launch {
+                drawerState.close()
+                navigator.navigate(Route.Home.RecipeList)
+            }
+        },
         onProductionClick = {
             scope.launch {
                 drawerState.close()
@@ -192,6 +202,7 @@ fun MainNavGraph(
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
             val receiptViewModel: ReceiptViewModel = koinViewModel()
             val branchViewModel: BranchViewModel = koinViewModel()
+            val inventoryViewModel: InventoryViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -218,7 +229,8 @@ fun MainNavGraph(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
                                 onProductClick = { navigator.navigate(Route.Home.ProductDetail(it)) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
-                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) }
+                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) },
+                                viewModel = inventoryViewModel
                             )
                         }
                         entry<Route.Home.Sales> {
@@ -352,9 +364,23 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.Material> {
                             MaterialScreen(
-                                onNewProduction = {},
+                                onNewProduction = { navigator.navigate(Route.Home.Production) },
                                 onMaterialClick = {},
+                                onBack = { navigator.goBack() },
+                                onNavigateToRecipe = { navigator.navigate(Route.Home.RecipeList) }
+                            )
+                        }
+                        entry<Route.Home.RecipeList> {
+                            RecipeListRoute(
+                                onNewRecipe = { navigator.navigate(Route.Home.Recipe) },
+                                onEditRecipe = { variantId -> navigator.navigate(Route.Home.Recipe) },
+                                onStartBatch = { variantId -> navigator.navigate(Route.Home.Production) },
                                 onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Recipe> {
+                            RecipeRoute(
+                                onBack = { navigator.goBack() },
                             )
                         }
                         entry<Route.Customer.AddEditCustomerScreen> {

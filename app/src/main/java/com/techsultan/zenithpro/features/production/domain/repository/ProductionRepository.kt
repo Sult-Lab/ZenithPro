@@ -10,8 +10,24 @@ interface ProductionRepository {
         variantId: String, quantity: Double, branchId: String?,
         notes: String?, businessId: String, staffId: String
     ): Resource<ProductionOrderEntity>
-    suspend fun startOrder(orderId: String): Resource<Unit>
-    suspend fun completeOrder(orderId: String, businessId: String, staffId: String): Resource<Unit>
+    suspend fun startOrder(
+        orderId: String,
+        overriddenItems: List<Pair<String, Double>>? = null
+    ): Resource<Unit>
+    suspend fun completeOrder(
+        orderId: String,
+        branchId: String,
+        actualQuantity: Double,
+        completedBy: String,
+        completedByName: String,
+        completedByRole: String,
+        customerId: String? = null,
+        terminalId: String? = null,
+        unitPrice: Long? = null,
+        amountPaid: Long? = null,
+        paymentMethod: String? = "CASH",
+        remarks: String? = null
+    ): Resource<Unit>
     suspend fun cancelOrder(orderId: String): Resource<Unit>
     suspend fun getPendingOrderCount(businessId: String): Int
     suspend fun pullFromServer(businessId: String): Resource<Unit>
