@@ -11,6 +11,7 @@ interface MaterialRepository {
     fun getMaterials(businessId: String, status: String? = null): Flow<Resource<List<MaterialEntity>>>
     fun getLowStockMaterials(businessId: String): Flow<Resource<List<MaterialEntity>>>
     fun getRecipeForVariant(variantId: String): Flow<Resource<List<RecipeWithMaterial>>>
+    fun getAllRecipes(businessId: String): Flow<Resource<List<RecipeWithMaterial>>>
     suspend fun upsertMaterial(request: UpsertMaterialRequest, businessId: String): Resource<MaterialEntity>
     suspend fun updateStatus(materialId: String, status: String): Resource<Unit>
     suspend fun adjustStock(materialId: String, quantity: Double, notes: String?, staffId: String, businessId: String): Resource<Unit>

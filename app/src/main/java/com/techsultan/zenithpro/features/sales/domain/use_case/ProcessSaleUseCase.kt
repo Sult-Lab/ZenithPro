@@ -26,6 +26,7 @@ class ProcessSaleUseCase(
         discountAmount: Long = 0L,
         taxAmount: Long = 0L,
         notes: String? = null,
+        fulfillmentStatus: String? = null, // TODO: Add a per-business setting to drive whether default checkout fulfillment is Instant vs Pending.
         clientTransactionId: String = UUID.randomUUID().toString(),
     ): Resource<ProcessSaleResponse> {
         if (cart.isEmpty()) return Resource.Error("Cart is empty")
@@ -37,7 +38,6 @@ class ProcessSaleUseCase(
         if (paymentMethod == PaymentMethod.DEBT && customerId == null) {
             return Resource.Error("Select a customer for debt sales")
         }
-
 
         val effectiveAmountPaid = when (paymentMethod) {
             PaymentMethod.CASH,
@@ -86,6 +86,7 @@ class ProcessSaleUseCase(
             amountPaid = effectiveAmountPaid,
             changeAmount = change,
             paymentMethod = paymentMethod.name,
+            fulfillmentStatus = fulfillmentStatus,
             notes = notes,
         )
         Log.d("ProcessSaleUseCase", request.toString())

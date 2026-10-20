@@ -37,7 +37,8 @@ val dashboardModule = module {
             networkMonitor = get(),
             sessionManager = get(),
             branchDao = get(),
-            pullCategoriesUseCase = get()
+            pullCategoriesUseCase = get(),
+            dashboardRepository = get()
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.material.domain.use_case
 
+import android.util.Log
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
 import com.techsultan.zenithpro.features.material.data.remote.UpsertMaterialRequest
@@ -11,6 +12,7 @@ class AdjustMaterialStockUseCase(private val repository: MaterialRepository) {
         notes: String?, staffId: String, businessId: String
     ): Resource<Unit> {
         if (quantity == 0.0) return Resource.Error("Quantity cannot be zero")
+        Log.d("Material Use Case", "Material Quantity: $quantity")
         return repository.adjustStock(materialId, quantity, notes, staffId, businessId)
     }
 }

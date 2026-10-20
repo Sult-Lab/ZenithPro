@@ -13,6 +13,7 @@ import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentDao
 import com.techsultan.zenithpro.features.customer.data.local.DebtPaymentEntity
 import com.techsultan.zenithpro.features.customer.data.mapper.toEntity
 import com.techsultan.zenithpro.features.customer.data.remote.DebtPaymentDto
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
@@ -38,9 +39,12 @@ import io.ktor.client.call.body
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -127,6 +131,7 @@ class SaleRepositoryImpl(
                     paymentMethod = PaymentMethod.valueOf(request.paymentMethod),
                     status = if (request.amountPaid >= request.totalAmount)
                         SaleStatus.COMPLETED else SaleStatus.PARTIAL,
+                    fulfillmentStatus = FulfillmentStatus.fromString(request.fulfillmentStatus),
                     notes = request.notes,
                     soldAt = now,
                     updatedAt = now,
@@ -226,6 +231,7 @@ class SaleRepositoryImpl(
                 amountPaid = saleWithItems.sale.amountPaid,
                 changeAmount = saleWithItems.sale.changeAmount,
                 paymentMethod = saleWithItems.sale.paymentMethod.name,
+                fulfillmentStatus = saleWithItems.sale.fulfillmentStatus.value,
                 notes = saleWithItems.sale.notes,
                 staffId = saleWithItems.sale.staffId,
                 terminalId = saleWithItems.sale.terminalId,
@@ -406,6 +412,34 @@ class SaleRepositoryImpl(
 
     override suspend fun getNextSaleCounter(businessId: String): Int =
         saleDao.getNextSaleCounter(businessId)
+
+    override suspend fun updateFulfillmentStatus(
+        saleId: String,
+        newStatus: FulfillmentStatus,
+        changedBy: String,
+        notes: String?
+    ): Resource<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (!networkMonitor.isConnected()) {
+                return@withContext Resource.Error("Network connection required to update fulfillment status")
+            }
+            val params = buildJsonObject {
+                put("p_sale_id", saleId)
+                put("p_new_status", newStatus.value)
+                put("p_changed_by", changedBy)
+                if (!notes.isNullOrBlank()) {
+                    put("p_notes", notes)
+                }
+            }
+            postgrest.rpc("update_sale_fulfillment_status", params)
+
+            val now = Instant.now().toString()
+            saleDao.updateFulfillmentStatus(saleId, newStatus.name, now)
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to update fulfillment status"))
+        }
+    }
 }
 
 @Serializable

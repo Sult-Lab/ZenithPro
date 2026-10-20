@@ -9,8 +9,10 @@ import com.techsultan.zenithpro.features.branch.data.local.BranchDao
 import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.category.domain.use_case.PullCategoriesUseCase
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
+import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardFulfillmentSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
+import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRepository
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetChartDataUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetDashboardSummaryUseCase
 import com.techsultan.zenithpro.features.dashboard.domain.use_case.GetPendingDebtsUseCase
@@ -33,14 +35,14 @@ class DashboardViewModel(
     private val networkMonitor: NetworkMonitor,
     private val sessionManager: SessionManager,
     private val branchDao: BranchDao,
-    private val pullCategoriesUseCase: PullCategoriesUseCase
+    private val pullCategoriesUseCase: PullCategoriesUseCase,
+    private val dashboardRepository: DashboardRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(DashboardUiState())
     val state: StateFlow<DashboardUiState> = _state.asStateFlow()
 
     private var businessId: String? = null
-
 
     init {
         viewModelScope.launch {
@@ -75,7 +77,6 @@ class DashboardViewModel(
         }
     }
 
-
     private fun loadAll() {
         val bId = businessId ?: return
         viewModelScope.launch {
@@ -87,19 +88,23 @@ class DashboardViewModel(
             val chartJob   = async { getChartDataUseCase(bId, _state.value.selectedDays, branchId) }
             val debtJob    = async { getPendingDebtsUseCase(bId, branchId) }
             val urgentJob  = async { getUrgentActionUseCase(bId, branchId) }
+            val fulfillmentJob = async { dashboardRepository.getWeeklyFulfillmentSummary(bId, branchId) }
             val pullCategoriesJob = async { pullCategoriesUseCase(sessionManager.businessId) }
+            
             val summary = summaryJob.await()
             val chart   = chartJob.await()
             val debt    = debtJob.await()
             val urgent  = urgentJob.await()
-            val pullCategory = pullCategoriesJob.await()
+            val fulfillment = fulfillmentJob.await()
+            pullCategoriesJob.await()
 
             _state.update { s ->
                 s.copy(
                     isLoading = false,
                     summary = (summary as? Resource.Success)?.data ?: s.summary,
-                    chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
-                    pendingDebts  = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
+                    chartData = (chart as? Resource.Success)?.data ?: s.chartData,
+                    pendingDebts = (debt as? Resource.Success)?.data ?: s.pendingDebts,
+                    fulfillmentSummary = (fulfillment as? Resource.Success)?.data ?: s.fulfillmentSummary,
                     lowStockCount = urgent.first,
                     pendingPurchaseOrderCount = urgent.second,
                     error = (summary as? Resource.Error)?.message,
@@ -111,8 +116,6 @@ class DashboardViewModel(
         }
     }
 
-    // ── Manual pull-to-refresh ──────────────────────────────────────
-
     fun refresh() {
         val bId = businessId ?: return
         viewModelScope.launch {
@@ -121,18 +124,20 @@ class DashboardViewModel(
             val branchId = sessionManager.activeBranchId.value
 
             syncDashboardUseCase(bId)
-            // Reload from Room after sync
             val summary = getDashboardSummaryUseCase(bId, branchId)
             val chart   = getChartDataUseCase(bId, _state.value.selectedDays, branchId)
             val debt    = getPendingDebtsUseCase(bId, branchId)
             val urgent  = getUrgentActionUseCase(bId, branchId)
-            val pullCategoriesJob = async { pullCategoriesUseCase(sessionManager.businessId) }
+            val fulfillment = dashboardRepository.getWeeklyFulfillmentSummary(bId, branchId)
+            async { pullCategoriesUseCase(sessionManager.businessId) }.await()
+
             _state.update { s ->
                 s.copy(
                     isRefreshing = false,
                     summary = (summary as? Resource.Success)?.data ?: s.summary,
-                    chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
-                    pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
+                    chartData = (chart as? Resource.Success)?.data ?: s.chartData,
+                    pendingDebts = (debt as? Resource.Success)?.data ?: s.pendingDebts,
+                    fulfillmentSummary = (fulfillment as? Resource.Success)?.data ?: s.fulfillmentSummary,
                     lowStockCount = urgent.first,
                     pendingPurchaseOrderCount = urgent.second
                 )
@@ -160,7 +165,6 @@ class DashboardViewModel(
         }
     }
 
-
     private fun observeConnectivity() {
         viewModelScope.launch {
             networkMonitor.isConnectedFlow
@@ -176,16 +180,17 @@ class DashboardViewModel(
 
             val result = syncDashboardUseCase(bId)
             if (result is Resource.Success) {
-                // Reload Room data after sync completes
                 val summary = getDashboardSummaryUseCase(bId, branchId)
                 val chart   = getChartDataUseCase(bId, _state.value.selectedDays, branchId)
                 val debt    = getPendingDebtsUseCase(bId, branchId)
                 val urgent  = getUrgentActionUseCase(bId, branchId)
+                val fulfillment = dashboardRepository.getWeeklyFulfillmentSummary(bId, branchId)
                 _state.update { s ->
                     s.copy(
                         summary = (summary as? Resource.Success)?.data ?: s.summary,
-                        chartData = (chart   as? Resource.Success)?.data ?: s.chartData,
-                        pendingDebts = (debt    as? Resource.Success)?.data ?: s.pendingDebts,
+                        chartData = (chart as? Resource.Success)?.data ?: s.chartData,
+                        pendingDebts = (debt as? Resource.Success)?.data ?: s.pendingDebts,
+                        fulfillmentSummary = (fulfillment as? Resource.Success)?.data ?: s.fulfillmentSummary,
                         lowStockCount = urgent.first,
                         pendingPurchaseOrderCount = urgent.second
                     )
@@ -199,6 +204,7 @@ data class DashboardUiState(
     val isLoading: Boolean  = false,
     val isRefreshing: Boolean  = false,
     val summary: DashboardSummary = DashboardSummary(),
+    val fulfillmentSummary: DashboardFulfillmentSummary = DashboardFulfillmentSummary(),
     val chartData: List<ChartDataPoint> = emptyList(),
     val pendingDebts: PendingDebtSummary = PendingDebtSummary(),
     val selectedDays: Int  = 7,

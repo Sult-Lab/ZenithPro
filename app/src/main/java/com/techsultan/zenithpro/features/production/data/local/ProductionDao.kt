@@ -40,4 +40,27 @@ interface ProductionOrderDao {
 
     @Query("UPDATE production_orders SET status = :status, updatedAt = :at WHERE id = :id")
     suspend fun updateStatus(id: String, status: String, at: String)
+
+    @Query("UPDATE production_orders SET status = :status, startedAt = :startedAt, materialsDeducted = 1, updatedAt = :at WHERE id = :id")
+    suspend fun updateStatusAndStartedAt(id: String, status: String, startedAt: String, at: String)
+
+    @Query("UPDATE production_orders SET status = :status, cancelledAt = :cancelledAt, materialsDeducted = 0, updatedAt = :at WHERE id = :id")
+    suspend fun updateStatusAndCancelledAt(id: String, status: String, cancelledAt: String, at: String)
+
+    @Query("""
+        UPDATE production_orders
+        SET status = 'COMPLETED',
+            actualQuantity = :actualQuantity,
+            remarks = :remarks,
+            completedAt = :completedAt,
+            updatedAt = :updatedAt
+        WHERE id = :id
+    """)
+    suspend fun updateCompletedOrder(
+        id: String,
+        actualQuantity: Double,
+        remarks: String?,
+        completedAt: String,
+        updatedAt: String
+    )
 }

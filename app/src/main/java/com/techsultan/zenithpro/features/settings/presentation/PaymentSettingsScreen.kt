@@ -117,13 +117,13 @@ fun PaymentSettingsScreen(
             contentPadding  = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Test mode ───────────────────────────────────────────
-            item {
-                TestModeCard(
-                    enabled   = state.testModeEnabled,
-                    onToggle  = viewModel::onTestModeToggled
-                )
-            }
+//            // ── Test mode ───────────────────────────────────────────
+//            item {
+//                TestModeCard(
+//                    enabled   = state.testModeEnabled,
+//                    onToggle  = viewModel::onTestModeToggled
+//                )
+//            }
 
             // ── Payment methods header ──────────────────────────────
             item {

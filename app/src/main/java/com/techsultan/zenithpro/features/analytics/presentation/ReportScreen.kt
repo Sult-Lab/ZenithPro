@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AssistChip
@@ -73,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.features.analytics.component.CustomerRankCard
 import com.techsultan.zenithpro.features.analytics.component.ExpenseCategoryBar
+import com.techsultan.zenithpro.features.analytics.component.ReportChartsBottomSheet
 import com.techsultan.zenithpro.features.analytics.component.ReportComparisonCard
 import com.techsultan.zenithpro.features.analytics.component.ReportCustomerCard
 import com.techsultan.zenithpro.features.analytics.component.ReportSalesSummaryCard
@@ -92,6 +94,7 @@ fun ReportsScreen(
 
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showFilterSheet by remember { mutableStateOf(false) }
+    var showChartSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
@@ -107,6 +110,12 @@ fun ReportsScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showChartSheet = true }) {
+                        Icon(
+                            imageVector = Icons.Default.PieChart,
+                            contentDescription = "Visual Charts"
+                        )
+                    }
                     if (state.canFilterBranch || state.canFilterStaff) {
                         BadgedBox(badge = { if (state.hasActiveFilters) Badge() }) {
                             IconButton(onClick = { showFilterSheet = true }) {
@@ -261,6 +270,13 @@ fun ReportsScreen(
                 showFilterSheet = false
             },
             onDismiss = { showFilterSheet = false }
+        )
+    }
+
+    if (showChartSheet && state.data != null) {
+        ReportChartsBottomSheet(
+            data = state.data!!,
+            onDismiss = { showChartSheet = false }
         )
     }
 }

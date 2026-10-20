@@ -4,6 +4,7 @@ import com.techsultan.zenithpro.core.util.ErrorSanitizer
 import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.features.branch.domain.repository.BranchRepository
 import com.techsultan.zenithpro.features.dashboard.data.remote.ChartDataPoint
+import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardFulfillmentSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.DashboardSummary
 import com.techsultan.zenithpro.features.dashboard.data.remote.PendingDebtSummary
 import com.techsultan.zenithpro.features.dashboard.domain.repository.DashboardRepository
@@ -12,6 +13,7 @@ import com.techsultan.zenithpro.features.sales.data.local.SaleDao
 import com.techsultan.zenithpro.features.sales.domain.repository.SaleRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -67,6 +69,41 @@ class DashboardRepositoryImpl(
             Resource.Success(saleDao.getPendingDebts(businessId, branchId))
         } catch (e: Exception) {
             Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load debts"))
+        }
+    }
+
+    override suspend fun getWeeklyFulfillmentSummary(
+        businessId: String,
+        branchId: String?
+    ): Resource<DashboardFulfillmentSummary> = withContext(Dispatchers.IO) {
+        try {
+            val startOfWeek = LocalDate.now()
+                .with(DayOfWeek.MONDAY)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toString()
+            val rows = saleDao.getWeeklyFulfillmentCounts(businessId, startOfWeek, branchId)
+            val map = rows.associate { it.fulfillmentStatus to it.count }
+            val pending = map["PENDING"] ?: 0
+            // TODO: "processed" bucket maps to PROCESSING — unconfirmed with business owner if "processed" means PROCESSING or DELIVERED.
+            val processing = map["PROCESSING"] ?: 0
+            val delivered = map["DELIVERED"] ?: 0
+            val failed = map["FAILED"] ?: 0
+            val cancelled = map["CANCELLED"] ?: 0
+            val total = pending + processing + delivered + failed + cancelled
+
+            Resource.Success(
+                DashboardFulfillmentSummary(
+                    totalOrdersThisWeek = total,
+                    pendingCount = pending,
+                    processingCount = processing,
+                    deliveredCount = delivered,
+                    failedCount = failed,
+                    cancelledCount = cancelled
+                )
+            )
+        } catch (e: Exception) {
+            Resource.Error(ErrorSanitizer.clean(e.message ?: "Failed to load fulfillment summary"))
         }
     }
 

@@ -18,5 +18,13 @@ data class ProductionOrderEntity(
     val createdBy: String,
     val createdAt: String,
     val updatedAt: String,
+    val outcome: String = "STOCK",
+    val customerId: String? = null,
+    val saleId: String? = null,
+    val actualQuantity: Double? = null,
+    val actualMaterialCost: Long? = null,
+    val remarks: String? = null,
+    val materialsDeducted: Boolean = false,
+    val cancelledAt: String? = null,
     val syncStatus: Util.SyncStatus = Util.SyncStatus.SYNCED
 )

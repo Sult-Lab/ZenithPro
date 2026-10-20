@@ -38,6 +38,10 @@ interface MaterialDao {
     @Query("SELECT * FROM recipes WHERE variantId = :variantId")
     fun getRecipeForVariant(variantId: String): Flow<List<RecipeWithMaterial>>
 
+    @Transaction
+    @Query("SELECT * FROM recipes WHERE businessId = :businessId")
+    fun getAllRecipes(businessId: String): Flow<List<RecipeWithMaterial>>
+
     @Query("SELECT * FROM recipes WHERE variantId = :variantId")
     suspend fun getRecipesByVariant(variantId: String): List<RecipeEntity>
 
@@ -65,6 +69,9 @@ interface MaterialDao {
     @Query("DELETE FROM materials WHERE id = :id")
     suspend fun hardDelete(id: String)
 
+    @Query("SELECT id FROM materials")
+    suspend fun getAllMaterialIds(): List<String>
+
     @Query("SELECT id FROM materials WHERE businessId = :businessId")
     suspend fun getAllMaterialIds(businessId: String): List<String>
 
@@ -76,4 +83,36 @@ interface MaterialDao {
           AND quantity      <= lowStockAlert
     """)
     suspend fun getLowStockCount(businessId: String): Int
+
+     @Query("SELECT * FROM recipes WHERE variantId = :variantId")
+ suspend fun getRecipeEntitiesForVariantOnce(variantId: String): List<RecipeEntity>
+     // one-shot, unfiltered (DELETED included) — used only for diffing in saveRecipe
+
+    @Query("SELECT * FROM recipes WHERE syncStatus IN ('PENDING','DIRTY','DELETED')")
+ suspend fun getUnsyncedRecipes(): List<RecipeEntity>
+     // feeds SyncWorker
+
+ @Query("UPDATE recipes SET syncStatus = 'SYNCED', updatedAt = :syncedAt WHERE id = :id")
+ suspend fun markRecipeSynced(id: String, syncedAt: String)
+
+ @Query("DELETE FROM recipes WHERE id = :id")
+ suspend fun hardDeleteRecipe(id: String)
+
+    @Query("""
+    SELECT * FROM recipes
+    WHERE businessId = :businessId
+""")
+    suspend fun getRecipesForBusiness(
+        businessId: String
+    ): List<RecipeEntity>
+
+    @Query("""
+    SELECT * FROM recipes
+    WHERE id = :id
+    LIMIT 1
+""")
+    suspend fun getRecipeById(
+        id: String
+    ): RecipeEntity?
+
 }
