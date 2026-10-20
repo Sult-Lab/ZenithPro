@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.settings.data.local.TerminalEntity
@@ -38,6 +39,7 @@ data class SaleEntity(
     val debtAmount: Long,
     val paymentMethod: PaymentMethod,
     val status: SaleStatus,
+    val fulfillmentStatus: FulfillmentStatus = FulfillmentStatus.DELIVERED,
     val notes: String?,
     val soldAt: String,
     val updatedAt: String,

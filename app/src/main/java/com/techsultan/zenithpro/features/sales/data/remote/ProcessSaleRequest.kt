@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.sales.data.remote
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,6 +16,7 @@ data class ProcessSaleRequest(
     val amountPaid: Long,
     val changeAmount: Long,
     val paymentMethod: String,
+    @SerialName("fulfillment_status") val fulfillmentStatus: String? = null,
     val notes: String?,
     val staffId: String,
     val terminalId: String? = null,

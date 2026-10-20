@@ -11,11 +11,50 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 fun ProductionOrderDto.toEntity() = ProductionOrderEntity(
-    id = id, businessId = businessId, branchId = branchId,
-    variantId = variantId, quantity = quantity, status = status,
-    notes = notes, startedAt = startedAt, completedAt = completedAt,
-    createdBy = createdBy, createdAt = createdAt, updatedAt = updatedAt,
+    id = id,
+    businessId = businessId,
+    branchId = branchId,
+    variantId = variantId,
+    quantity = quantity,
+    status = status,
+    notes = notes,
+    startedAt = startedAt,
+    completedAt = completedAt,
+    createdBy = createdBy,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+    outcome = outcome ?: "STOCK",
+    customerId = customerId,
+    saleId = saleId,
+    actualQuantity = actualQuantity,
+    actualMaterialCost = actualMaterialCost,
+    remarks = remarks,
+    materialsDeducted = materialsDeducted ?: false,
+    cancelledAt = cancelledAt,
     syncStatus = Util.SyncStatus.SYNCED
+)
+
+fun ProductionOrderEntity.toDto() = ProductionOrderDto(
+    id = id,
+    businessId = businessId,
+    branchId = branchId,
+    variantId = variantId,
+    quantity = quantity,
+    status = status,
+    notes = notes,
+    startedAt = startedAt,
+    completedAt = completedAt,
+    createdBy = createdBy,
+    createdAt = createdAt,
+    updatedAt = updatedAt,
+    outcome = outcome,
+    customerId = customerId,
+    saleId = saleId,
+    actualQuantity = actualQuantity,
+    actualMaterialCost = actualMaterialCost,
+    remarks = remarks,
+    materialsDeducted = materialsDeducted,
+    cancelledAt = cancelledAt
 )
 
 @Serializable(with = ProductionStatusSerializer::class)

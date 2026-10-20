@@ -40,6 +40,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.ZenithButton
+import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
 
@@ -48,12 +49,21 @@ import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEn
 fun UpdateStatusSheet(
     order: ProductionOrderEntity,
     productName: String,
+    unitType: String? = null,
     onSaveStatus: (newStatus: String, actualYield: Double?, notes: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedStatus by remember { mutableStateOf(order.status) }
     var actualYieldInput by remember { mutableStateOf(order.quantity.toString()) }
     var remarksInput by remember { mutableStateOf("") }
+
+    val resolvedUnitType = remember(unitType) {
+        UnitType.fromString(unitType)
+    }
+
+    val unitSuffix = remember(resolvedUnitType) {
+        resolvedUnitType.abbreviation.ifBlank { resolvedUnitType.label }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -206,7 +216,7 @@ fun UpdateStatusSheet(
                             onValueChange = { actualYieldInput = it },
                             label = "Actual Yield (Qty)",
                             placeholder = "50",
-                            suffix = "units",
+                            suffix = unitSuffix,
                             keyboardType = KeyboardType.Decimal
                         )
                     }

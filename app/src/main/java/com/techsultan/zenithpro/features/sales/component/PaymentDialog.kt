@@ -45,6 +45,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,6 +82,7 @@ import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.util.Util.formatPrice
 import com.techsultan.zenithpro.features.customer.data.local.CustomerEntity
 import com.techsultan.zenithpro.features.customer.presentation.AddEditCustomerScreen
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -378,7 +380,54 @@ fun PaymentDialog(
                 Spacer(Modifier.height(8.dp))
             }
 
-                Spacer(modifier = Modifier.height(16.dp))
+//            // TODO: Add a per-business setting to drive whether default checkout fulfillment is Instant vs Pending.
+//            val currentFulfillment by viewModel.fulfillmentStatus.collectAsStateWithLifecycle()
+//            val isPendingDelivery = currentFulfillment == FulfillmentStatus.PENDING
+//
+//            Surface(
+//                shape = RoundedCornerShape(12.dp),
+//                color = MaterialTheme.colorScheme.surfaceContainerLow,
+//                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+//                modifier = Modifier.fillMaxWidth()
+//            ) {
+//                Row(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(horizontal = 12.dp, vertical = 8.dp),
+//                    horizontalArrangement = Arrangement.SpaceBetween,
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Column(modifier = Modifier.weight(1f)) {
+//                        Text(
+//                            text = "Handover / Fulfillment",
+//                            style = MaterialTheme.typography.labelMedium,
+//                            fontWeight = FontWeight.Bold
+//                        )
+//                        Text(
+//                            text = if (isPendingDelivery) "Not yet delivered (Pending)" else "Instant Handover (Delivered)",
+//                            style = MaterialTheme.typography.bodySmall,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                    }
+//
+//                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+//                        FilterChip(
+//                            selected = !isPendingDelivery,
+//                            onClick = { viewModel.setFulfillmentStatus(null) },
+//                            label = { Text("Instant", style = MaterialTheme.typography.labelSmall) },
+//                            shape = RoundedCornerShape(16.dp)
+//                        )
+//                        FilterChip(
+//                            selected = isPendingDelivery,
+//                            onClick = { viewModel.setFulfillmentStatus(FulfillmentStatus.PENDING) },
+//                            label = { Text("Pending", style = MaterialTheme.typography.labelSmall) },
+//                            shape = RoundedCornerShape(16.dp)
+//                        )
+//                    }
+//                }
+//            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
                 // Confirm Button
                 ZenithButton(

@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.production.presentation.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,15 +15,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Factory
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -51,11 +55,14 @@ import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
+import com.techsultan.zenithpro.features.material.data.local.RecipeWithMaterial
 import java.util.Locale
 
 data class RequiredMaterialItem(
     val material: MaterialEntity,
-    var requiredQty: Double
+    var requiredQty: Double,
+    val quantityPerUnit: Double,   // from the recipe; null-equivalent 0.0 for a manually-added extra
+    var isOverridden: Boolean = false
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,22 +70,60 @@ data class RequiredMaterialItem(
 fun NewProductionOrderSheet(
     products: List<ProductWithVariants>,
     materials: List<MaterialEntity>,
-    onSave: (variantId: String, quantity: Double, notes: String?) -> Unit,
+    recipeMaterials: List<RecipeWithMaterial>,   // reactively supplied by the ViewModel for the selected variant
+    onProductSelected: (variantId: String) -> Unit,
+    onSave: (variantId: String, quantity: Double, notes: String?, materials: List<RequiredMaterialItem>) -> Unit,
     onDismiss: () -> Unit
 ) {
     var selectedVariantId by remember { mutableStateOf("") }
     var selectedProductName by remember { mutableStateOf("Select Product") }
-    var quantityInput by remember { mutableStateOf("50") }
+    var quantityInput by remember { mutableStateOf("") }
     var notesInput by remember { mutableStateOf("") }
     var showProductDropdown by remember { mutableStateOf(false) }
+    var showAddMaterialPicker by remember { mutableStateOf(false) }
 
-    // Required Materials list
     val selectedMaterials = remember { mutableStateListOf<RequiredMaterialItem>() }
 
-    LaunchedEffect(materials) {
-        if (selectedMaterials.isEmpty() && materials.isNotEmpty()) {
-            materials.take(3).forEach { mat ->
-                selectedMaterials.add(RequiredMaterialItem(mat, 2.5))
+    val selectedProduct = remember(products, selectedVariantId) {
+        if (selectedVariantId.isBlank()) null
+        else products.firstOrNull { pwv ->
+            pwv.variants.any { it.variant.id == selectedVariantId }
+        }?.product
+    }
+
+    val selectedUnitType = remember(selectedProduct) {
+        UnitType.fromString(selectedProduct?.unitType)
+    }
+
+    val productUnitSuffix = remember(selectedUnitType, selectedProduct) {
+        if (selectedProduct == null) "Units"
+        else selectedUnitType.abbreviation.ifBlank { selectedUnitType.label }
+    }
+
+    // Rebuild the materials list from the recipe whenever the product changes,
+    // or the recipe for the currently selected product finishes loading.
+    LaunchedEffect(recipeMaterials, selectedVariantId) {
+        if (selectedVariantId.isNotBlank()) {
+            val qty = quantityInput.toDoubleOrNull() ?: 0.0
+            selectedMaterials.clear()
+            recipeMaterials.forEach { rwm ->
+                selectedMaterials.add(
+                    RequiredMaterialItem(
+                        material = rwm.material,
+                        requiredQty = rwm.recipe.quantityNeeded * qty,
+                        quantityPerUnit = rwm.recipe.quantityNeeded
+                    )
+                )
+            }
+        }
+    }
+
+    // Auto-rescale any line the user hasn't manually overridden when the planned quantity changes.
+    fun rescaleToQuantity(qty: Double) {
+        for (i in selectedMaterials.indices) {
+            val item = selectedMaterials[i]
+            if (!item.isOverridden) {
+                selectedMaterials[i] = item.copy(requiredQty = item.quantityPerUnit * qty)
             }
         }
     }
@@ -103,10 +148,8 @@ fun NewProductionOrderSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Select Product Dropdown
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            // Select Product
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     text = "Select Product",
                     style = MaterialTheme.typography.bodySmall,
@@ -141,7 +184,7 @@ fun NewProductionOrderSheet(
                     ) {
                         if (products.isEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("No products found (type custom ID below)") },
+                                text = { Text("No products found") },
                                 onClick = { showProductDropdown = false }
                             )
                         } else {
@@ -153,6 +196,7 @@ fun NewProductionOrderSheet(
                                             selectedVariantId = varWithStock.variant.id
                                             selectedProductName = productWithVar.product.name
                                             showProductDropdown = false
+                                            onProductSelected(varWithStock.variant.id)
                                         }
                                     )
                                 }
@@ -162,29 +206,21 @@ fun NewProductionOrderSheet(
                 }
             }
 
-            if (selectedVariantId.isBlank()) {
-                CustomTextField(
-                    value = selectedVariantId,
-                    onValueChange = { selectedVariantId = it },
-                    label = "Or enter Variant ID directly",
-                    placeholder = "e.g. VAR-10293"
-                )
-            }
-
             // Production Quantity
             CustomTextField(
                 value = quantityInput,
-                onValueChange = { quantityInput = it },
+                onValueChange = { newVal ->
+                    quantityInput = newVal
+                    newVal.toDoubleOrNull()?.let { rescaleToQuantity(it) }
+                },
                 label = "Production Quantity",
                 placeholder = "50",
-                suffix = "Units",
+                suffix = productUnitSuffix,
                 keyboardType = KeyboardType.Decimal
             )
 
-            // Raw Materials Needed Section
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            // Raw Materials Needed
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -197,7 +233,20 @@ fun NewProductionOrderSheet(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    TextButton(onClick = { /* Reset to default */ }) {
+                    TextButton(onClick = {
+                        quantityInput.toDoubleOrNull()?.let { qty ->
+                            selectedMaterials.clear()
+                            recipeMaterials.forEach { rwm ->
+                                selectedMaterials.add(
+                                    RequiredMaterialItem(
+                                        material = rwm.material,
+                                        requiredQty = rwm.recipe.quantityNeeded * qty,
+                                        quantityPerUnit = rwm.recipe.quantityNeeded
+                                    )
+                                )
+                            }
+                        }
+                    }) {
                         Text(
                             text = "Reset to Default",
                             style = MaterialTheme.typography.labelMedium,
@@ -212,9 +261,22 @@ fun NewProductionOrderSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
+                if (selectedVariantId.isBlank()) {
+                    Text(
+                        text = "Select a product to load its recipe.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (selectedMaterials.isEmpty()) {
+                    Text(
+                        text = "No recipe materials for this product — add any needed below, or continue with none (e.g. a service with no material cost).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Material Items
                 selectedMaterials.forEachIndexed { index, reqItem ->
                     val isLowStock = reqItem.requiredQty > reqItem.material.quantity
 
@@ -224,15 +286,13 @@ fun NewProductionOrderSheet(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         border = CardDefaults.outlinedCardBorder(enabled = true)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = reqItem.material.name,
                                         style = MaterialTheme.typography.titleSmall,
@@ -257,6 +317,14 @@ fun NewProductionOrderSheet(
                                         color = if (isLowStock) Color(0xFFC62828) else Color(0xFF2E7D32)
                                     )
                                 }
+
+                                IconButton(onClick = { selectedMaterials.removeAt(index) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove ${reqItem.material.name}",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.height(8.dp))
@@ -276,7 +344,7 @@ fun NewProductionOrderSheet(
                                     value = reqItem.requiredQty.toString(),
                                     onValueChange = { newVal ->
                                         newVal.toDoubleOrNull()?.let {
-                                            selectedMaterials[index] = reqItem.copy(requiredQty = it)
+                                            selectedMaterials[index] = reqItem.copy(requiredQty = it, isOverridden = true)
                                         }
                                     },
                                     label = "",
@@ -299,33 +367,49 @@ fun NewProductionOrderSheet(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        if (materials.isNotEmpty()) {
-                            val nextMat = materials.getOrNull(selectedMaterials.size % materials.size)
-                            if (nextMat != null) {
-                                selectedMaterials.add(RequiredMaterialItem(nextMat, 1.0))
+                Box {
+                    OutlinedButton(
+                        onClick = { showAddMaterialPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = materials.any { m -> selectedMaterials.none { it.material.id == m.id } }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Add Extra Material", style = MaterialTheme.typography.labelLarge)
+                    }
+
+                    DropdownMenu(
+                        expanded = showAddMaterialPicker,
+                        onDismissRequest = { showAddMaterialPicker = false }
+                    ) {
+                        val available = materials.filter { m -> selectedMaterials.none { it.material.id == m.id } }
+                        if (available.isEmpty()) {
+                            DropdownMenuItem(text = { Text("All materials already added") }, onClick = {})
+                        } else {
+                            available.forEach { mat ->
+                                DropdownMenuItem(
+                                    text = { Text("${mat.name} (${mat.unit})") },
+                                    onClick = {
+                                        selectedMaterials.add(
+                                            RequiredMaterialItem(
+                                                material = mat,
+                                                requiredQty = 0.0,
+                                                quantityPerUnit = 0.0,
+                                                isOverridden = true // not recipe-scaled, so quantity changes stay manual
+                                            )
+                                        )
+                                        showAddMaterialPicker = false
+                                    }
+                                )
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Add Extra Material",
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    }
                 }
             }
 
-            // Estimated Cost Banner Card
-            val estimatedCostTotal = remember(selectedMaterials) {
+            // Estimated Cost
+            val estimatedCostTotal = remember(selectedMaterials.toList()) {
                 selectedMaterials.sumOf { (it.material.costPerUnit / 100.0) * it.requiredQty }
             }
 
@@ -334,9 +418,7 @@ fun NewProductionOrderSheet(
                 color = Color(0xFFEBF3FF),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp)
-                ) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
                         text = "ESTIMATED COST",
                         style = MaterialTheme.typography.labelSmall,
@@ -359,7 +441,6 @@ fun NewProductionOrderSheet(
                 }
             }
 
-            // Optional Notes
             CustomTextField(
                 value = notesInput,
                 onValueChange = { notesInput = it },
@@ -367,16 +448,13 @@ fun NewProductionOrderSheet(
                 placeholder = "Add batch notes or special instructions"
             )
 
-            // Bottom Buttons Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
                     onClick = onDismiss,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
+                    modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cancel", style = MaterialTheme.typography.titleMedium)
@@ -387,12 +465,10 @@ fun NewProductionOrderSheet(
                     onClick = {
                         val qty = quantityInput.toDoubleOrNull() ?: return@ZenithButton
                         if (selectedVariantId.isNotBlank() && qty > 0) {
-                            onSave(selectedVariantId, qty, notesInput.trimOrNull())
+                            onSave(selectedVariantId, qty, notesInput.trimOrNull(), selectedMaterials.toList())
                         }
                     },
-                    modifier = Modifier
-                        .weight(1.2f)
-                        .height(52.dp),
+                    modifier = Modifier.weight(1.2f).height(52.dp),
                     icon = Icons.Default.Factory
                 )
             }

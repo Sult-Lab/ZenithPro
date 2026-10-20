@@ -50,6 +50,11 @@ sealed interface Route: NavKey {
         data object Branches : Route, NavKey
         @Serializable
         data object Production : Route, NavKey
+
+        @Serializable
+        data object Recipe: Route, NavKey
+        @Serializable
+        data object RecipeList: Route, NavKey
         @Serializable
         data object Material : Route, NavKey
 

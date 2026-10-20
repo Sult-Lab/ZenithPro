@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.sales.data.mapper
 
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.SaleStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
@@ -23,8 +24,9 @@ fun SaleDto.toEntity() = SaleEntity(
     amountPaid = amountPaid,
     changeAmount = changeAmount,
     debtAmount = debtAmount,
-    paymentMethod = PaymentMethod.valueOf(paymentMethod),
-    status = SaleStatus.valueOf(status),
+    paymentMethod = PaymentMethod.entries.find { it.name.equals(paymentMethod, ignoreCase = true) } ?: PaymentMethod.CASH,
+    status = SaleStatus.entries.find { it.name.equals(status, ignoreCase = true) } ?: SaleStatus.COMPLETED,
+    fulfillmentStatus = FulfillmentStatus.fromString(fulfillmentStatus),
     notes = notes,
     soldAt = soldAt,
     updatedAt = updatedAt,

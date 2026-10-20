@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CheckCircleOutline
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -77,21 +79,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewModelScope
 import com.techsultan.zenithpro.core.components.CustomTextField
 import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.domain.domain.UnitType
+import com.techsultan.zenithpro.core.util.Resource
 import com.techsultan.zenithpro.core.util.Util
 import com.techsultan.zenithpro.core.util.Util.trimOrNull
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
+import com.techsultan.zenithpro.features.material.data.local.RecipeWithMaterial
 import com.techsultan.zenithpro.features.material.data.remote.UpsertMaterialRequest
 import com.techsultan.zenithpro.features.material.presentation.component.AddEditMaterialSheet
 import com.techsultan.zenithpro.features.material.presentation.component.AdjustStockSheet
 import com.techsultan.zenithpro.features.material.presentation.component.MaterialItemCard
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import org.koin.androidx.compose.koinViewModel
 import java.util.UUID
 
@@ -107,6 +121,7 @@ fun MaterialScreen(
     viewModel: MaterialViewModel = koinViewModel(),
     onMaterialClick: (MaterialEntity) -> Unit,
     onNewProduction: () -> Unit,
+    onNavigateToRecipe: () -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -116,6 +131,7 @@ fun MaterialScreen(
     var adjustingMat by remember { mutableStateOf<MaterialEntity?>(null) }
     var selectedStatus by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var showRecipeProductPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -158,6 +174,13 @@ fun MaterialScreen(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                SmallFloatingActionButton(
+                    onClick = onNavigateToRecipe,
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Manage recipe")
+                }
                 SmallFloatingActionButton(
                     onClick = onNewProduction,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,

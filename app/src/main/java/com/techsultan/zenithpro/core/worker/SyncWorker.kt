@@ -24,6 +24,8 @@ import com.techsultan.zenithpro.features.expenses.data.local.ExpenseDao
 import com.techsultan.zenithpro.features.expenses.data.repository.ExpenseRepositoryImpl
 import com.techsultan.zenithpro.features.inventory.data.local.ProductDao
 import com.techsultan.zenithpro.features.inventory.data.repository.ProductRepositoryImpl
+import com.techsultan.zenithpro.features.material.data.local.MaterialDao
+import com.techsultan.zenithpro.features.material.data.repository.MaterialRepositoryImpl
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderDao
 import com.techsultan.zenithpro.features.production.data.repository.ProductionRepositoryImpl
 import com.techsultan.zenithpro.features.sales.data.local.SaleDao
@@ -40,6 +42,8 @@ class SyncWorker(
     private val customerRepository: CustomerRepositoryImpl,
     private val saleRepository: SaleRepositoryImpl,
     private val productionRepository: ProductionRepositoryImpl,
+    private val materialRepository: MaterialRepositoryImpl,
+    private val materialDao: MaterialDao,
     private val productDao: ProductDao,
     private val expenseDao: ExpenseDao,
     private val categoryDao: CategoryDao,
@@ -154,6 +158,25 @@ class SyncWorker(
                     analytics.logError(e, "SyncWorker.Customers")
                     analytics.trackEvent("sync_failed", bundleOf(
                         "entity_type" to "customer",
+                        "error_reason" to (e.message ?: "unknown")
+                    ))
+                }
+            }
+
+            val recipes = materialDao.getUnsyncedRecipes()
+            recipes.forEach { recipe ->
+                try {
+                    when (recipe.syncStatus) {
+                        Util.SyncStatus.PENDING -> materialRepository.pushNewRecipeItem(recipe)
+                        Util.SyncStatus.DIRTY   -> materialRepository.pushRecipeUpdate(recipe)
+                        Util.SyncStatus.DELETED -> materialRepository.pushRecipeDelete(recipe.id)
+                        Util.SyncStatus.SYNCED  -> Unit
+                    }
+                    totalSynced++
+                } catch (e: Exception) {
+                    analytics.logError(e, "SyncWorker.Recipes")
+                    analytics.trackEvent("sync_failed", bundleOf(
+                        "entity_type" to "recipe",
                         "error_reason" to (e.message ?: "unknown")
                     ))
                 }

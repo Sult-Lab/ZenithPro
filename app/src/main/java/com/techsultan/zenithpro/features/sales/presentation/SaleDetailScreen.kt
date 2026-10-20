@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -51,8 +52,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.techsultan.zenithpro.core.components.ZenithButton
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.domain.domain.UnitType
+import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.local.SaleEntity
 import com.techsultan.zenithpro.features.sales.data.local.SaleItemEntity
@@ -80,6 +84,10 @@ fun SaleDetailScreen(
             when (event) {
                 is SaleDetailViewModel.SaleDetailEvent.PaymentConfirmed ->
                     snackbar.showSnackbar("Payment confirmed!")
+                is SaleDetailViewModel.SaleDetailEvent.StatusUpdated ->
+                    snackbar.showSnackbar("Fulfillment status updated!")
+                is SaleDetailViewModel.SaleDetailEvent.ShowError ->
+                    snackbar.showSnackbar(event.message)
             }
         }
     }
@@ -131,6 +139,18 @@ fun SaleDetailScreen(
                             )
                         }
 
+                        // ── Fulfillment status card ────────────────────────────────
+                        item {
+                            FulfillmentStatusCard(
+                                fulfillmentStatus = state.saleWithItems!!.sale.fulfillmentStatus,
+                                canUpdate = state.canUpdateFulfillment,
+                                isUpdating = state.isUpdating,
+                                onUpdateStatus = { newStatus ->
+                                    viewModel.updateFulfillmentStatus(newStatus)
+                                }
+                            )
+                        }
+
                         // ── Items ─────────────────────────────────────────────────
                         item {
                             Text(
@@ -151,6 +171,107 @@ fun SaleDetailScreen(
     }
 }
 
+@Composable
+private fun FulfillmentStatusCard(
+    fulfillmentStatus: FulfillmentStatus,
+    canUpdate: Boolean,
+    isUpdating: Boolean,
+    onUpdateStatus: (FulfillmentStatus) -> Unit
+) {
+    val isTerminal = fulfillmentStatus in listOf(
+        FulfillmentStatus.DELIVERED,
+        FulfillmentStatus.FAILED,
+        FulfillmentStatus.CANCELLED
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Fulfillment Status",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                val (badgeColor, badgeText) = when (fulfillmentStatus) {
+                    FulfillmentStatus.PENDING -> Color(0xFFF57C00) to "Pending"
+                    FulfillmentStatus.PROCESSING -> Color(0xFF1976D2) to "Processing"
+                    FulfillmentStatus.DELIVERED -> Color(0xFF2E7D32) to "Delivered"
+                    FulfillmentStatus.FAILED -> Color(0xFFC62828) to "Failed"
+                    FulfillmentStatus.CANCELLED -> Color(0xFFC62828) to "Cancelled"
+                    FulfillmentStatus.UNKNOWN -> Color.Gray to "Unknown"
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = badgeColor.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = badgeText,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = badgeColor
+                    )
+                }
+            }
+
+            if (isTerminal) {
+                Text(
+                    text = "This order is in a terminal state (${fulfillmentStatus.name}) and cannot be modified.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (canUpdate) {
+                Text(
+                    text = "Update Fulfillment Status:",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (fulfillmentStatus == FulfillmentStatus.PENDING) {
+                        OutlinedButton(
+                            onClick = { onUpdateStatus(FulfillmentStatus.PROCESSING) },
+                            enabled = !isUpdating,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Mark Processing")
+                        }
+                    }
+
+                    ZenithButton(
+                        text = "Mark Delivered",
+                        onClick = { onUpdateStatus(FulfillmentStatus.DELIVERED) },
+                        enabled = !isUpdating,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
+                Text(
+                    text = "Only Managers and Admins can update fulfillment status.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
 @Preview
 @Composable
 fun SaleDetailScreenPreview() {
@@ -159,102 +280,6 @@ fun SaleDetailScreenPreview() {
         businessId = "business-id",
         onBack = { }
     )
-}
-@Composable
-private fun AwaitingTransferPanel(
-    sale: SaleEntity,
-    isPolling: Boolean,
-) {
-    val context = LocalContext.current
-
-    Card(
-        shape  = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
-        border = BorderStroke(1.dp, Color(0xFFFFB300).copy(alpha = 0.4f))
-    ) {
-        Column(
-            modifier            = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Status header
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (isPolling) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
-                        color       = Color(0xFFFFB300),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                    val alpha by infiniteTransition.animateFloat(
-                        initialValue  = 0.4f,
-                        targetValue   = 1f,
-                        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-                        label         = "alpha"
-                    )
-                    Box(
-                        Modifier.size(10.dp)
-                            .background(Color(0xFFFFB300).copy(alpha = alpha), CircleShape)
-                    )
-                }
-                Text("Waiting for bank transfer",
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color      = Color(0xFFFFB300))
-            }
-
-            Text("₦${sale.totalAmount.formatAmount()}",
-                style      = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.onSurface)
-
-            HorizontalDivider(color = Color(0xFFFFB300).copy(alpha = 0.2f))
-
-        }
-    }
-}
-
-@Composable
-private fun TransferDetailRow(
-    label: String,
-    value: String,
-    copyable: Boolean = false,
-    context: Context? = null,
-) {
-    Row(
-        modifier              = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium)
-        }
-        if (copyable && context != null) {
-            IconButton(
-                onClick  = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
-                            as android.content.ClipboardManager
-                    clipboard.setPrimaryClip(
-                        android.content.ClipData.newPlainText("value", value)
-                    )
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(Icons.Default.ContentCopy, null,
-                    modifier = Modifier.size(14.dp),
-                    tint     = MaterialTheme.colorScheme.primary)
-            }
-        }
-    }
 }
 
 @Composable
@@ -326,7 +351,7 @@ private fun SaleItemRow(item: SaleItemEntity) {
             Text(item.productName,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium)
-            Text("${item.variantSku} × ${com.techsultan.zenithpro.core.util.Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))}",
+            Text("${item.variantSku} × ${Util.formatReceiptQuantity(item.quantity, UnitType.fromString(item.unitType))}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

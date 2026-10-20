@@ -16,6 +16,7 @@ import com.techsultan.zenithpro.features.customer.domain.use_case.GetCustomerDet
 import com.techsultan.zenithpro.features.customer.domain.repository.CustomerRepository
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.PaymentMethod
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.CompletedSale
@@ -76,6 +77,13 @@ class CheckoutViewModel(
 
     private val _paymentStatus = MutableStateFlow<String?>(null)
     val paymentStatus = _paymentStatus.asStateFlow()
+
+    private val _fulfillmentStatus = MutableStateFlow<FulfillmentStatus?>(null)
+    val fulfillmentStatus = _fulfillmentStatus.asStateFlow()
+
+    fun setFulfillmentStatus(status: FulfillmentStatus?) {
+        _fulfillmentStatus.value = status
+    }
 
     val cartTotal: StateFlow<Long> = _cart.map { it.values.sumOf { item -> item.totalPrice } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
@@ -426,6 +434,7 @@ class CheckoutViewModel(
                 paymentMethod = s.paymentMethod,
                 discountAmount = s.discountAmount,
                 notes = notes,
+                fulfillmentStatus = FulfillmentStatus.DELIVERED.value,
                 staffId = sessionManager.userId,
                 taxAmount = taxAmount,
                 clientTransactionId = s.clientTransactionId,

@@ -81,6 +81,7 @@ val salesModule = module {
     viewModel {
         SaleDetailViewModel(
             saleDao = get(),
+            saleRepository = get(),
             sessionManager = get()
         )
     }

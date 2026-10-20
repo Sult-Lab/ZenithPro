@@ -1,6 +1,7 @@
 package com.techsultan.zenithpro.features.sales.domain.repository
 
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.sales.FulfillmentStatus
 import com.techsultan.zenithpro.features.sales.data.local.SaleWithItems
 import com.techsultan.zenithpro.features.sales.data.remote.CartItem
 import com.techsultan.zenithpro.features.sales.data.remote.DailySummary
@@ -18,4 +19,10 @@ interface SaleRepository {
     suspend fun pullSalesFromServer(businessId: String): Resource<Unit>
     suspend fun getDailySummary(businessId: String): Resource<DailySummary>
     suspend fun getNextSaleCounter(businessId: String): Int
+    suspend fun updateFulfillmentStatus(
+        saleId: String,
+        newStatus: FulfillmentStatus,
+        changedBy: String,
+        notes: String? = null
+    ): Resource<Unit>
 }

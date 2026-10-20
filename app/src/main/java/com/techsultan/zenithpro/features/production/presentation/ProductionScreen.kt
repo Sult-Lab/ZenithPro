@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Factory
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.PauseCircle
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TaskAlt
@@ -93,6 +94,7 @@ fun ProductionScreen(
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recipeMaterials by viewModel.recipeMaterials.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
     var showNewOrderSheet by remember { mutableStateOf(false) }
     var selectedOrderForUpdate by remember { mutableStateOf<ProductionOrderEntity?>(null) }
@@ -211,6 +213,7 @@ fun ProductionScreen(
             val filterOptions = listOf(
                 ProductionFilterOption("All", null, Icons.Default.CheckCircle),
                 ProductionFilterOption("Active", "IN_PROGRESS", Icons.Default.Timer),
+                ProductionFilterOption("On Hold", "ON_HOLD", Icons.Default.PauseCircle),
                 ProductionFilterOption("Completed", "COMPLETED", Icons.Default.TaskAlt),
                 ProductionFilterOption("Draft", "DRAFT", Icons.Default.EditNote),
                 ProductionFilterOption("Canceled", "CANCELLED", Icons.Default.Block)
@@ -263,7 +266,7 @@ fun ProductionScreen(
 
             // Summary KPI Cards Row (Active Production & Est Value)
             val activeOrders = remember(state.orders) {
-                state.orders.filter { it.status == "IN_PROGRESS" || it.status == "DRAFT" }
+                state.orders.filter { it.status == "IN_PROGRESS" || it.status == "DRAFT" || it.status == "ON_HOLD" }
             }
             val totalActiveUnits = remember(activeOrders) {
                 activeOrders.sumOf { it.quantity }
@@ -395,7 +398,7 @@ fun ProductionScreen(
                             sku = matchedVariant?.variant?.sku ?: order.variantId.take(8).uppercase(),
                             isCompleting = state.isCompleting,
                             onStart = { viewModel.startOrder(order.id) },
-                            onComplete = { viewModel.completeOrder(order.id) },
+                            onComplete = { selectedOrderForUpdate = order },
                             onCancel = { viewModel.cancelOrder(order.id) },
                             onOpenUpdateStatus = { selectedOrderForUpdate = order }
                         )
@@ -409,11 +412,16 @@ fun ProductionScreen(
         NewProductionOrderSheet(
             products = state.products,
             materials = state.materials,
-            onSave = { variantId, qty, notes ->
+            onSave = { variantId, qty, notes, materials ->
                 viewModel.createOrder(variantId, qty, notes)
                 showNewOrderSheet = false
             },
-            onDismiss = { showNewOrderSheet = false }
+            onDismiss = {
+                showNewOrderSheet = false
+                viewModel.clearRecipeSelection()
+                        },
+            recipeMaterials = recipeMaterials,
+            onProductSelected = { variantId -> viewModel.onProductSelectedForRecipe(variantId) }
         )
     }
 
@@ -427,10 +435,18 @@ fun ProductionScreen(
         UpdateStatusSheet(
             order = order,
             productName = matchedProduct?.product?.name ?: "Production Item",
-            onSaveStatus = { newStatus, _, _ ->
+            unitType = matchedProduct?.product?.unitType,
+            onSaveStatus = { newStatus, actualYield, remarks ->
                 when (newStatus) {
                     "IN_PROGRESS" -> viewModel.startOrder(order.id)
-                    "COMPLETED" -> viewModel.completeOrder(order.id)
+                    "COMPLETED" -> {
+                        val yield = actualYield ?: order.quantity
+                        viewModel.completeOrder(
+                            orderId = order.id,
+                            actualQuantity = yield,
+                            remarks = remarks
+                        )
+                    }
                     "CANCELLED" -> viewModel.cancelOrder(order.id)
                 }
                 selectedOrderForUpdate = null
@@ -514,6 +530,7 @@ private fun ProductionOrderItemCard(
                     // Status Badge
                     val (badgeContainer, badgeContentColor, badgeIcon, badgeText) = when (order.status) {
                         "IN_PROGRESS" -> Quadruple(Color(0xFFE3F2FD), Color(0xFF1976D2), Icons.Default.PlayCircle, "In Progress")
+                        "ON_HOLD" -> Quadruple(Color(0xFFFFF3E0), Color(0xFFE65100), Icons.Default.PauseCircle, "On Hold")
                         "COMPLETED" -> Quadruple(Color(0xFFE8F5E9), Color(0xFF2E7D32), Icons.Default.TaskAlt, "Completed")
                         "CANCELLED" -> Quadruple(Color(0xFFFFEBEE), Color(0xFFC62828), Icons.Default.Block, "Canceled")
                         else -> Quadruple(Color(0xFFFFF8E1), Color(0xFFF57C00), Icons.Default.Timer, "Draft / Pending")
@@ -577,7 +594,7 @@ private fun ProductionOrderItemCard(
                                 onOpenUpdateStatus()
                             }
                         )
-                        if (order.status == "DRAFT") {
+                        if (order.status in listOf("DRAFT", "PENDING", "ON_HOLD")) {
                             DropdownMenuItem(
                                 text = { Text("Start production") },
                                 onClick = {
@@ -586,7 +603,7 @@ private fun ProductionOrderItemCard(
                                 }
                             )
                         }
-                        if (order.status in listOf("DRAFT", "IN_PROGRESS")) {
+                        if (order.status in listOf("DRAFT", "PENDING", "IN_PROGRESS", "ON_HOLD")) {
                             DropdownMenuItem(
                                 text = { Text("Complete production") },
                                 onClick = {

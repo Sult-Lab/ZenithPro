@@ -46,6 +46,9 @@ import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
+import com.techsultan.zenithpro.features.material.presentation.RecipeListRoute
+import com.techsultan.zenithpro.features.material.presentation.RecipeRoute
+import com.techsultan.zenithpro.features.material.presentation.RecipeScreen
 import com.techsultan.zenithpro.features.production.presentation.ProductionScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutScreen
 import com.techsultan.zenithpro.features.sales.presentation.CheckoutViewModel
@@ -165,6 +168,12 @@ fun MainNavGraph(
             scope.launch {
                 drawerState.close()
                 navigator.navigate(Route.Home.Material)
+            }
+        },
+        onRecipeClick = {
+            scope.launch {
+                drawerState.close()
+                navigator.navigate(Route.Home.RecipeList)
             }
         },
         onProductionClick = {
@@ -352,9 +361,23 @@ fun MainNavGraph(
                         }
                         entry<Route.Home.Material> {
                             MaterialScreen(
-                                onNewProduction = {},
+                                onNewProduction = { navigator.navigate(Route.Home.Production) },
                                 onMaterialClick = {},
+                                onBack = { navigator.goBack() },
+                                onNavigateToRecipe = { navigator.navigate(Route.Home.RecipeList) }
+                            )
+                        }
+                        entry<Route.Home.RecipeList> {
+                            RecipeListRoute(
+                                onNewRecipe = { navigator.navigate(Route.Home.Recipe) },
+                                onEditRecipe = { variantId -> navigator.navigate(Route.Home.Recipe) },
+                                onStartBatch = { variantId -> navigator.navigate(Route.Home.Production) },
                                 onBack = { navigator.goBack() }
+                            )
+                        }
+                        entry<Route.Home.Recipe> {
+                            RecipeRoute(
+                                onBack = { navigator.goBack() },
                             )
                         }
                         entry<Route.Customer.AddEditCustomerScreen> {

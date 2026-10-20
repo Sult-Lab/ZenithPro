@@ -1,5 +1,6 @@
 package com.techsultan.zenithpro.features.material.presentation.component
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -575,7 +577,8 @@ fun AddEditMaterialSheet(
                         val parsedCost = costPerUnit.toDoubleOrNull()?.let { (it * 100).toLong() } ?: 0L
                         val parsedAlert = lowStock.toDoubleOrNull()
                         val initialStockDouble = initialStock.toDoubleOrNull() ?: 0.0
-
+                        Log.d("AddEditMaterialSheet", "Parsed Alert: $initialStockDouble")
+                        if (initialStockDouble < 0.0) return@ZenithButton
                         val request = UpsertMaterialRequest(
                             id = materialId,
                             name = name.trim(),
@@ -584,7 +587,8 @@ fun AddEditMaterialSheet(
                             costPerUnit = parsedCost,
                             lowStockAlert = parsedAlert,
                             supplier = supplier.trimOrNull(),
-                            notes = notes.trimOrNull()
+                            notes = notes.trimOrNull(),
+                            quantity = initialStockDouble
                         )
                         onSave(request, initialStockDouble)
                     }
@@ -615,6 +619,7 @@ fun AdjustStockSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

@@ -7,6 +7,8 @@ import com.techsultan.zenithpro.features.material.domain.use_case.GetMaterialsUs
 import com.techsultan.zenithpro.features.material.domain.use_case.SaveRecipeUseCase
 import com.techsultan.zenithpro.features.material.domain.use_case.UpsertMaterialUseCase
 import com.techsultan.zenithpro.features.material.presentation.MaterialViewModel
+import com.techsultan.zenithpro.features.material.presentation.RecipeListViewModel
+import com.techsultan.zenithpro.features.material.presentation.RecipeViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -27,7 +29,23 @@ val materialModule = module {
         get(),
         get(),
         get(),
+        get(),
         get()
     ) }
 
+    viewModel {
+        RecipeViewModel(
+            materialRepository = get(),
+            getProductsUseCase = get(),
+            sessionManager = get()
+        )
+    }
+
+    viewModel {
+        RecipeListViewModel(
+            materialRepository = get(),
+            getProductsUseCase = get(),
+            sessionManager = get()
+        )
+    }
 }
