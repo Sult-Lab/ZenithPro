@@ -43,6 +43,7 @@ import com.techsultan.zenithpro.features.inventory.presentation.AddProductScreen
 import com.techsultan.zenithpro.features.inventory.presentation.AddProductViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.BarcodeScannerScreen
 import com.techsultan.zenithpro.features.inventory.presentation.InventoryScreen
+import com.techsultan.zenithpro.features.inventory.presentation.InventoryViewModel
 import com.techsultan.zenithpro.features.inventory.presentation.PrintBarcodeScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailScreen
 import com.techsultan.zenithpro.features.inventory.presentation.ProductDetailViewModel
@@ -201,6 +202,7 @@ fun MainNavGraph(
             val checkoutViewModel: CheckoutViewModel = koinViewModel()
             val receiptViewModel: ReceiptViewModel = koinViewModel()
             val branchViewModel: BranchViewModel = koinViewModel()
+            val inventoryViewModel: InventoryViewModel = koinViewModel()
 
             NavDisplay(
                 modifier = Modifier
@@ -227,7 +229,8 @@ fun MainNavGraph(
                                 onAddProductClick = { navigator.navigate(Route.Home.AddProduct) },
                                 onProductClick = { navigator.navigate(Route.Home.ProductDetail(it)) },
                                 onMenuClick = { scope.launch { drawerState.open() } },
-                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) }
+                                onPrintBarcodeClick = { navigator.navigate(Route.Home.PrintBarcode) },
+                                viewModel = inventoryViewModel
                             )
                         }
                         entry<Route.Home.Sales> {

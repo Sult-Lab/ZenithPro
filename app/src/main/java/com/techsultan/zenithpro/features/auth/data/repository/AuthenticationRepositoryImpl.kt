@@ -108,7 +108,7 @@ class AuthenticationRepositoryImpl(
         try {
             auth.verifyEmailOtp(
                 type = OtpType.Email.SIGNUP,
-                tokenHash = token,
+                tokenHash = token.trim(),
             )
             emit(Resource.Success(Unit))
         } catch (e: Exception) {
@@ -116,26 +116,72 @@ class AuthenticationRepositoryImpl(
         }
     }
 
-    override suspend fun resendConfirmationEmail(email: String): Resource<Unit> {
+
+    override suspend fun resendConfirmationEmail(
+        email: String
+    ): Resource<Unit> {
         return try {
             auth.resendEmail(
                 type = OtpType.Email.SIGNUP,
-                email = email,
+                email = email.trim().lowercase()
             )
+
             Resource.Success(Unit)
         } catch (e: Exception) {
+            Log.e(
+                "AuthenticationRepositoryImpl",
+                "resendConfirmationEmail: ${e.message}"
+            )
+
+            val message = e.message.orEmpty()
+
             Resource.Error(
                 when {
-                    e.message?.contains("rate limit", ignoreCase = true) == true ->
-                        "Please wait a few minutes before requesting another email."
-                    e.message?.contains("already confirmed", ignoreCase = true) == true ->
-                        "Your email is already confirmed. Please sign in."
+                    message.contains("429") ||
+                            message.contains("rate limit", ignoreCase = true) ->
+                        "Too many requests. Please wait before requesting another code."
+
+                    message.contains("already confirmed", ignoreCase = true) ||
+                            message.contains("already verified", ignoreCase = true) ->
+                        "Your email is already verified. Please sign in."
+
                     else ->
-                        "Failed to resend. Please try again."
+                        "Failed to resend the verification code. Please try again."
                 }
             )
         }
     }
+
+
+    override fun verifySignupOtp(
+        email: String,
+        token: String
+    ): Flow<Resource<Unit>> = flow {
+        emit(Resource.Loading())
+
+        try {
+            auth.verifyEmailOtp(
+                type = OtpType.Email.SIGNUP,
+                email = email.trim().lowercase(),
+                token = token.trim()
+            )
+
+            emit(Resource.Success(Unit))
+        } catch (e: Exception) {
+            Log.e(
+                "AuthenticationRepositoryImpl",
+                "verifySignupOtp: ${e.message}"
+            )
+
+            emit(
+                Resource.Error(
+                    ErrorSanitizer.clean(
+                        e.localizedMessage ?: "Verification failed"
+                    )
+                )
+            )
+        }
+    }.flowOn(Dispatchers.IO)
 
     override val sessionState: Flow<Boolean> = auth.sessionStatus
         .map { status ->

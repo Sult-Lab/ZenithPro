@@ -13,7 +13,7 @@ sealed interface Route: NavKey {
         @Serializable
         data object SignUp : Route, NavKey
         @Serializable
-        data class RegistrationSuccess(val email: String) : Route, NavKey
+        data class ConfirmEmailScreen(val email: String) : Route, NavKey
         @Serializable
         data class EmailConfirmed(val token: String) : Route, NavKey
         @Serializable
