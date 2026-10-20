@@ -51,13 +51,16 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,9 +73,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.techsultan.zenithpro.core.components.ZenithTopAppBar
 import com.techsultan.zenithpro.core.domain.domain.UnitType
 import com.techsultan.zenithpro.core.util.Util
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBar
+import com.techsultan.zenithpro.features.dashboard.presentation.components.BranchSelectorBottomSheet
 import com.techsultan.zenithpro.features.production.data.local.ProductionOrderEntity
 import com.techsultan.zenithpro.features.production.presentation.components.NewProductionOrderSheet
 import com.techsultan.zenithpro.features.production.presentation.components.UpdateStatusSheet
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -96,11 +102,13 @@ fun ProductionScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recipeMaterials by viewModel.recipeMaterials.collectAsStateWithLifecycle()
     val snackbarHost = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var showNewOrderSheet by remember { mutableStateOf(false) }
     var selectedOrderForUpdate by remember { mutableStateOf<ProductionOrderEntity?>(null) }
     var selectedStatusFilter by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showSearchField by remember { mutableStateOf(false) }
+    var showBranchSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -112,6 +120,29 @@ fun ProductionScreen(
                 is ProductionViewModel.ProductionEvent.ShowError ->
                     snackbarHost.showSnackbar(event.message)
             }
+        }
+    }
+
+    val handleCompleteOrder: (ProductionOrderEntity) -> Unit = { order ->
+        if (state.activeBranchId == null) {
+            if (state.branches.size == 1) {
+                val singleBranch = state.branches.first()
+                viewModel.onBranchSelected(singleBranch.id, singleBranch.name)
+                selectedOrderForUpdate = order
+            } else {
+                showBranchSheet = true
+                scope.launch {
+                    val result = snackbarHost.showSnackbar(
+                        message = "Please select a branch first",
+                        actionLabel = "Select Branch"
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        showBranchSheet = true
+                    }
+                }
+            }
+        } else {
+            selectedOrderForUpdate = order
         }
     }
 
@@ -164,6 +195,13 @@ fun ProductionScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (state.isAdmin && state.branches.isNotEmpty()) {
+                BranchSelectorBar(
+                    activeBranchName = state.activeBranchName,
+                    onClick = { showBranchSheet = true }
+                )
+            }
+
             // Search Bar (if toggled)
             if (showSearchField || searchQuery.isNotEmpty()) {
                 OutlinedTextField(
@@ -350,15 +388,27 @@ fun ProductionScreen(
                 groupOrdersByDate(displayedOrders)
             }
 
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            PullToRefreshBox(
+                isRefreshing = state.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize()
             ) {
-                if (displayedOrders.isEmpty() && !state.isLoading) {
-                    item {
+                when {
+                    state.isLoading && state.orders.isEmpty() -> {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
+                                .padding(40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    displayedOrders.isEmpty() -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
                                 .padding(40.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -369,43 +419,62 @@ fun ProductionScreen(
                             )
                         }
                     }
-                }
 
-                groupedOrders.forEach { (dateGroup, ordersInGroup) ->
-                    item {
-                        Text(
-                            text = dateGroup,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                        )
-                    }
+                    else -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            groupedOrders.forEach { (dateGroup, ordersInGroup) ->
+                                item {
+                                    Text(
+                                        text = dateGroup,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                    )
+                                }
 
-                    items(ordersInGroup, key = { it.id }) { order ->
-                        val matchedProduct = remember(state.products, order.variantId) {
-                            state.products.firstOrNull { p ->
-                                p.variants.any { v -> v.variant.id == order.variantId }
+                                items(ordersInGroup, key = { it.id }) { order ->
+                                    val matchedProduct = remember(state.products, order.variantId) {
+                                        state.products.firstOrNull { p ->
+                                            p.variants.any { v -> v.variant.id == order.variantId }
+                                        }
+                                    }
+                                    val matchedVariant = remember(matchedProduct, order.variantId) {
+                                        matchedProduct?.variants?.firstOrNull { v -> v.variant.id == order.variantId }
+                                    }
+
+                                    ProductionOrderItemCard(
+                                        order = order,
+                                        productName = matchedProduct?.product?.name ?: "Batch #${order.id.take(8).uppercase()}",
+                                        sku = matchedVariant?.variant?.sku ?: order.variantId.take(8).uppercase(),
+                                        isCompleting = state.isCompleting,
+                                        onStart = { viewModel.startOrder(order.id) },
+                                        onComplete = { handleCompleteOrder(order) },
+                                        onCancel = { viewModel.cancelOrder(order.id) },
+                                        onOpenUpdateStatus = { selectedOrderForUpdate = order }
+                                    )
+                                }
                             }
                         }
-                        val matchedVariant = remember(matchedProduct, order.variantId) {
-                            matchedProduct?.variants?.firstOrNull { v -> v.variant.id == order.variantId }
-                        }
-
-                        ProductionOrderItemCard(
-                            order = order,
-                            productName = matchedProduct?.product?.name ?: "Batch #${order.id.take(8).uppercase()}",
-                            sku = matchedVariant?.variant?.sku ?: order.variantId.take(8).uppercase(),
-                            isCompleting = state.isCompleting,
-                            onStart = { viewModel.startOrder(order.id) },
-                            onComplete = { selectedOrderForUpdate = order },
-                            onCancel = { viewModel.cancelOrder(order.id) },
-                            onOpenUpdateStatus = { selectedOrderForUpdate = order }
-                        )
                     }
                 }
             }
         }
+    }
+
+    if (showBranchSheet && (state.isAdmin || state.branches.isNotEmpty())) {
+        BranchSelectorBottomSheet(
+            branches = state.branches,
+            activeBranchId = state.activeBranchId,
+            onBranchSelected = { id, name ->
+                viewModel.onBranchSelected(id, name)
+                showBranchSheet = false
+            },
+            onDismiss = { showBranchSheet = false }
+        )
     }
 
     if (showNewOrderSheet) {
@@ -419,7 +488,7 @@ fun ProductionScreen(
             onDismiss = {
                 showNewOrderSheet = false
                 viewModel.clearRecipeSelection()
-                        },
+            },
             recipeMaterials = recipeMaterials,
             onProductSelected = { variantId -> viewModel.onProductSelectedForRecipe(variantId) }
         )
@@ -440,16 +509,47 @@ fun ProductionScreen(
                 when (newStatus) {
                     "IN_PROGRESS" -> viewModel.startOrder(order.id)
                     "COMPLETED" -> {
-                        val yield = actualYield ?: order.quantity
-                        viewModel.completeOrder(
-                            orderId = order.id,
-                            actualQuantity = yield,
-                            remarks = remarks
-                        )
+                        if (state.activeBranchId == null) {
+                            if (state.branches.size == 1) {
+                                val singleBranch = state.branches.first()
+                                viewModel.onBranchSelected(singleBranch.id, singleBranch.name)
+                                val yield = actualYield ?: order.quantity
+                                viewModel.completeOrder(
+                                    orderId = order.id,
+                                    actualQuantity = yield,
+                                    remarks = remarks
+                                )
+                                selectedOrderForUpdate = null
+                            } else {
+                                showBranchSheet = true
+                                scope.launch {
+                                    val result = snackbarHost.showSnackbar(
+                                        message = "Please select a branch first",
+                                        actionLabel = "Select Branch"
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        showBranchSheet = true
+                                    }
+                                }
+                            }
+                        } else {
+                            val yield = actualYield ?: order.quantity
+                            viewModel.completeOrder(
+                                orderId = order.id,
+                                actualQuantity = yield,
+                                remarks = remarks
+                            )
+                            selectedOrderForUpdate = null
+                        }
                     }
-                    "CANCELLED" -> viewModel.cancelOrder(order.id)
+                    "CANCELLED" -> {
+                        viewModel.cancelOrder(order.id)
+                        selectedOrderForUpdate = null
+                    }
+                    else -> {
+                        selectedOrderForUpdate = null
+                    }
                 }
-                selectedOrderForUpdate = null
             },
             onDismiss = { selectedOrderForUpdate = null }
         )

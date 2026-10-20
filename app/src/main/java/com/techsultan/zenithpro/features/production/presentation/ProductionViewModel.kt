@@ -6,6 +6,8 @@ import com.techsultan.zenithpro.core.data.UserSession
 import com.techsultan.zenithpro.core.manager.SessionManager
 import com.techsultan.zenithpro.core.network.NetworkMonitor
 import com.techsultan.zenithpro.core.util.Resource
+import com.techsultan.zenithpro.features.branch.data.local.BranchDao
+import com.techsultan.zenithpro.features.branch.data.local.BranchEntity
 import com.techsultan.zenithpro.features.inventory.data.local.ProductWithVariants
 import com.techsultan.zenithpro.features.inventory.domain.use_case.GetProductsUseCase
 import com.techsultan.zenithpro.features.material.data.local.MaterialEntity
@@ -39,14 +41,14 @@ class ProductionViewModel(
     private val materialRepository: MaterialRepository,
     private val getProductsUseCase: GetProductsUseCase,
     private val networkMonitor: NetworkMonitor,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val branchDao: BranchDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductionUiState())
     val state: StateFlow<ProductionUiState> = _state.asStateFlow()
 
     private val selectedRecipeVariantId = MutableStateFlow<String?>(null)
-    val branchId = sessionManager.activeBranchId.value
     @OptIn(ExperimentalCoroutinesApi::class)
     val recipeMaterials: StateFlow<List<RecipeWithMaterial>> = selectedRecipeVariantId
         .flatMapLatest { variantId ->
@@ -75,9 +77,32 @@ class ProductionViewModel(
 
     init {
         viewModelScope.launch {
-            session = sessionManager.loadSession()
-            businessId = session?.businessId
-            if (businessId != null) {
+            val currentSession = sessionManager.loadSession()
+            session = currentSession
+            businessId = currentSession?.businessId
+            if (currentSession != null && businessId != null) {
+                _state.update { it.copy(
+                    isAdmin = currentSession.isAdmin,
+                    activeBranchId = sessionManager.activeBranchId.value,
+                    activeBranchName = sessionManager.activeBranchName.value
+                ) }
+
+                launch {
+                    sessionManager.activeBranchId.collect { id ->
+                        _state.update { it.copy(
+                            activeBranchId = id,
+                            activeBranchName = sessionManager.activeBranchName.value
+                        ) }
+                    }
+                }
+
+                launch {
+                    branchDao.getBranches(businessId!!).collect { list ->
+                        val activeBranches = list.filter { it.isActive }
+                        _state.update { it.copy(branches = activeBranches) }
+                    }
+                }
+
                 init(businessId)
             }
         }
@@ -117,6 +142,24 @@ class ProductionViewModel(
                 productionRepository.pullFromServer(bId)
                 materialRepository.pullFromServer(bId)
             }
+        }
+    }
+
+    fun refresh() {
+        val bId = businessId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(isRefreshing = true) }
+            if (networkMonitor.isConnected()) {
+                productionRepository.pullFromServer(bId)
+                materialRepository.pullFromServer(bId)
+            }
+            _state.update { it.copy(isRefreshing = false) }
+        }
+    }
+
+    fun onBranchSelected(branchId: String?, branchName: String?) {
+        viewModelScope.launch {
+            sessionManager.setActiveBranch(branchId, branchName)
         }
     }
 
@@ -190,7 +233,7 @@ class ProductionViewModel(
                 _events.emit(ProductionEvent.ShowError("Session expired"))
                 return@launch
             }
-            val branchId = branchId ?: run {
+            val activeBranchId = sessionManager.activeBranchId.value ?: run {
                 _events.emit(ProductionEvent.ShowError("Branch ID is required to complete production"))
                 return@launch
             }
@@ -198,7 +241,7 @@ class ProductionViewModel(
             _state.update { it.copy(isCompleting = true) }
             when (val result = completeOrderUseCase(
                 orderId = orderId,
-                branchId = branchId,
+                branchId = activeBranchId,
                 actualQuantity = actualQuantity,
                 completedBy = currentSession.userId,
                 completedByName = currentSession.fullName,
@@ -241,6 +284,7 @@ class ProductionViewModel(
 
 data class ProductionUiState(
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isSaving: Boolean = false,
     val isCompleting: Boolean = false,
     val orders: List<ProductionOrderEntity> = emptyList(),
@@ -248,5 +292,9 @@ data class ProductionUiState(
     val materials: List<MaterialEntity> = emptyList(),
     val selectedStatusFilter: String? = null,
     val searchQuery: String = "",
-    val error: String? = null
+    val error: String? = null,
+    val isAdmin: Boolean = false,
+    val branches: List<BranchEntity> = emptyList(),
+    val activeBranchId: String? = null,
+    val activeBranchName: String? = null
 )

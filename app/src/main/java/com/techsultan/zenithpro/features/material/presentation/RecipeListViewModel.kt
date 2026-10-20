@@ -51,6 +51,7 @@ data class RecipeListUiState(
     val selectedCategory: String? = null,
     val searchQuery: String = "",
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val summaryStats: RecipeSummaryStats = RecipeSummaryStats()
 )
@@ -66,10 +67,18 @@ class RecipeListViewModel(
 
     private var loadJob: Job? = null
 
-    fun loadData() {
-        loadJob?.cancel()
+    init {
+        viewModelScope.launch {
+            val session = sessionManager.loadSession()
+            val bId = session?.businessId ?: sessionManager.businessId
+            if (bId.isNotBlank()) {
+                observeData(bId)
+            }
+        }
+    }
 
-        val businessId = sessionManager.businessId
+    private fun observeData(businessId: String) {
+        loadJob?.cancel()
 
         loadJob = viewModelScope.launch {
             combine(
@@ -78,14 +87,11 @@ class RecipeListViewModel(
             ) { productsRes, recipesRes ->
                 productsRes to recipesRes
             }.collect { (productsRes, recipesRes) ->
-                Log.d("RecipeListViewModel", "loadData: $recipesRes")
+                Log.d("RecipeListViewModel", "observeData: $recipesRes")
                 val current = _state.value
 
-                val products = (productsRes as? Resource.Success)
-                    ?.data
-
-                val recipes = (recipesRes as? Resource.Success)
-                    ?.data
+                val products = (productsRes as? Resource.Success)?.data
+                val recipes = (recipesRes as? Resource.Success)?.data
 
                 // Don't replace valid data with empty lists during loading/errors.
                 if (products == null || recipes == null) {
@@ -118,29 +124,52 @@ class RecipeListViewModel(
                 val selectedCategory = current.selectedCategory
                     ?.takeIf { it in categories }
 
-                _state.value = RecipeListUiState(
-                    allRecipes = items,
-                    filteredRecipes = filterRecipes(
-                        items,
-                        current.searchQuery,
-                        selectedCategory
-                    ),
-                    categories = categories,
-                    selectedCategory = selectedCategory,
-                    searchQuery = current.searchQuery,
-                    isLoading = false,
-                    error = null,
-                    summaryStats = RecipeSummaryStats(
-                        totalRecipes = items.size,
-                        avgMarginPercent = items
-                            .map { it.marginPercent }
-                            .average()
-                            .takeIf { items.isNotEmpty() } ?: 0.0,
-                        readyToProduceCount = items.count {
-                            it.stockStatus !is RecipeStockStatus.Blocked
-                        }
+                _state.update {
+                    it.copy(
+                        allRecipes = items,
+                        filteredRecipes = filterRecipes(
+                            items,
+                            current.searchQuery,
+                            selectedCategory
+                        ),
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        searchQuery = current.searchQuery,
+                        isLoading = false,
+                        isRefreshing = false,
+                        error = null,
+                        summaryStats = RecipeSummaryStats(
+                            totalRecipes = items.size,
+                            avgMarginPercent = items
+                                .map { it.marginPercent }
+                                .average()
+                                .takeIf { items.isNotEmpty() } ?: 0.0,
+                            readyToProduceCount = items.count {
+                                it.stockStatus !is RecipeStockStatus.Blocked
+                            }
+                        )
                     )
-                )
+                }
+            }
+        }
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            val bId = sessionManager.businessId
+            if (bId.isNotBlank()) {
+                _state.update { it.copy(isRefreshing = true) }
+                materialRepository.pullFromServer(bId)
+                _state.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    fun loadData() {
+        if (loadJob == null || loadJob?.isActive == false) {
+            val bId = sessionManager.businessId
+            if (bId.isNotBlank()) {
+                observeData(bId)
             }
         }
     }
